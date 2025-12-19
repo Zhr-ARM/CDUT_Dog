@@ -109,7 +109,7 @@ public:
             motor.cmd_struct = MotorCMDCreate();
             motor.data_struct = MotorDATACreate();
             // 设置安全初始值 (小阻尼模式，防止上电乱动)
-            motor.current_cmd = {0.0, 0.0, 0.0, 0.0, 1.0}; 
+            motor.current_cmd = {0.0, 0.0, 0.0, 0.0, 0.0}; 
 
             RCLCPP_INFO(this->get_logger(), "[Check] 正在检测电机 ID: %d ...", motor.id);
             
