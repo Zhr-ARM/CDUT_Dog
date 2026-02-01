@@ -1,0 +1,136 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:macro name="dog_leg" params="name mirror f_b">
+
+        <link name="${name}_HIP">
+            <inertial>
+                <origin xyz="${hip_com_x} ${mirror * hip_com_y} ${hip_com_z}"/>
+                <mass value="${hip_mass}"/>
+                <inertia ixx="${hip_ixx}" ixy="0" ixz="0" iyy="${hip_iyy}" iyz="0" izz="${hip_izz}"/>
+            </inertial>
+            <visual>
+                <geometry>
+                    <mesh filename="${mesh_path}/hip.STL" scale="${f_b} ${mirror} 1"/>
+                </geometry>
+            </visual>
+            <collision>
+                <origin xyz="0 ${mirror * 0.05} 0" rpy="1.57079632 0 0"/>
+                <geometry>
+                    <cylinder length="0.15" radius="0.04"/>
+                </geometry>
+            </collision>
+        </link>
+
+        <joint name="${name}_HipX_joint" type="revolute">
+            <origin xyz="${f_b * hip_offset_x} ${mirror * hip_offset_y} 0"/>
+            <parent link="TORSO"/>
+            <child link="${name}_HIP"/>
+            <axis xyz="-1 0 0"/>
+            <limit lower="${hipx_min}" upper="${hipx_max}" effort="${hipx_eff}" velocity="${hipx_vel}"/>
+            <dynamics damping="${damping}" friction="${friction}"/>
+        </joint>
+
+        <link name="${name}_THIGH">
+            <inertial>
+                <origin xyz="${thigh_com_x} ${mirror * thigh_com_y} ${thigh_com_z}"/>
+                <mass value="${thigh_mass}"/>
+                <inertia ixx="${thigh_ixx}" ixy="0" ixz="0" iyy="${thigh_iyy}" iyz="0" izz="${thigh_izz}"/>
+            </inertial>
+            <visual>
+                <geometry>
+                    <mesh filename="${mesh_path}/thigh.STL" scale="1 ${mirror} 1"/>
+                </geometry>
+            </visual>
+            <collision>
+                <origin xyz="-0.015 0 -0.08" />
+                <geometry>
+                    <box size="0.04 0.045 0.2"/>
+                </geometry>
+            </collision>
+        </link>
+
+        <joint name="${name}_HipY_joint" type="revolute">
+            <origin xyz="0 ${mirror * thigh_offset_y} 0"/>
+            <parent link="${name}_HIP"/>
+            <child link="${name}_THIGH"/>
+            <axis xyz="0 -1 0"/>
+            <limit lower="${hipy_min}" upper="${hipy_max}" effort="${hipy_eff}" velocity="${hipy_vel}"/>
+            <dynamics damping="${damping}" friction="${friction}"/>
+        </joint>
+
+        <link name="${name}_SHANK">
+            <inertial>
+                <origin xyz="${shank_com_x} ${shank_com_y} ${shank_com_z}"/>
+                <mass value="${shank_mass}"/>
+                <inertia ixx="${shank_ixx}" ixy="0" ixz="0" iyy="${shank_iyy}" iyz="0" izz="${shank_izz}"/>
+            </inertial>
+            <visual>
+                <geometry>
+                    <mesh filename="${mesh_path}/shank.STL"/>
+                </geometry>
+            </visual>
+            <collision>
+                <origin xyz="0.005 0 -0.03" rpy="0 -0.2 0"/>
+                <geometry>
+                    <cylinder length="0.12" radius="0.015"/>
+                </geometry>
+            </collision>
+            <collision>
+                <origin xyz="0.01 0 -0.14" rpy="0 0.15 0"/>
+                <geometry>
+                    <cylinder length="0.10" radius="0.015"/>
+                </geometry>
+            </collision>
+        </link>
+
+        <joint name="${name}_Knee_joint" type="revolute">
+            <origin xyz="0 0 ${shank_offset_z}"/>
+            <parent link="${name}_THIGH"/>
+            <child link="${name}_SHANK"/>
+            <axis xyz="0 -1 0"/>
+            <limit lower="${knee_min}" upper="${knee_max}" effort="${knee_eff}" velocity="${knee_vel}"/>
+            <dynamics damping="${damping}" friction="${friction}"/>
+        </joint>
+
+        <link name="${name}_FOOT">
+            <collision>
+                <origin rpy="1.57079632679 0 0" />
+                <geometry>
+                    <sphere radius="${foot_radius}"/>
+                </geometry>
+            </collision>
+            <inertial>
+                <mass value="${foot_mass}"/>
+                <inertia ixx="${foot_ixx}" ixy="0" ixz="0" iyy="${foot_iyy}" iyz="0" izz="${foot_izz}"/>
+            </inertial>
+        </link>
+
+        <joint name="${name}_Ankle" type="fixed" dont_collapse="true">
+            <parent link="${name}_SHANK"/>
+            <child link="${name}_FOOT"/>
+            <origin xyz="0 0 ${foot_offset_z}"/>
+        </joint>
+
+        <gazebo reference="${name}_Ankle">
+            <preserveFixedJoint>true</preserveFixedJoint>
+        </gazebo>
+        
+        <gazebo reference="${name}_FOOT">
+            <mu1>1.5</mu1>
+            <mu2>1.5</mu2>
+            <kp>1000000.0</kp>
+            <kd>100.0</kd>
+            <maxVel>0.0</maxVel>
+            <minDepth>0.001</minDepth>
+            <sensor name="${name}_contact_sensor" type="contact">
+              <always_on>true</always_on>
+              <update_rate>1000</update_rate>
+              <contact>
+                <collision>${name}_FOOT_collision</collision>
+              </contact>
+            </sensor>
+        </gazebo>
+
+    </xacro:macro>
+</robot>
