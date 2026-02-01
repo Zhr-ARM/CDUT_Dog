@@ -18,7 +18,6 @@ namespace dog_hardware
         sdf::ElementPtr /*sdf*/)
     {
         this->node_ = node;
-
         // 提取参数
         delay_ = std::stod(hardware_info.hardware_parameters.at("delay"));
         double a_var = std::stod(hardware_info.hardware_parameters.at("imu_accel_var"));
@@ -175,7 +174,7 @@ namespace dog_hardware
 
     hardware_interface::return_type DogGazeboHW::read(const rclcpp::Time &time, const rclcpp::Duration &period)
     {
-        RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 1000, "Read 循环正在运行...");
+        // RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 1000, "Read 循环正在运行中...");
         // 1. 获取关节物理状态
         for (auto &j : joints_)
         {
@@ -208,19 +207,13 @@ namespace dog_hardware
 
             // 获取原始线加速度 (加速度计读数：包含重力)
             ignition::math::Vector3d raw_acc = imu_data_.gazebo_sensor->LinearAcceleration();
-
-            // --- 核心：重力补偿逻辑 ---
-            // 定义世界坐标系下的重力矢量 (标准值)
-            ignition::math::Vector3d gravity_world(0.0, 0.0, -9.8);
-
-            // 将世界系的重力旋转到 IMU 的局部坐标系
-            // 公式：g_local = R^-1 * g_world
-            ignition::math::Vector3d gravity_local = q.Inverse().RotateVector(gravity_world);
-
-            // 减去重力分量，得到纯粹的运动加速度
-            imu_data_.lin_acc[0] = raw_acc.X() - gravity_local.X();
-            imu_data_.lin_acc[1] = raw_acc.Y() - gravity_local.Y();
-            imu_data_.lin_acc[2] = raw_acc.Z() - gravity_local.Z();
+            imu_data_.lin_acc[0] = raw_acc.X();
+            imu_data_.lin_acc[1] = raw_acc.Y();
+            imu_data_.lin_acc[2] = raw_acc.Z();
+            // RCLCPP_INFO_THROTTLE(node_->get_logger(), *node_->get_clock(), 1000, "IMU 数据：ori = [%.3f, %.3f, %.3f, %.3f], ang_vel = [%.3f, %.3f, %.3f], lin_acc = [%.3f, %.3f, %.3f]",
+            //                      imu_data_.ori[0], imu_data_.ori[1], imu_data_.ori[2], imu_data_.ori[3],
+            //                      imu_data_.ang_vel[0], imu_data_.ang_vel[1], imu_data_.ang_vel[2],
+            //                      imu_data_.lin_acc[0], imu_data_.lin_acc[1], imu_data_.lin_acc[2]);
         }
         else
         {
@@ -239,6 +232,7 @@ namespace dog_hardware
                 RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 1000, "触地传感器 %s 指针未绑定，无法获取数据！", sensor.name.c_str());
             }
         }
+        // RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 1000, "触地状态：%s,%s", (contact_sensors_[0].contact_value > 0.5 ? "已触地" : "未触地"), (contact_sensors_[1].contact_value > 0.5 ? "已触地" : "未触地"));
         return hardware_interface::return_type::OK;
     }
 

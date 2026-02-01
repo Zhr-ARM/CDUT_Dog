@@ -5,9 +5,15 @@ namespace dog_controllers
     CallbackReturn DogTestController::on_init()
     {
         auto node = get_node();
-        node->declare_parameter("joints", std::vector<std::string>());
-        node->declare_parameter("contacts", std::vector<std::string>());
-        node->declare_parameter("imu", "imu_sensor");
+        if (!node->has_parameter("joints"))
+        {
+            node->declare_parameter("joints", std::vector<std::string>());
+        }
+        // 检查 contacts
+        if (!node->has_parameter("contacts"))
+        {
+            node->declare_parameter("contacts", std::vector<std::string>());
+        }
         return CallbackReturn::SUCCESS;
     }
 
@@ -42,46 +48,68 @@ namespace dog_controllers
 
     CallbackReturn DogTestController::on_activate(const rclcpp_lifecycle::State &)
     {
+        // 执行初始化
         if (!bridge_.setup(state_interfaces_, command_interfaces_, joint_names_, contact_names_, imu_name_))
         {
             RCLCPP_ERROR(get_node()->get_logger(), "数据桥梁初始化失败！地址映射不匹配。");
             return CallbackReturn::FAILURE;
         }
-        RCLCPP_INFO(get_node()->get_logger(), "DogTestController 激活成功，硬件地址已打通。");
+
+        RCLCPP_INFO(get_node()->get_logger(), "DogTestController 激活成功，硬件地址已打通！");
         return CallbackReturn::SUCCESS;
     }
 
     controller_interface::return_type DogTestController::update(const rclcpp::Time &, const rclcpp::Duration &)
     {
-        // 【测试打印】：每 500ms 打印一次数据，验证链路
-        static int count = 0;
-        if (++count % 500 == 0)
-        {
-            // 访问示例：左前腿髋关节位置和 IMU X 轴加速度
-            double fl_hip_pos = *bridge_.legs[0].hip.pos;
-            double imu_acc_x = bridge_.imu.lin_acc[0];
-            bool fl_touch = (*bridge_.legs[0].contact == 1.0);
+        bridge_.read_from_hw();
 
-            RCLCPP_INFO(get_node()->get_logger(),
-                        "--- Debug Info ---\n"
-                        "FL Hip Pos: %.3f rad\n"
-                        "Body Acc X: %.3f m/s^2\n"
-                        "FL Contact: %s\n"
-                        "------------------",
-                        fl_hip_pos, imu_acc_x, fl_touch ? "TOUCH" : "AIR");
-        }
-
-        // // 测试控制：让所有关节保持零位（写指令地址）
         // for (int i = 0; i < 4; ++i)
         // {
         //     for (int j = 0; j < 3; ++j)
         //     {
-        //         *bridge_.legs[i].joints[j]->cmd_pos = 0.0;
-        //         *bridge_.legs[i].joints[j]->cmd_kp = 50.0;
-        //         *bridge_.legs[i].joints[j]->cmd_kd = 1.0;
+        //         bridge_.legs[i].joints[j]->cmd_pos = 0.0;
+        //         bridge_.legs[i].joints[j]->cmd_kp = 60.0;
+        //         bridge_.legs[i].joints[j]->cmd_kd = 2.0;
+        //         bridge_.legs[i].joints[j]->cmd_ff = 0.0;
+        //         bridge_.legs[i].joints[j]->cmd_vel = 0.0;
         //     }
         // }
 
+        static int print_count = 0;
+        if (++print_count >= 100)
+        {
+            print_count = 0;
+            RCLCPP_INFO(get_node()->get_logger(), "==================== DOG STATE SNAPSHOT ====================");
+
+            // --- 关节数据 (Joints) ---
+            const char *leg_names[] = {"FL", "FR", "HL", "HR"};
+            const char *joint_names[] = {"Hip", "Thigh", "Calf"};
+
+            for (int i = 0; i < 4; ++i)
+            {
+                RCLCPP_INFO(get_node()->get_logger(),
+                            "[%s Leg] | Pos(rad): [%.3f, %.3f, %.3f] | Contact: %s",
+                            leg_names[i],
+                            bridge_.legs[i].hip.pos, bridge_.legs[i].thigh.pos, bridge_.legs[i].calf.pos,
+                            bridge_.legs[i].contact > 0.5 ? "GROUND" : "AIR");
+            }
+
+            // --- IMU 数据 ---
+            RCLCPP_INFO(get_node()->get_logger(), "------------------------------------------------------------");
+            RCLCPP_INFO(get_node()->get_logger(),
+                        "[IMU Ori] | W:%.3f X:%.3f Y:%.3f Z:%.3f",
+                        bridge_.imu.ori[3], bridge_.imu.ori[0], bridge_.imu.ori[1], bridge_.imu.ori[2]);
+            RCLCPP_INFO(get_node()->get_logger(),
+                        "[IMU Acc] | X:%.3f Y:%.3f Z:%.3f m/s^2",
+                        bridge_.imu.lin_acc[0], bridge_.imu.lin_acc[1], bridge_.imu.lin_acc[2]);
+            RCLCPP_INFO(get_node()->get_logger(),
+                        "[IMU Ang] | X:%.3f Y:%.3f Z:%.3f rad/s",
+                        bridge_.imu.ang_vel[0], bridge_.imu.ang_vel[1], bridge_.imu.ang_vel[2]);
+
+            RCLCPP_INFO(get_node()->get_logger(), "============================================================");
+        }
+
+        bridge_.write_to_hw();
         return controller_interface::return_type::OK;
     }
 }

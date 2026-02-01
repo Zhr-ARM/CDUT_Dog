@@ -125,4 +125,5 @@
             <robot_param_node>robot_state_publisher</robot_param_node>
         </plugin>
     </gazebo>
+
 </robot>

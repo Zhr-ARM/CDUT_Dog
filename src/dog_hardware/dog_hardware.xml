@@ -1,4 +1,4 @@
-<library path="dog_hardware">
+<library path="dog_gazebo_hw">
   <class name="dog_hardware/DogGazeboHW"
          type="dog_hardware::DogGazeboHW"
          base_class_type="gazebo_ros2_control::GazeboSystemInterface">

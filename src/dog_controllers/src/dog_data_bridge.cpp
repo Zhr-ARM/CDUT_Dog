@@ -1,5 +1,4 @@
-#include "dog_control/dog_data_bridge.hpp"
-#include <algorithm>
+#include "dog_controllers/dog_data_bridge.hpp"
 
 namespace dog_controllers
 {
@@ -10,99 +9,114 @@ namespace dog_controllers
         const std::vector<std::string> &contact_names,
         const std::string &imu_name)
     {
-        // 映射关节
+        // 1. 初始化结构
         const std::string leg_prefixes[4] = {"FL", "FR", "HL", "HR"};
+        imu.name = imu_name;
         for (int i = 0; i < 4; ++i)
         {
             legs[i].name = leg_prefixes[i];
             for (int j = 0; j < 3; ++j)
-            {
                 legs[i].joints[j]->name = joint_names[i * 3 + j];
-                bind_joint_interface(*legs[i].joints[j], state_interfaces, command_interfaces);
-            }
-            const std::string &target_contact_name = contact_names[i];
-            for (auto &si : state_interfaces)
+        }
+
+        read_tasks_.clear();
+        write_tasks_.clear();
+
+        // 2. 预映射状态读取任务 (State -> Local)
+        for (auto &si : state_interfaces)
+        {
+            const std::string &prefix = si.get_prefix_name();
+            const std::string &inf = si.get_interface_name();
+
+            // 关节
+            for (int i = 0; i < 4; ++i)
             {
-                if (si.get_prefix_name() == target_contact_name && si.get_interface_name() == "contact")
+                for (int j = 0; j < 3; ++j)
                 {
-                    legs[i].contact = &si.get_value();
-                    break;
+                    if (prefix == legs[i].joints[j]->name)
+                    {
+                        if (inf == "position")
+                            read_tasks_.push_back({&si, &legs[i].joints[j]->pos});
+                        else if (inf == "velocity")
+                            read_tasks_.push_back({&si, &legs[i].joints[j]->vel});
+                        else if (inf == "effort")
+                            read_tasks_.push_back({&si, &legs[i].joints[j]->eff});
+                    }
+                }
+                // 触地
+                if (prefix == contact_names[i] && inf == "contact")
+                    read_tasks_.push_back({&si, &legs[i].contact});
+            }
+            // IMU
+            if (prefix == imu.name)
+            {
+                if (inf == "orientation.x")
+                    read_tasks_.push_back({&si, &imu.ori[0]});
+                else if (inf == "orientation.y")
+                    read_tasks_.push_back({&si, &imu.ori[1]});
+                else if (inf == "orientation.z")
+                    read_tasks_.push_back({&si, &imu.ori[2]});
+                else if (inf == "orientation.w")
+                    read_tasks_.push_back({&si, &imu.ori[3]});
+                else if (inf == "angular_velocity.x")
+                    read_tasks_.push_back({&si, &imu.ang_vel[0]});
+                else if (inf == "angular_velocity.y")
+                    read_tasks_.push_back({&si, &imu.ang_vel[1]});
+                else if (inf == "angular_velocity.z")
+                    read_tasks_.push_back({&si, &imu.ang_vel[2]});
+                else if (inf == "linear_acceleration.x")
+                    read_tasks_.push_back({&si, &imu.lin_acc[0]});
+                else if (inf == "linear_acceleration.y")
+                    read_tasks_.push_back({&si, &imu.lin_acc[1]});
+                else if (inf == "linear_acceleration.z")
+                    read_tasks_.push_back({&si, &imu.lin_acc[2]});
+            }
+        }
+
+        // 3. 预映射指令写入任务 (Local -> Command)
+        for (auto &ci : command_interfaces)
+        {
+            const std::string &prefix = ci.get_prefix_name();
+            const std::string &inf = ci.get_interface_name();
+
+            for (int i = 0; i < 4; ++i)
+            {
+                for (int j = 0; j < 3; ++j)
+                {
+                    if (prefix == legs[i].joints[j]->name)
+                    {
+                        if (inf == "position")
+                            write_tasks_.push_back({&ci, &legs[i].joints[j]->cmd_pos});
+                        else if (inf == "kp")
+                            write_tasks_.push_back({&ci, &legs[i].joints[j]->cmd_kp});
+                        else if (inf == "kd")
+                            write_tasks_.push_back({&ci, &legs[i].joints[j]->cmd_kd});
+                        else if (inf == "velocity")
+                            write_tasks_.push_back({&ci, &legs[i].joints[j]->cmd_vel});
+                        else if (inf == "effort")
+                            write_tasks_.push_back({&ci, &legs[i].joints[j]->cmd_ff});
+                    }
                 }
             }
         }
-
-        // IMU 指针及协方差绑定
-        imu.name = imu_name;
-        for (auto &si : state_interfaces)
-        {
-            if (si.get_prefix_name() != imu.name)
-                continue;
-            const std::string &inf = si.get_interface_name();
-
-            if (inf == "orientation.x")
-                imu.ori = &si.get_value();
-            if (inf == "angular_velocity.x")
-                imu.ang_vel = &si.get_value();
-            if (inf == "linear_acceleration.x")
-                imu.lin_acc = &si.get_value();
-
-            if (inf == "orientation_covariance")
-                imu.ori_cov = &si.get_value();
-            if (inf == "angular_velocity_covariance")
-                imu.ang_vel_cov = &si.get_value();
-            if (inf == "linear_acceleration_covariance")
-                imu.lin_acc_cov = &si.get_value();
-        }
+        if (write_tasks_.size() != 60 || read_tasks_.size() != 50)
+            return false;
         return true;
     }
 
-    void DogDataBridge::bind_joint_interface(
-        JointData &j,
-        std::vector<hardware_interface::LoanedStateInterface> &states,
-        std::vector<hardware_interface::LoanedCommandInterface> &cmds)
+    void DogDataBridge::read_from_hw()
     {
-        // 绑定状态 (State)
-        for (auto &si : states)
+        for (const auto &task : read_tasks_)
         {
-            if (si.get_prefix_name() != j.name)
-                continue;
-            const std::string &inf = si.get_interface_name();
-
-            if (inf == "position")
-                j.pos = &si.get_value();
-            else if (inf == "velocity")
-                j.vel = &si.get_value();
-            else if (inf == "effort")
-                j.eff = &si.get_value();
-            else if (inf == "driver_temperature")
-                j.mos_tem = &si.get_value();
-            else if (inf == "motor_temperature")
-                j.motor_tem = &si.get_value();
-            else if (inf == "error_code")
-                j.error_code = &si.get_value();
-        }
-
-        // 绑定指令 (Command)
-        for (auto &ci : cmds)
-        {
-            if (ci.get_prefix_name() != j.name)
-                continue;
-            const std::string &inf = ci.get_interface_name();
-
-            double *addr = const_cast<double *>(&ci.get_value());
-            if (inf == "position")
-                j.cmd_pos = addr;
-            else if (inf == "velocity")
-                j.cmd_vel = addr;
-            else if (inf == "kp")
-                j.cmd_kp = addr;
-            else if (inf == "kd")
-                j.cmd_kd = addr;
-            else if (inf == "effort")
-                j.cmd_ff = addr;
-            else if (inf == "mode")
-                j.cmd_mode = addr;
+            *task.local_var = task.hw_handle->get_value();
         }
     }
 
-} // namespace dog_control
+    void DogDataBridge::write_to_hw()
+    {
+        for (const auto &task : write_tasks_)
+        {
+            task.hw_handle->set_value(*task.local_var);
+        }
+    }
+}

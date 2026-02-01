@@ -1,4 +1,4 @@
-<library path="dog_controllers">
+<library path="dog_test_controller">
   <class name="dog_controllers/DogTestController"
          type="dog_controllers::DogTestController"
          base_class_type="controller_interface::ControllerInterface">

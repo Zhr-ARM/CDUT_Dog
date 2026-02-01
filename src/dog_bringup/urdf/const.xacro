@@ -44,7 +44,7 @@
 <xacro:property name="shank_izz" value="0.000031266"/>    <!-- 小腿绕z轴转动惯量(kg·m²) -->
 
 <!-- 脚部参数 -->
-<xacro:property name="foot_mass" value="0.02"/>           <!-- 脚部质量(kg) -->
+<xacro:property name="foot_mass" value="0.06"/>           <!-- 脚部质量(kg) -->
 <xacro:property name="foot_radius" value="0.023"/>        <!-- 脚部半径(m) -->
 <xacro:property name="foot_ixx" value="0.0001"/>          <!-- 脚部绕x轴转动惯量(kg·m²) -->
 <xacro:property name="foot_iyy" value="0.0001"/>          <!-- 脚部绕y轴转动惯量(kg·m²) -->

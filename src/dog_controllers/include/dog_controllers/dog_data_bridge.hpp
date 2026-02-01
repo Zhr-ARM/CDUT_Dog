@@ -4,58 +4,32 @@
 #include <vector>
 #include <string>
 #include <array>
-#include <iostream>
-
 #include "hardware_interface/loaned_state_interface.hpp"
 #include "hardware_interface/loaned_command_interface.hpp"
 
 namespace dog_controllers
 {
-    static double G_DUMMY_ZERO = 0.0;
-    static double G_DUMMY_TEMP = 25.0;
-    static double G_DUMMY_COV[9] = {0.0};
-
     struct JointData
     {
         std::string name;
-        // 状态反馈 (由驱动更新)
-        const double *pos = &G_DUMMY_ZERO;
-        const double *vel = &G_DUMMY_ZERO;
-        const double *eff = &G_DUMMY_ZERO;
-        const double *mode = &G_DUMMY_ZERO;
-        const double *driver_tem = &G_DUMMY_TEMP; // 驱动器温度
-        const double *motor_tem = &G_DUMMY_TEMP;  // 电机温度
-        const double *error_code = &G_DUMMY_ZERO;
-
-        // 指令下发 (由控制器写入)
-        double *cmd_pos = &G_DUMMY_ZERO;
-        double *cmd_vel = &G_DUMMY_ZERO;
-        double *cmd_kp = &G_DUMMY_ZERO;
-        double *cmd_kd = &G_DUMMY_ZERO;
-        double *cmd_ff = &G_DUMMY_ZERO;
-        double *cmd_mode = &G_DUMMY_ZERO; // 模式切换指令
+        double pos = 0.0, vel = 0.0, eff = 0.0;
+        double cmd_pos = 0.0, cmd_vel = 0.0, cmd_kp = 0.0, cmd_kd = 0.0, cmd_ff = 0.0;
     };
 
     struct LegData
     {
-        std::string name; // FL, FR, HL, HR
-        JointData hip;    // 髋关节 (HipX)
-        JointData thigh;  // 大腿 (HipY)
-        JointData calf;   // 小腿 (Knee)
-        const double *contact = &G_DUMMY_ZERO;
+        std::string name;
+        JointData hip, thigh, calf;
+        double contact = 0.0;
         JointData *joints[3] = {&hip, &thigh, &calf};
     };
 
     struct ImuData
     {
         std::string name;
-        const double *ori = nullptr;     // 指向 x,y,z,w 连续内存
-        const double *ang_vel = nullptr; // 指向 x,y,z 连续内存
-        const double *lin_acc = nullptr; // 指向 x,y,z 连续内存
-
-        const double *ori_cov = G_DUMMY_COV;
-        const double *ang_vel_cov = G_DUMMY_COV;
-        const double *lin_acc_cov = G_DUMMY_COV;
+        double ori[4] = {0, 0, 0, 1};
+        double ang_vel[3] = {0, 0, 0};
+        double lin_acc[3] = {0, 0, 0};
     };
 
     class DogDataBridge
@@ -63,9 +37,6 @@ namespace dog_controllers
     public:
         DogDataBridge() = default;
 
-        /**
-         * @brief 绑定所有接口
-         */
         bool setup(
             std::vector<hardware_interface::LoanedStateInterface> &state_interfaces,
             std::vector<hardware_interface::LoanedCommandInterface> &command_interfaces,
@@ -73,15 +44,27 @@ namespace dog_controllers
             const std::vector<std::string> &contact_names,
             const std::string &imu_name);
 
+        void read_from_hw();
+        void write_to_hw();
+
         std::array<LegData, 4> legs;
         ImuData imu;
 
     private:
-        void bind_joint_interface(JointData &j,
-                                  std::vector<hardware_interface::LoanedStateInterface> &states,
-                                  std::vector<hardware_interface::LoanedCommandInterface> &cmds);
+        struct ReadTask
+        {
+            hardware_interface::LoanedStateInterface *hw_handle;
+            double *local_var;
+        };
+
+        struct WriteTask
+        {
+            hardware_interface::LoanedCommandInterface *hw_handle;
+            double *local_var;
+        };
+
+        std::vector<ReadTask> read_tasks_;
+        std::vector<WriteTask> write_tasks_;
     };
-
-} // namespace dog_control
-
+}
 #endif

@@ -14,7 +14,8 @@ find_package(hardware_interface REQUIRED)
 find_package(pluginlib REQUIRED)
 
 # 测试控制插件
-add_library(dog_test_controller SHARED src/dog_test_controller.cpp)
+add_library(dog_test_controller SHARED src/dog_test_controller.cpp
+                                       src/dog_data_bridge.cpp)
 target_include_directories(dog_test_controller PRIVATE include)
 ament_target_dependencies(dog_test_controller rclcpp controller_interface
                           hardware_interface)

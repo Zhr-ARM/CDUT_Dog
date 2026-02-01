@@ -50,14 +50,14 @@ def generate_launch_description():
             "-y",
             "0",
             "-z",
-            "0.5",  # 初始高度设为0.5米，防止狗卡在地里
+            "0.5",
         ],
         output="screen",
     )
-    test_controller_spawner = Node(
+    test_controller = Node(
         package="controller_manager",
         executable="spawner",
-        arguments=["test_controller", "--controller-manager", "/controller_manager"],
+        arguments=["test_controller"],
     )
 
     load_joint_state_broadcaster = Node(
@@ -85,7 +85,8 @@ def generate_launch_description():
     ld.add_action(spawn_entity)
 
     ld.add_action(load_joint_state_broadcaster)
-    ld.add_action(load_effort_controller)
-    # ld.add_action(load_imu_broadcaster)
+    # ld.add_action(load_effort_controller)
+    ld.add_action(test_controller)
+    ld.add_action(load_imu_broadcaster)
 
     return ld

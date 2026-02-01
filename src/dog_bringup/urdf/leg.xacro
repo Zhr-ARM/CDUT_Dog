@@ -116,13 +116,35 @@
             <preserveFixedJoint>true</preserveFixedJoint>
         </gazebo>
         
+        <gazebo reference="${name}_HIP">
+            <mu1>0.2</mu1>
+            <mu2>0.2</mu2>
+            <material>Gazebo/Yellow</material>
+            <self_collide>1</self_collide>
+        </gazebo>
+        
+        <gazebo reference="${name}_THIGH">
+            <mu1>0.2</mu1>
+            <mu2>0.2</mu2>
+            <material>Gazebo/Blue</material>
+            <self_collide>0</self_collide>
+            <kp value="1000000.0"/>
+            <kd value="100.0"/>
+        </gazebo>
+
+        <gazebo reference="${name}_SHANK">
+            <mu1>0.6</mu1>
+            <mu2>0.6</mu2>
+            <material>Gazebo/DarkGrey</material>
+            <self_collide>1</self_collide>
+        </gazebo>
+
         <gazebo reference="${name}_FOOT">
-            <mu1>1.5</mu1>
-            <mu2>1.5</mu2>
+            <mu1>1.0</mu1>
+            <mu2>1.0</mu2>
             <kp>1000000.0</kp>
-            <kd>100.0</kd>
-            <maxVel>0.0</maxVel>
-            <minDepth>0.001</minDepth>
+            <kd>10000.0</kd>
+            <self_collide>1</self_collide>
             <sensor name="${name}_contact_sensor" type="contact">
               <always_on>true</always_on>
               <update_rate>1000</update_rate>
