@@ -32,6 +32,8 @@ install(
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME})
 
-install(FILES dog_hardware.xml DESTINATION share/dog_gazebo_hw)
+# 【修正】这里必须安装到 share/${PROJECT_NAME}，否则 ROS 找不到插件描述文件
+install(FILES dog_hardware.xml DESTINATION share/${PROJECT_NAME})
 
 ament_package()
+
