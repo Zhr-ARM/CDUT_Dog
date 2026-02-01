@@ -1,0 +1,9 @@
+<library path="dog_controllers">
+  <class name="dog_controllers/DogTestController"
+         type="dog_controllers::DogTestController"
+         base_class_type="controller_interface::ControllerInterface">
+    <description>
+      四足机器人测试控制器：用于验证 12 关节、IMU 和触地传感器的底层地址映射及数据反馈。
+    </description>
+  </class>
+</library>

@@ -1,0 +1,9 @@
+<library path="dog_hardware">
+  <class name="dog_hardware/DogGazeboHW"
+         type="dog_hardware::DogGazeboHW"
+         base_class_type="gazebo_ros2_control::GazeboSystemInterface">
+    <description>
+      四足机器人定制化 Gazebo仿真硬件接口，支持混合 PD 控制和传感器反馈。
+    </description>
+  </class>
+</library>
