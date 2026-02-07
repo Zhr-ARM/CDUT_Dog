@@ -205,7 +205,7 @@
     type="revolute">
     <origin
       xyz="0 0 -0.0823"
-      rpy="-3.1416 0 0" />
+      rpy="0 0 3.1416" />
     <parent
       link="big_leg_Link" />
     <child
@@ -213,8 +213,8 @@
     <axis
       xyz="0 0 1" />
     <limit
-      lower="-0.55"
-      upper="0.15"
+      lower="-3.14"
+      upper="3.14"
       effort="20"
       velocity="20" />
   </joint>
@@ -237,7 +237,7 @@
     <visual>
       <origin
         xyz="0 0 0"
-        rpy="0 0 0" />
+        rpy="0 0 -1.5708" />
       <geometry>
         <mesh
           filename="file:///home/llq/leg_control/install/leg_model_1/share/leg_model_1/meshes/Rod_link.STL" />
@@ -285,7 +285,7 @@
     <inertial>
       <origin
         xyz="0.10385 0.072833 1.2754E-05"
-        rpy="0 0 0" />
+        rpy="1.5708 0 0" />
       <mass
         value="0.29494118" />
       <inertia
@@ -299,7 +299,7 @@
     <visual>
       <origin
         xyz="0 0 0"
-        rpy="0 0 0" />
+        rpy="3.14156 3.14156 0" />
       <geometry>
         <mesh
           filename="file:///home/llq/leg_control/install/leg_model_1/share/leg_model_1/meshes/Knee_link.STL" />
@@ -333,14 +333,14 @@
     <axis
       xyz="0 0 -1" />
     <limit
-      lower="-21"
-      upper="21"
+      lower="-3.14"
+      upper="3.14"
       effort="20"
       velocity="20" />
     <mimic
       joint="thigh_joint"
-      multiplier="6.666667"
-      offset="2" />
+      multiplier="1"
+      offset="0.5" />
   </joint>
   <gazebo>
     <joint name="rod_to_knee_closed_loop" type="revolute">
