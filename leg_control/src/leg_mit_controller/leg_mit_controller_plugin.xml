@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<library path="leg_mit_controller">
+  <class
+    name="leg_mit_controller/MitController"
+    type="leg_mit_controller::MitController"
+    base_class_type="controller_interface::ControllerInterface">
+    <description>
+      MIT 5-parameter command controller (p, v, t_ff, kp, kd). In sim mode it computes effort using PD + feedforward.
+    </description>
+  </class>
+</library>

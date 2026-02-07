@@ -37,4 +37,9 @@ install(DIRECTORY
   meshes urdf textures config launch rviz 
   DESTINATION share/${PROJECT_NAME}/
 )
+
+install(PROGRAMS
+  scripts/robot_description_server.py
+  DESTINATION lib/${PROJECT_NAME}
+)
 ament_package()
