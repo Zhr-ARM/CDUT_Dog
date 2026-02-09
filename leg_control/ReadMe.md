@@ -1,52 +1,84 @@
-# 使用方法（ROS 2 + Gazebo）
+# Leg Control Project
 
-## 1. 目录要求（重要）
-- **leg_control 必须位于你的 Home 目录下**：`~/leg_control`
-- 先确认目录位置正确：
+本项目包含单腿机器人的仿真模型、控制器及硬件驱动。基于 ROS 2 和 Gazebo 构建。
 
-```bash
-cd ~
-ls
-```
+## 目录结构
 
-看到 `leg_control` 目录即为正确。
+*   **`leg_model`**: 包含机器人的 URDF 描述文件、Mesh 网格文件、RViz 配置及 Launch 启动文件。
+*   **`leg_mit_controller`**: 自定义 `ros2_control` 控制器，实现了 MIT 运控模式（位置+速度+前馈力矩+Kp+Kd）。
+*   **`deep_motor_ros`**: 宇树/DeepRobotics J60 电机驱动节点，用于通过 CAN 总线控制真实硬件。
 
 ---
 
-## 2. 配置 URDF 中的 mesh 绝对路径
-1. 打开 URDF 文件：
-   - 路径：`src/leg_model1/urdf/leg_model_1.urdf`
+## 1. 快速开始 (仿真)
 
-2. 在该 URDF 内找到所有类似下面的引用（**共 12 个**）：
-   - `file:///home/username/leg_control/install/leg_model_1/share/leg_model_1/meshes/Knee_link.STL`
+### 1.1 编译工作空间
 
-3. 将其中的 `username` 替换为你自己的用户名（例如 `zhr`）：
-   - 示例：`file:///home/zhr/leg_control/install/leg_model_1/share/leg_model_1/meshes/Knee_link.STL`
-
-> 提示：如果你不确定用户名，可用 `whoami` 查看。
-
----
-
-## 3. 编译与环境加载
-在工作空间根目录执行：
+在工作空间根目录下执行：
 
 ```bash
 cd ~/leg_control
-colcon build
+colcon build --symlink-install
 source install/setup.bash
+```
+
+### 1.2 启动 Gazebo 仿真
+
+启动 Gazebo 环境，加载机器人模型并自动启动 `mit_controller` 控制器：
+
+```bash
+ros2 launch leg_model gazebo.launch.py
+```
+
+此时你应该能看到 Gazebo 窗口，并且机器人在其中保持站立或受控状态（取决于此时是否有控制指令输入）。
+
+### 1.3 启动 RViz 可视化 (可选)
+
+仅查看模型结构或关节状态：
+
+```bash
+ros2 launch leg_model display.launch.py
 ```
 
 ---
 
-## 4. 启动仿真与控制
-> 建议开启三个终端，分别执行以下命令。
+## 2. 配置说明 (重要)
 
-1. **启动显示（RViz）**
-   ```bash
-   cd ~/leg_control
-   source install/setup.bash
-   ros2 launch leg_model_1 display.launch.py
-   ```
+由于 URDF 文件中加载 Mesh 文件的路径可能包含绝对路径，如果你更换了用户或移动了项目位置，需要修改 URDF 文件。
+
+**文件路径**: `src/leg_model/urdf/leg_model.urdf`
+
+请检查文件中的 `filename` 属性，确保路径指向正确的网格文件位置。例如：
+
+```xml
+<mesh filename="file:///home/YOUR_USERNAME/leg_control/install/leg_model/share/leg_model/meshes/base_link.STL" />
+```
+
+将 `YOUR_USERNAME` 替换为你的实际用户名 (当前为 `llq`)。
+
+---
+
+## 3. 控制接口说明
+
+仿真环境使用了 `leg_mit_controller`，它订阅并发布以下话题：
+
+### 3.1 控制指令 (`/motor_cmd`)
+
+*   **话题类型**: `std_msgs/Float64MultiArray` (根据具体实现调整，此处基于 MIT Controller 代码推断，通常为自定义消息或数组)
+*   **控制模式**: MIT 模式 ($\tau = K_p(p_{des} - p_{cur}) + K_d(v_{des} - v_{cur}) + \tau_{ff}$)
+
+### 3.2 状态反馈 (`/motor_feedback`)
+
+*   **话题类型**: 包含关节的位置、速度、力矩信息。
+
+---
+
+## 4. 真实硬件驱动 (`deep_motor_ros`)
+
+如果要连接真实电机：
+1. 确保 CAN 硬件已连接并配置为 `can0` (默认)。
+2. 修改 `src/driver/deep_motor_ros/src/motor_node.cpp` 中的电机 ID 配置（如需）。
+3. 编译并运行驱动节点。
 
 2. **启动 Gazebo 仿真**
    ```bash
@@ -57,7 +89,7 @@ source install/setup.bash
 3. **发送控制命令**
    仿真启动后，通过以下命令使电机运动：
    ```bash
-   ros2 topic pub -r 10 /motor_cmd std_msgs/msg/Float64MultiArray "{data: [1.57, 0.0, 0.0, 5.0, 0.5, 3.014, 0.0, 0.0, 50.0, 10, 0.0, 0.0, 0.0, 20.0, 1.0]}"
+   ros2 topic pub -r 10 /motor_cmd std_msgs/msg/Float64MultiArray "{data: [3.210, 0.0, 0.0, 5.0, 0.5, 0.0, 0.0, 0.0, 19.0, 1.0, 0.88, 0.0, 0.0, 20.0, 1.0]}"
    ```
 
 ---

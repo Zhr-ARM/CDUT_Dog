@@ -1,0 +1,473 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+     Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
+     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+<robot
+  name="leg_model">
+  <link name="base_dummy"/>
+  <joint name="base_dummy_joint" type="fixed">
+    <parent link="base_dummy"/>
+    <child link="base_link"/>
+  </joint>
+  <link
+    name="base_link">
+    <inertial>
+      <origin
+        xyz="-0.000146243619816683 -0.00432079366153461 0.302771827264787"
+        rpy="0 0 0" />
+      <mass
+        value="1050.04800000" />
+      <inertia
+        ixx="107.63391401"
+        ixy="-0.000390205"
+        ixz="-0.001227917"
+        iyy="107.211871554"
+        iyz="-0.010090316"
+        izz="4.465223321" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="file:///home/llq/leg_control/install/leg_model/share/leg_model/meshes/base_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="file:///home/llq/leg_control/install/leg_model/share/leg_model/meshes/base_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <link
+    name="hip_link">
+    <inertial>
+      <origin
+        xyz="-0.0238354040399604 0.000948409513693516 0.0397425061931277"
+        rpy="0 0 3.14159" />
+      <mass
+        value=" 0.52760000" />
+      <inertia
+        ixx="0.00036792"
+        ixy="0.00000139"
+        ixz="0.00003833"
+        iyy="0.00040268"
+        iyz="-0.00000156"
+        izz="0.00034332" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 3.14159" />
+      <geometry>
+        <mesh
+          filename="file:///home/llq/leg_control/install/leg_model/share/leg_model/meshes/hip_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="file:///home/llq/leg_control/install/leg_model/share/leg_model/meshes/hip_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="hip_joint"
+    type="revolute">
+    <origin
+      xyz="-0.000678631434959001 -0.06 0.411068922473651"
+      rpy="1.5707963267949 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="hip_link" />
+    <axis
+      xyz="0 0 1" />
+    <dynamics
+      damping="0.05"
+      friction="0.02" />
+    <limit
+      lower="3.18"
+      upper="3.24"
+      effort="20"
+      velocity="20" />
+  </joint>
+  <link
+    name="thigh_Link">
+    <inertial>
+      <origin
+        xyz="-0.0198087066070401 -0.0164397059490023 -0.0600937670322335"
+        rpy="0 0 0" />
+      <mass
+        value="0.75553000" />
+      <inertia
+        ixx="0.00167856"
+        ixy="-0.00075514"
+        ixz="-0.00036372"
+        iyy="0.00189370"
+        iyz="-0.00030137"
+        izz="0.00203925" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="file:///home/llq/leg_control/install/leg_model/share/leg_model/meshes/thigh_Link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="file:///home/llq/leg_control/install/leg_model/share/leg_model/meshes/thigh_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="thigh_joint"
+    type="revolute">
+    <origin
+      xyz="0.005495646346836 -0.000218794950816004 0.045"
+      rpy="3.10180125361744 -1.5707963267949 0" />
+    <parent
+      link="hip_link" />
+    <child
+      link="thigh_Link" />
+    <axis
+      xyz="0 0 1" />
+    <dynamics
+      damping="0.05"
+      friction="0.02" />
+    <limit
+      lower="-3.14"
+      upper="3.14"
+      effort="20"
+      velocity="20" />
+  </joint>
+  <link
+    name="knee_crank_link">
+    <inertial>
+      <origin
+        xyz="-0.00381417455976403 -0.00474560371816618 -0.00211784981864629"
+        rpy="0 0 0" />
+      <mass
+        value="0.02498000" />
+      <inertia
+        ixx="0.0001"
+        ixy="0"
+        ixz="0"
+        iyy="0.0001"
+        iyz="0"
+        izz="0.0001" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="file:///home/llq/leg_control/install/leg_model/share/leg_model/meshes/knee_crank_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="file:///home/llq/leg_control/install/leg_model/share/leg_model/meshes/knee_crank_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="knee_crank_joint"
+    type="revolute">
+    <origin
+      xyz="0 0 -0.0823000000000002"
+      rpy="-3.14159265358979 0 0" />
+    <parent
+      link="thigh_Link" />
+    <child
+      link="knee_crank_link" />
+    <axis
+      xyz="0 0 1" />
+    <dynamics
+      damping="0.05"
+      friction="0.02" />
+    <limit
+      lower="-3.14"
+      upper="3.14"
+      effort="20"
+      velocity="20" />
+  </joint>
+  <link
+    name="crank_pivot_link">
+    <inertial>
+      <origin
+        xyz="-0.0689890675264382 0.0712663151464729 -0.00381946730075924"
+        rpy="0 0 0" />
+      <mass
+        value="0.03111000" />
+      <inertia
+        ixx="0.0001"
+        ixy="0"
+        ixz="0"
+        iyy="0.0001"
+        iyz="0"
+        izz="0.0001" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="file:///home/llq/leg_control/install/leg_model/share/leg_model/meshes/crank_pivot_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="file:///home/llq/leg_control/install/leg_model/share/leg_model/meshes/crank_pivot_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="crank_pivot_joint"
+    type="revolute">
+    <origin
+      xyz="-0.018796 -0.023382 0.0128"
+      rpy="0 0 0" />
+    <parent
+      link="knee_crank_link" />
+    <child
+      link="crank_pivot_link" />
+    <axis
+      xyz="0 0 1" />
+    <dynamics
+      damping="0.05"
+      friction="0.02" />
+    <limit
+      lower="-3.14"
+      upper="3.14"
+      effort="20"
+      velocity="20" />
+    <mimic
+      joint="knee_crank_joint"
+      multiplier="-1"
+      offset="0" />
+  </joint>
+  <link
+    name="knee_pivot_Link">
+    <inertial>
+      <origin
+        xyz="-1.98662051859033E-06 5.30268783766052E-06 -0.00143071900830763"
+        rpy="0 0 0" />
+      <mass
+        value="0.03265199" />
+      <inertia
+        ixx="0.0001"
+        ixy="0"
+        ixz="0"
+        iyy="0.0001"
+        iyz="0"
+        izz="0.0001" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="file:///home/llq/leg_control/install/leg_model/share/leg_model/meshes/knee_pivot_Link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="file:///home/llq/leg_control/install/leg_model/share/leg_model/meshes/knee_pivot_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="knee_pivot_joint"
+    type="revolute">
+    <origin
+      xyz="-0.1391 0.14371 -0.0014"
+      rpy="0 0 1.5708" />
+    <parent
+      link="crank_pivot_link" />
+    <child
+      link="knee_pivot_Link" />
+    <axis
+      xyz="0 0 1" />
+    <dynamics
+      damping="0.05"
+      friction="0.02" />
+    <limit
+      lower="-3.14"
+      upper="3.14"
+      effort="20"
+      velocity="20" />
+    <mimic
+      joint="crank_pivot_joint"
+      multiplier="1"
+      offset="0" />
+  </joint>
+  <link
+    name="knee_Link">
+    <inertial>
+      <origin
+        xyz="0.10675138442549 0.0749631182198623 8.08078255051942E-05"
+        rpy="0 0 0" />
+      <mass
+        value="0.21028919" />
+      <inertia
+        ixx="0.00072860"
+        ixy="-0.00091322"
+        ixz="0.00001466"
+        iyy="0.00127218"
+        iyz="0.00001030"
+        izz="0.00195649" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="file:///home/llq/leg_control/install/leg_model/share/leg_model/meshes/knee_Link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="file:///home/llq/leg_control/install/leg_model/share/leg_model/meshes/knee_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="knee_joint"
+    type="revolute">
+    <origin
+      xyz="-0.1391 -0.14371 -0.0913"
+      rpy="3.1416 0 0" />
+    <parent
+      link="thigh_Link" />
+    <child
+      link="knee_Link" />
+    <axis
+      xyz="0 0 -1" />
+    <dynamics
+      damping="0.05"
+      friction="0.02" />
+    <limit
+      lower="-3.14"
+      upper="3.14"
+      effort="20"
+      velocity="20" />
+    <mimic
+      joint="knee_pivot_joint"
+      multiplier="1"
+      offset="0" />
+  </joint>
+
+  <gazebo>
+    <plugin name="gazebo_ros2_control" filename="libgazebo_ros2_control.so">
+      <ros>
+        <namespace>/</namespace>
+      </ros>
+      <robot_param>robot_description</robot_param>
+      <robot_param_node>robot_description_server</robot_param_node>
+      <parameters>/home/llq/leg_control/install/leg_model/share/leg_model/config/ros2_controllers.yaml</parameters>
+    </plugin>
+
+    <joint name="knee_connected_joint" type="fixed">
+      <parent>knee_Link</parent>
+      <child>knee_pivot_Link</child>
+    </joint>
+  </gazebo>
+
+  <ros2_control name="LegModelSystem" type="system">
+    <hardware>
+      <plugin>gazebo_ros2_control/GazeboSystem</plugin>
+    </hardware>
+
+    <joint name="hip_joint">
+      <command_interface name="effort" />
+      <state_interface name="position" />
+      <state_interface name="velocity" />
+      <state_interface name="effort" />
+    </joint>
+
+    <joint name="thigh_joint">
+      <command_interface name="effort" />
+      <state_interface name="position" />
+      <state_interface name="velocity" />
+      <state_interface name="effort" />
+    </joint>
+
+    <joint name="knee_crank_joint">
+      <command_interface name="effort" />
+      <state_interface name="position" />
+      <state_interface name="velocity" />
+      <state_interface name="effort" />
+    </joint>
+  </ros2_control>
+</robot>

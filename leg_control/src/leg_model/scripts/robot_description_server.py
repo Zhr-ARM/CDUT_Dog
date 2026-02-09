@@ -41,8 +41,8 @@ class RobotDescriptionServer(Node):
     def __init__(self) -> None:
         super().__init__('robot_description_server')
 
-        pkg_dir = get_package_share_directory('leg_model_1')
-        urdf_file_path = os.path.join(pkg_dir, 'urdf', 'leg_model_1.urdf')
+        pkg_dir = get_package_share_directory('leg_model')
+        urdf_file_path = os.path.join(pkg_dir, 'urdf', 'leg_model.urdf')
         controllers_file = os.path.join(pkg_dir, 'config', 'ros2_controllers.yaml')
 
         robot_description = load_and_sanitize_urdf(urdf_file_path, controllers_file)

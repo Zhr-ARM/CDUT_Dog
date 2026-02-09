@@ -6,8 +6,8 @@ mit_controller:
   ros__parameters:
     joints:
       - hip_joint
-      - big_leg_joint
       - thigh_joint
+      - knee_crank_joint
     mode: sim_effort_pd
     command_topic: /motor_cmd
     publish_feedback: true

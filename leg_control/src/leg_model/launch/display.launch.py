@@ -9,7 +9,7 @@ from launch_ros.actions import Node
  
 def generate_launch_description():
     # Get the launch directory
-    bringup_dir = get_package_share_directory('leg_model_1')
+    bringup_dir = get_package_share_directory('leg_model')
     launch_dir = os.path.join(bringup_dir, 'launch')
  
     # Launch configuration variables specific to simulation
@@ -38,7 +38,7 @@ def generate_launch_description():
  
     declare_urdf_cmd = DeclareLaunchArgument(
         'urdf_file',
-        default_value=os.path.join(bringup_dir, 'urdf', 'leg_model_1.urdf'),
+        default_value=os.path.join(bringup_dir, 'urdf', 'leg_model.urdf'),
         description='Whether to start RVIZ')
  
  
