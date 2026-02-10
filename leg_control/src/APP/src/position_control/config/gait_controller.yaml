@@ -1,0 +1,20 @@
+gait_controller:
+  ros__parameters:
+    use_sim_time: true        # 使用仿真时间 (Gazebo)
+    step_length: 0.12         # 步长 (m)
+    step_height: 0.08         # 抬腿高度 (m)
+    gait_period: 3.0          # 完整步态周期 (s)
+    stance_depth: 0.33        # 站立时足端深度 (m)
+    control_rate: 50.0        # 控制频率 (Hz)
+    swing_ratio: 0.7          # 摆动相占比 [0,1]
+    hip_angle: 3.21           # hip 固定角度 (rad)
+    hip_kp: 3.0               # hip 位置环刚度
+    hip_kd: 0.8               # hip 速度阻尼
+    thigh_kp: 12.0            # thigh 位置环刚度
+    thigh_kd: 4.0             # thigh 速度阻尼
+    knee_crank_kp: 10.0       # knee_crank 位置环刚度
+    knee_crank_kd: 3.5        # knee_crank 速度阻尼
+    filter_alpha: 0.4         # 低通滤波系数 (0,1]
+    auto_zero_offsets: true   # 自动对齐零位
+    thigh_offset: 0.0         # 大腿零位偏置 (rad)
+    knee_offset: 0.0          # 小腿零位偏置 (rad)

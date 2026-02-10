@@ -1,20 +1,24 @@
 # Leg Control Project
 
-本项目包含单腿机器人的仿真模型、控制器及硬件驱动。基于 ROS 2 和 Gazebo 构建。
+单腿机器人仿真模型、控制器与硬件驱动，基于 ROS 2 + Gazebo。
 
-## 目录结构
+## 项目组成
 
-*   **`leg_model`**: 包含机器人的 URDF 描述文件、Mesh 网格文件、RViz 配置及 Launch 启动文件。
-*   **`leg_mit_controller`**: 自定义 `ros2_control` 控制器，实现了 MIT 运控模式（位置+速度+前馈力矩+Kp+Kd）。
-*   **`deep_motor_ros`**: 宇树/DeepRobotics J60 电机驱动节点，用于通过 CAN 总线控制真实硬件。
+- `leg_model`：URDF、Mesh、Gazebo/RViz 启动与控制器配置。
+- `leg_mit_controller`：MIT 5 参数控制器（p,v,t_ff,kp,kd）。
+- `position_control`：步态/位控节点（发布 `/motor_cmd`）。
+- `deep_motor_ros`：DeepRobotics J60 电机驱动（SocketCAN）。
 
 ---
 
-## 1. 快速开始 (仿真)
+## 环境与依赖
 
-### 1.1 编译工作空间
+- 推荐：Ubuntu 22.04 + ROS 2 Humble。
+- 依赖包见各包 `package.xml`，Gazebo 需要 `gazebo_ros` 与 `gazebo_ros2_control`。
 
-在工作空间根目录下执行：
+---
+
+## 编译
 
 ```bash
 cd ~/leg_control
@@ -22,112 +26,192 @@ colcon build --symlink-install
 source install/setup.bash
 ```
 
-### 1.2 启动 Gazebo 仿真
+仅编译某个包：
 
-启动 Gazebo 环境，加载机器人模型并自动启动 `mit_controller` 控制器：
+```bash
+colcon build --packages-select leg_model
+```
+
+---
+
+## 仿真使用（Gazebo）
+
+### 1) 启动模型与控制器
 
 ```bash
 ros2 launch leg_model gazebo.launch.py
 ```
 
-此时你应该能看到 Gazebo 窗口，并且机器人在其中保持站立或受控状态（取决于此时是否有控制指令输入）。
+`gazebo.launch.py` 会自动：
+- 启动 `gzserver/gzclient`。
+- 载入 URDF，并启动 `controller_manager`。
+- 自动加载 `joint_state_broadcaster` 与 `mit_controller`。
 
-### 1.3 启动 RViz 可视化 (可选)
+可选参数：
+- `gui`：是否启动 Gazebo GUI（默认 `true`）。
 
-仅查看模型结构或关节状态：
+```bash
+ros2 launch leg_model gazebo.launch.py gui:=false
+```
+
+### 2) 启动步态控制器（可选）
+
+```bash
+ros2 launch position_control gait_sim.launch.py
+```
+
+可选参数：
+- `param_file`：步态参数文件路径。
+
+```bash
+ros2 launch position_control gait_sim.launch.py \
+  param_file:=/home/llq/leg_control/src/APP/src/position_control/config/gait_controller.yaml
+```
+
+### 3) RViz 可视化（可选）
 
 ```bash
 ros2 launch leg_model display.launch.py
 ```
 
+可选参数：
+- `rviz_config_file`、`use_rviz`、`use_robot_state_pub`、`use_joint_state_pub`、`urdf_file`。
+
 ---
 
-## 2. 配置说明 (重要)
+## 话题接口与协议
 
-由于 URDF 文件中加载 Mesh 文件的路径可能包含绝对路径，如果你更换了用户或移动了项目位置，需要修改 URDF 文件。
+### `/motor_cmd`（控制指令）
 
-**文件路径**: `src/leg_model/urdf/leg_model.urdf`
+- 类型：`std_msgs/msg/Float64MultiArray`
+- 协议：每个关节 5 个数，按关节顺序平铺。
 
-请检查文件中的 `filename` 属性，确保路径指向正确的网格文件位置。例如：
+```
+[p, v, t_ff, kp, kd,  p, v, t_ff, kp, kd, ...]
+```
+
+当前仿真关节顺序（来自 `leg_model/config/ros2_controllers.yaml`）：
+
+```
+hip_joint, thigh_joint, knee_crank_joint
+```
+
+示例（3 关节）：
+
+```bash
+ros2 topic pub -r 10 /motor_cmd std_msgs/msg/Float64MultiArray \
+"{data: [3.21, 0.0, 0.0, 5.0, 0.5,  0.0, 0.0, 0.0, 12.0, 0.6,  0.0, 0.0, 0.0, 10.0, 0.5]}"
+```
+
+### `/motor_feedback`（反馈）
+
+- 类型：`std_msgs/msg/Float64MultiArray`
+- 结构：每关节 5 个数（位置/速度/力矩/预留/预留）。
+
+---
+
+## MIT 控制器（`leg_mit_controller`）
+
+控制器参数位于 `leg_model/config/ros2_controllers.yaml`：
+
+- `joints`：关节名称列表（必须非空）。
+- `mode`：`sim_effort_pd` 或 `passthrough`。
+- `command_topic`：命令话题名（默认 `/motor_cmd`）。
+- `feedback_topic`：反馈话题名（默认 `/motor_feedback`）。
+- `publish_feedback`：是否发布反馈。
+- `command_timeout_ms`：超时保护（ms），超时输出归零。
+- `feedback_rate_hz`：反馈发布频率。
+
+模式说明：
+- `sim_effort_pd`：控制器内部计算 $\tau = K_p(p_{des}-p_{cur}) + K_d(v_{des}-v_{cur}) + t_{ff}$，输出 `effort`。
+- `passthrough`：直接把 5 个参数写入硬件接口（需要硬件接口支持 `position/velocity/effort/kp/kd`）。
+
+---
+
+## 步态控制器（`position_control/gait_controller`）
+
+参数文件：`src/APP/src/position_control/config/gait_controller.yaml`
+
+- `use_sim_time`：是否用仿真时间。
+- `step_length`：步长 (m)。
+- `step_height`：抬腿高度 (m)。
+- `gait_period`：步态周期 (s)。
+- `stance_depth`：站立时足端深度 (m)。
+- `control_rate`：控制频率 (Hz)。
+- `swing_ratio`：摆动相比例 [0,1]。
+- `hip_angle`：hip 固定角 (rad)。
+- `hip_kp/hip_kd`、`thigh_kp/thigh_kd`、`knee_crank_kp/knee_crank_kd`：PD 增益。
+- `filter_alpha`：低通滤波系数 (0,1]。
+- `auto_zero_offsets`：是否自动对齐零位。
+- `thigh_offset`、`knee_offset`：手动零位偏置 (rad)。
+
+说明：
+- 该节点向 `/motor_cmd` 发布 15 个元素的数组，对应 3 个关节。
+- 启用 `auto_zero_offsets` 时会根据当前步态起点自动计算零位偏置。
+
+---
+
+## 真实硬件驱动（`deep_motor_ros`）
+
+启动：
+
+```bash
+source install/setup.bash
+ros2 run deep_motor_ros motor_node
+```
+
+运行时参数：
+- `motor_ids`：电机 ID 数组（默认 `[1, 2, 3]`）。
+- `can_interface`：CAN 口名（默认 `can0`）。
+
+示例：
+
+```bash
+ros2 run deep_motor_ros motor_node --ros-args \
+  -p motor_ids:="[11, 13, 15]" -p can_interface:=can0
+```
+
+**重要注意：**
+- `motor_node.cpp` 中包含自动配置 CAN 的 `sudo` 命令，请将 `sudo_password` 改为当前机器真实密码。
+- 若密码错误，CAN 口无法自动拉起。
+
+---
+
+## 模型与 URDF 注意事项
+
+- `leg_model/urdf/leg_model.urdf` 中 Mesh 使用绝对路径，例如：
 
 ```xml
-<mesh filename="file:///home/YOUR_USERNAME/leg_control/install/leg_model/share/leg_model/meshes/base_link.STL" />
+<mesh filename="file:///home/llq/leg_control/install/leg_model/share/leg_model/meshes/base_link.STL" />
 ```
 
-将 `YOUR_USERNAME` 替换为你的实际用户名 (当前为 `llq`)。
+如更换用户或移动目录，需更新这些路径。
 
----
+- `mimic` 关节在 Gazebo 中不会自动驱动，已通过 `mimic_joint_plugin` 处理。若膝关节不随动：
 
-## 3. 控制接口说明
-
-仿真环境使用了 `leg_mit_controller`，它订阅并发布以下话题：
-
-### 3.1 控制指令 (`/motor_cmd`)
-
-*   **话题类型**: `std_msgs/Float64MultiArray` (根据具体实现调整，此处基于 MIT Controller 代码推断，通常为自定义消息或数组)
-*   **控制模式**: MIT 模式 ($\tau = K_p(p_{des} - p_{cur}) + K_d(v_{des} - v_{cur}) + \tau_{ff}$)
-
-### 3.2 状态反馈 (`/motor_feedback`)
-
-*   **话题类型**: 包含关节的位置、速度、力矩信息。
-
----
-
-## 4. 真实硬件驱动 (`deep_motor_ros`)
-
-如果要连接真实电机：
-1. 确保 CAN 硬件已连接并配置为 `can0` (默认)。
-2. 修改 `src/driver/deep_motor_ros/src/motor_node.cpp` 中的电机 ID 配置（如需）。
-3. 编译并运行驱动节点。
-
-2. **启动 Gazebo 仿真**
-   ```bash
-   source install/setup.bash
-   ros2 launch leg_model_1 gazebo.launch.py
-   ```
-
-3. **发送控制命令**
-   仿真启动后，通过以下命令使电机运动：
-   ```bash
-   ros2 topic pub -r 10 /motor_cmd std_msgs/msg/Float64MultiArray "{data: [3.210, 0.0, 0.0, 5.0, 0.5, 0.0, 0.0, 0.0, 19.0, 1.0, 0.88, 0.0, 0.0, 20.0, 1.0]}"
-   ```
-
----
-
-## 5. 控制器使用说明
-
-### 5.1 控制模式介绍
-本控制器支持两种模式，可在 `src/leg_model_1/config/ros2_controllers.yaml` 中修改 `mode` 参数：
-
-1. **sim_effort_pd (默认)**
-   - **适用环境**：Gazebo 仿真。
-   - **原理**：控制器内部计算力矩公式 $\tau = K_p(p_{des} - p_{cur}) + K_d(v_{des} - v_{cur}) + \tau_{ff}$，仅向 Gazebo 发送力矩指令。
-
-2. **passthrough (透传模式)**
-   - **适用环境**：真实机器人（需配合 DeepRobotics J60 等智能驱动器）。
-   - **原理**：控制器不进行计算，直接将所有指令参数（位置、速度、前馈力矩、Kp、Kd）转发给底层电机驱动器，由硬件执行高频闭环控制。
-
-### 5.2 发送控制指令
-启动仿真后，可以通过话题 `/motor_cmd` 发送控制指令。
-协议格式为扁平的一维数组，每 5 个数为一组对应一个关节：
-`[Pos, Vel, Torque, Kp, Kd, ...]`
-
-**示例命令（3个关节）：**
 ```bash
-ros2 topic pub -r 10 /motor_cmd std_msgs/msg/Float64MultiArray "{data: [1.57, 0.0, 0.0, 5.0, 0.5, 3.014, 0.0, 0.0, 50.0, 10, 0.0, 0.0, 0.0, 20.0, 1.0]}"
+colcon build --packages-select leg_model
+source install/setup.bash
 ```
-*   **每五个数据对应**： 位置、速度、前馈力矩、Kp、Kd
-*   **第1组 (Hip)**: Pos=1.57, Kp=5.0, Kd=0.5
-*   **第2组 (big_leg)**: Pos=3.014, Kp=50.0, Kd=10.0
-*   **第3组 (thigh(带动小腿))**: Pos=0.0, Kp=20.0, Kd=1.0
-
-> **注意**：控制器设有看门狗保护。如果超过 200ms 未收到指令，控制器会自动进入安全保护模式（输出归零）；一旦收到新指令，将立即自动恢复控制。
 
 ---
 
-## 6. 常见问题（排查思路）
-- **找不到 STL / mesh 显示为空**
-  - 多数是 URDF 里的 `username` 未替换或路径不正确（请确认 12 处都已修改）。
-- **launch 找不到包 / 命令无效**
-  - 确认已执行：`source install/setup.bash`
-  - 确认当前终端位于同一个工作空间（`~/leg_control`）下构建过。
+## 常见问题
+
+- **找不到 mesh 或显示为空**：检查 URDF 中 `file://` 绝对路径是否正确。
+- **控制无响应**：确认已 `source install/setup.bash` 且控制器已加载。
+- **/motor_cmd 被丢弃**：数组长度必须严格等于关节数 × 5。
+- **仿真关节抖动**：尝试降低 `Kp`、提高 `Kd`、调小 `filter_alpha`。
+
+---
+
+## 快速验证命令
+
+```bash
+ros2 topic echo /motor_feedback
+```
+
+```bash
+ros2 topic pub /motor_cmd std_msgs/msg/Float64MultiArray \
+"{data: [3.21, 0.0, 0.0, 3.0, 0.1,  0.0, 0.0, 0.0, 8.0, 0.5,  0.0, 0.0, 0.0, 8.0, 0.5]}" --once
+```

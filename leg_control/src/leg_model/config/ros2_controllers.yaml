@@ -1,6 +1,6 @@
 controller_manager:
   ros__parameters:
-    update_rate: 250
+    update_rate: 1000
 
 mit_controller:
   ros__parameters:

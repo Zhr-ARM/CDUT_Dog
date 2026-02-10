@@ -17,6 +17,7 @@ endif()
  
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(gazebo REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
@@ -33,6 +34,19 @@ if(BUILD_TESTING)
 endif()
  
  
+include_directories(${GAZEBO_INCLUDE_DIRS})
+link_directories(${GAZEBO_LIBRARY_DIRS})
+
+add_library(mimic_joint_plugin SHARED
+  src/mimic_joint_plugin.cpp
+)
+target_link_libraries(mimic_joint_plugin ${GAZEBO_LIBRARIES})
+
+install(TARGETS
+  mimic_joint_plugin
+  LIBRARY DESTINATION lib
+)
+
 install(DIRECTORY
   meshes urdf textures config launch rviz 
   DESTINATION share/${PROJECT_NAME}/

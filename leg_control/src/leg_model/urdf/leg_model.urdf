@@ -227,8 +227,8 @@
       damping="0.05"
       friction="0.02" />
     <limit
-      lower="-3.14"
-      upper="3.14"
+      lower="-0.80"
+      upper="1.20"
       effort="20"
       velocity="20" />
   </joint>
@@ -436,6 +436,15 @@
       <robot_param>robot_description</robot_param>
       <robot_param_node>robot_description_server</robot_param_node>
       <parameters>/home/llq/leg_control/install/leg_model/share/leg_model/config/ros2_controllers.yaml</parameters>
+    </plugin>
+
+    <plugin name="mimic_knee_joint" filename="libmimic_joint_plugin.so">
+      <joint>knee_joint</joint>
+      <mimic_joint>knee_crank_joint</mimic_joint>
+      <multiplier>-1.0</multiplier>
+      <offset>0.0</offset>
+      <kp>50.0</kp>
+      <kd>1.0</kd>
     </plugin>
 
     <joint name="knee_connected_joint" type="fixed">
