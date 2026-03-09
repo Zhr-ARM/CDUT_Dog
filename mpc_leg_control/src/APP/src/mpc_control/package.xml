@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <!-- 包名：应与目录名、CMake project 名一致 -->
+  <name>mpc_control</name>
+  <!-- 语义化版本：当前为初始可用版本 -->
+  <version>0.0.1</version>
+  <!-- 包描述：用于展示在 ROS2 包索引和工具中 -->
+  <description>Lightweight MPC gait controller for leg_mit_controller simulation.</description>
+  <!-- 维护者信息 -->
+  <maintainer email="1458741024@qq.com">llq</maintainer>
+  <!-- 许可证占位，建议后续补充 SPDX 合法许可证名 -->
+  <license>TODO: License declaration</license>
+
+  <!-- 构建工具依赖：ROS2 ament CMake -->
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- 运行/编译依赖 -->
+  <!-- rclcpp: ROS2 C++ API -->
+  <depend>rclcpp</depend>
+  <!-- std_msgs: 使用 Float64MultiArray 和 String 消息 -->
+  <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+
+  <!-- 运行时依赖：支持 ros2 launch 命令 -->
+  <exec_depend>ros2launch</exec_depend>
+
+  <!-- 测试相关依赖 -->
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <!-- 导出构建类型 -->
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

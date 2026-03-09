@@ -1,0 +1,32 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 1000
+
+mit_controller:
+  ros__parameters:
+    joints:
+      - hip_joint
+      - thigh_joint
+      - knee_crank_joint
+    mode: sim_effort_pd
+    command_topic: /motor_cmd
+    publish_feedback: true
+    feedback_topic: /motor_feedback
+    command_timeout_ms: 1500
+    feedback_rate_hz: 20.0
+
+mpc_controller:
+  ros__parameters:
+    joints:
+      - hip_joint
+      - thigh_joint
+      - knee_crank_joint
+    mode: mpc_with_mit
+    command_topic: /leg_mpc_cmd
+    publish_feedback: true
+    feedback_topic: /leg_mpc_feedback
+    command_timeout_ms: 1500
+    feedback_rate_hz: 20.0
+    robot_description_param: robot_description
+    task_file: "config/task.info"
+    urdf_file: "urdf/leg_model.urdf"

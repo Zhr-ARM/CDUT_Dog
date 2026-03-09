@@ -1,0 +1,88 @@
+# mpc_gait_controller 参数配置
+# 建议调参顺序：1)连杆长度 2)站稳walk 3)MPC权重 4)加速步态
+mpc_gait_controller:
+  ros__parameters:
+    use_sim_time: true
+
+    # =========================
+    # 机器人物理参数（必须与实际机构匹配）
+    # =========================
+    # 大腿等效连杆长度 [m]（髋关节轴->膝关节轴有效距离）
+    link_length_thigh: 0.200
+    # 小腿等效连杆长度 [m]（膝关节轴->足端有效距离）
+    link_length_shank: 0.243
+    # 腿部等效质量 [kg]（大腿+膝曲柄+小腿，用于重力补偿）
+    leg_mass: 1.05
+    # 等效质心在大腿连杆上的比例 [0~1]（0=髋端, 1=膝端）
+    leg_com_ratio: 0.45
+    # 是否为膝关节添加重力补偿前馈
+    enable_knee_gravity_comp: true
+
+    # =========================
+    # MPC 核心参数
+    # =========================
+    control_rate: 200.0
+    horizon_steps: 12
+    horizon_dt: 0.02
+    # 位置跟踪权重（越大越紧跟参考，过大会振荡）
+    q_pos: 120.0
+    # 速度跟踪权重（越大越紧跟速度参考）
+    q_vel: 8.0
+    # 加速度惩罚（越大越平滑，过大则响应迟钝）
+    r_acc: 1.0
+    # 加速度饱和约束 [m/s^2]
+    acc_limit: 40.0
+
+    gait_mode: run
+
+    # =========================
+    # walk 步态（先从此调稳）
+    # =========================
+    walk:
+      step_length: 0.08
+      step_height: 0.05
+      period: 0.80
+      swing_ratio: 0.60
+      stance_depth: 0.29
+
+    # =========================
+    # run 步态
+    # =========================
+    run:
+      step_length: 0.12
+      step_height: 0.06
+      period: 0.50
+      swing_ratio: 0.60
+      stance_depth: 0.28
+
+    # =========================
+    # jump 步态
+    # =========================
+    jump:
+      step_length: 0.00
+      step_height: 0.12
+      period: 0.65
+      swing_ratio: 0.45
+      stance_depth: 0.30
+
+    # =========================
+    # MIT PD 增益
+    # =========================
+    hip_angle: 3.21
+    hip_kp: 3.0
+    hip_kd: 0.8
+    thigh_kp: 12.0
+    thigh_kd: 4.0
+    knee_crank_kp: 12.0
+    knee_crank_kd: 4.0
+
+    # =========================
+    # 零位 / 滤波 / 观测器
+    # =========================
+    auto_zero_offsets: true
+    thigh_offset: 0.0
+    knee_offset: 0.0
+    # 低通滤波系数 (0.01~1.0, 越小越平滑)
+    filter_alpha: 0.25
+    # 观测器增益 (0=纯开环, 1=纯闭环, 推荐0.1~0.3)
+    observer_gain: 0.15
