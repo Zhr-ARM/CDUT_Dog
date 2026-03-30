@@ -1,0 +1,57 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 1000  # Hz
+
+    imu_params:
+      accel:
+        variance: 0.0       # 测量协方差
+        bias_mean: 0.0       # 静态偏置，模拟真机安装/芯片误差
+      gyro:
+        variance: 0.0004
+        bias_mean: 0.0
+      orientation:
+        variance: 0.0012
+        
+    mit_controller:
+      type: mit_controller/MitController
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+      
+mit_controller:
+  ros__parameters:
+    joints:
+      - LF_HAA
+      - LF_HFE
+      - LF_KFE
+      - LH_HAA
+      - LH_HFE
+      - LH_KFE
+      - RF_HAA
+      - RF_HFE
+      - RF_KFE
+      - RH_HAA
+      - RH_HFE
+      - RH_KFE
+    mode: sim_effort_pd
+    command_topic: /motor_cmd
+    feedback_topic: /motor_feedback
+    publish_feedback: true
+    command_timeout_ms: 200
+    feedback_rate_hz: 100.0
+    effort_limits: [24.0, 24.0, 36.0, 24.0, 24.0, 36.0, 24.0, 24.0, 36.0, 24.0, 24.0, 36.0]
+
+joint_state_broadcaster:
+  ros__parameters:
+    joints:
+      - LF_HAA
+      - LF_HFE
+      - LF_KFE
+      - LH_HAA
+      - LH_HFE
+      - LH_KFE
+      - RF_HAA
+      - RF_HFE
+      - RF_KFE
+      - RH_HAA
+      - RH_HFE
+      - RH_KFE

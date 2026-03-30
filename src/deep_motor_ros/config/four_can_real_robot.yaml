@@ -1,0 +1,26 @@
+deep_motor_node:
+  ros__parameters:
+    can_interfaces: [can0, can1, can2, can3]
+    motors_per_can: 3
+    motor_ids: [0, 1, 2]
+    joint_names:
+      - LF_HAA
+      - LF_HFE
+      - LF_KFE
+      - LH_HAA
+      - LH_HFE
+      - LH_KFE
+      - RF_HAA
+      - RF_HFE
+      - RF_KFE
+      - RH_HAA
+      - RH_HFE
+      - RH_KFE
+    command_topic: /motor_cmd
+    feedback_topic: /motor_feedback
+    joint_state_topic: /joint_states
+    configure_can: false
+    can_bitrate: 1000000
+    can_txqueuelen: 1000
+    control_rate_hz: 400.0
+    status_log_period_sec: 5.0

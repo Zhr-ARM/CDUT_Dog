@@ -1,0 +1,92 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+    <!-- xacro ./dog.xacro > dog.urdf -->
+    <xacro:property name="mesh_path" value="package://dog_bringup/meshes/cdut_dog"/>
+    <xacro:property name="cfg" value="${xacro.load_yaml('$(find dog_bringup)/config/robot_controllers.yaml')}"/>
+
+<!-- 躯干参数 -->
+<xacro:property name="torso_mass" value="5.35"/>        <!-- 躯干质量(kg) -->
+<xacro:property name="torso_com_x" value="0"/>            <!-- 躯干质心x轴坐标(m) -->
+<xacro:property name="torso_com_y" value="0"/>            <!-- 躯干质心y轴坐标(m) -->
+<xacro:property name="torso_com_z" value="0"/>            <!-- 躯干质心z轴坐标(m) -->
+<xacro:property name="torso_ixx" value="0.014"/>        <!-- 躯干绕x轴转动惯量(kg·m²) -->
+<xacro:property name="torso_iyy" value="0.014"/>        <!-- 躯干绕y轴转动惯量(kg·m²) -->
+<xacro:property name="torso_izz" value="0.023333"/>        <!-- 躯干绕z轴转动惯量(kg·m²) -->
+
+
+<xacro:property name="damping" value="0.05"/>             <!-- 阻尼系数 -->
+<xacro:property name="friction" value="0.01"/>            <!-- 摩擦系数 -->
+<!-- 髋关节参数 -->
+<xacro:property name="hip_mass" value="0.53"/>           <!-- 髋关节质量(kg) -->
+<xacro:property name="hip_com_x" value="0.043209"/>       <!-- 髋关节质心x轴坐标(m) -->
+<xacro:property name="hip_com_y" value="-0.023751"/>      <!-- 髋关节质心y轴坐标(m) -->
+<xacro:property name="hip_com_z" value="-0.000382"/>      <!-- 髋关节质心z轴坐标(m) -->
+<xacro:property name="hip_ixx" value="0.000266"/>        <!-- 髋关节绕x轴转动惯量(kg·m²) -->
+<xacro:property name="hip_iyy" value="0.000294"/>        <!-- 髋关节绕y轴转动惯量(kg·m²) -->
+<xacro:property name="hip_izz" value="0.000288"/>        <!-- 髋关节绕z轴转动惯量(kg·m²) -->
+
+<!-- 大腿参数 -->
+<xacro:property name="thigh_mass" value="0.75"/>          <!-- 大腿质量(kg) -->
+<xacro:property name="thigh_com_x" value="-0.000382"/>    <!-- 大腿质心x轴坐标(m) -->
+<xacro:property name="thigh_com_y" value="0.064016"/>     <!-- 大腿质心y轴坐标(m) -->
+<xacro:property name="thigh_com_z" value="-0.009246"/>    <!-- 大腿质心z轴坐标(m) -->
+<xacro:property name="thigh_ixx" value="0.00041"/>       <!-- 大腿绕x轴转动惯量(kg·m²) -->
+<xacro:property name="thigh_iyy" value="0.001228"/>       <!-- 大腿绕y轴转动惯量(kg·m²) -->
+<xacro:property name="thigh_izz" value="0.000988"/>       <!-- 大腿绕z轴转动惯量(kg·m²) -->
+
+<!-- 小腿参数 -->
+<xacro:property name="shank_mass" value="0.084"/>         <!-- 小腿质量(kg) -->
+<xacro:property name="shank_com_x" value="0.075085"/>     <!-- 小腿质心x轴坐标(m) -->
+<xacro:property name="shank_com_y" value="0.000631"/>     <!-- 小腿质心y轴坐标(m) -->
+<xacro:property name="shank_com_z" value="-0.027403"/>    <!-- 小腿质心z轴坐标(m) -->
+<xacro:property name="shank_ixx" value="0.001"/>     <!-- 小腿绕x轴转动惯量(kg·m²) -->
+<xacro:property name="shank_iyy" value="0.001"/>     <!-- 小腿绕y轴转动惯量(kg·m²) -->
+<xacro:property name="shank_izz" value="0.001"/>    <!-- 小腿绕z轴转动惯量(kg·m²) -->
+
+<!-- 脚部参数 -->
+<xacro:property name="foot_mass" value="0.059"/>           <!-- 脚部质量(kg) -->
+<xacro:property name="foot_radius" value="0.023"/>        <!-- 脚部半径(m) -->
+<xacro:property name="foot_com_x" value="0.001491"/>      <!-- 小腿质心x轴坐标(m) -->
+<xacro:property name="foot_com_y" value="-0.000261"/>     <!-- 小腿质心y轴坐标(m) -->
+<xacro:property name="foot_com_z" value="0.013164"/>      <!-- 小腿质心z轴坐标(m) -->
+<xacro:property name="foot_ixx" value="0.000015"/>          <!-- 脚部绕x轴转动惯量(kg·m²) -->
+<xacro:property name="foot_iyy" value="0.000016"/>          <!-- 脚部绕y轴转动惯量(kg·m²) -->
+<xacro:property name="foot_izz" value="0.000014"/>          <!-- 脚部绕z轴转动惯量(kg·m²) -->
+
+<!-- 关节位置偏移参数 -->
+<xacro:property name="hip_offset_x" value="0.12556"/>    <!-- 髋关节x轴方向偏移量(m) -->
+<xacro:property name="hip_offset_y" value="0.06752"/>     <!-- 髋关节y轴方向偏移量(m) -->
+<xacro:property name="hip_offset_z" value="0.007"/>     <!-- 髋关节z轴方向偏移量(m) -->
+
+<xacro:property name="thigh_offset_x" value="0.0485"/>    <!-- 大腿x轴方向偏移量(m) -->
+<xacro:property name="thigh_offset_y" value="0.004"/>    <!-- 大腿y轴方向偏移量(m) -->
+<xacro:property name="thigh_offset_z" value="0"/>     <!-- 大腿z轴方向偏移量(m) -->
+
+<xacro:property name="shank_offset_x" value="-0.176118"/>   <!-- 小腿x轴方向偏移量(m) -->
+<xacro:property name="shank_offset_y" value="0.09439"/>   <!-- 小腿y轴方向偏移量(m) -->
+<xacro:property name="shank_offset_z" value="-0.09319"/>     <!-- 小腿z轴方向偏移量(m) -->
+
+<xacro:property name="foot_offset_x" value="0.183238"/>    <!-- 脚部x轴方向偏移量(m) -->
+<xacro:property name="foot_offset_y" value="0.002132"/>   <!-- 脚部y轴方向偏移量(m) -->
+<xacro:property name="foot_offset_z" value="-0.125966"/>   <!-- 脚部z轴方向偏移量(m) -->
+
+<!-- 髋关节x轴关节限位&性能参数 -->
+<xacro:property name="hipx_min" value="-0.5"/>          <!-- 髋x轴关节最小角度(rad，约-30°) -->
+<xacro:property name="hipx_max" value="0.5"/>           <!-- 髋x轴关节最大角度(rad，约30°) -->
+<xacro:property name="hipx_vel" value="26.2"/>            <!-- 髋x轴关节最大角速度(rad/s) -->
+<xacro:property name="hipx_eff" value="24"/>              <!-- 髋x轴关节最大力矩(N·m) -->
+
+<!-- 髋关节y轴关节限位&性能参数 -->
+<xacro:property name="hipy_min" value="-2"/>           <!-- 髋y轴关节最小角度(rad) -->
+<xacro:property name="hipy_max" value="1.6"/>           <!-- 髋y轴关节最大角度(rad，约18°) -->
+<xacro:property name="hipy_vel" value="26.2"/>            <!-- 髋y轴关节最大角速度(rad/s) -->
+<xacro:property name="hipy_eff" value="24"/>              <!-- 髋y轴关节最大力矩(N·m) -->
+
+<!-- 膝关节限位&性能参数 -->
+<xacro:property name="knee_min" value="-2"/>           <!-- 膝关节最小角度(rad，约30°) -->
+<xacro:property name="knee_max" value="0.5"/>           <!-- 膝关节最大角度(rad，约160°) -->
+<xacro:property name="knee_vel" value="17.3"/>            <!-- 膝关节最大角速度(rad/s) -->
+<xacro:property name="knee_eff" value="36"/>              <!-- 膝关节最大力矩(N·m) -->
+
+
+</robot>
