@@ -4,6 +4,13 @@ quadruped_gait_controller:
     use_sim_time: true              # 使用 Gazebo/仿真时钟；仿真里通常保持 true
     command_topic: /motor_cmd       # 控制器输出总命令的话题，4 条腿 * 3 关节 * 5 个控制量
 
+    # 手柄遥控参数 (dog_teleop 集成)
+    cmd_vel_topic: /cmd_vel         # 订阅 dog_teleop 发布的速度指令
+    cmd_vel_timeout: 0.5            # 超过此时间未收到新指令则归零，单位 s
+    max_linear_vel: 0.5             # 对应满幅步长的线速度上限，单位 m/s
+    max_angular_vel: 1.0            # 对应满幅转向差速的角速度上限，单位 rad/s
+    cmd_vel_deadzone: 0.05          # 速度指令绝对值之和低于此阈值视为"停止"
+
     # 步态基础参数
     gait_profile: trot              # 步态类型；当前使用对角小跑 trot
     step_length: 0.055              # 单步名义步长，越大前后摆动越明显

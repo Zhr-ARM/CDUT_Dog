@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "geometry_msgs/msg/twist.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
@@ -562,6 +563,14 @@ public:
     debug_joint_tracking_ = declare_parameter<bool>("debug_joint_tracking", false);
     debug_log_period_ = declare_parameter<double>("debug_log_period", 0.5);
 
+    // cmd_vel 遥控参数
+    const std::string cmd_vel_topic =
+      declare_parameter<std::string>("cmd_vel_topic", "/cmd_vel");
+    cmd_vel_timeout_ = declare_parameter<double>("cmd_vel_timeout", 0.5);
+    max_linear_vel_ = declare_parameter<double>("max_linear_vel", 0.5);
+    max_angular_vel_ = declare_parameter<double>("max_angular_vel", 1.0);
+    cmd_vel_deadzone_ = declare_parameter<double>("cmd_vel_deadzone", 0.05);
+
     // 第二组参数是“按腿配置”的数组，约定顺序统一为 LF/LH/RF/RH。
     // 这类参数允许对前后腿或左右腿做不对称补偿。
     phase_offsets_ =
@@ -743,6 +752,9 @@ public:
     joint_state_sub_ = create_subscription<sensor_msgs::msg::JointState>(
       joint_state_topic_, rclcpp::SystemDefaultsQoS(),
       std::bind(&QuadrupedGaitController::joint_state_callback, this, std::placeholders::_1));
+    cmd_vel_sub_ = create_subscription<geometry_msgs::msg::Twist>(
+      cmd_vel_topic, rclcpp::SystemDefaultsQoS(),
+      std::bind(&QuadrupedGaitController::cmd_vel_callback, this, std::placeholders::_1));
 
     const double dt = 1.0 / control_rate_;
     timer_ = create_wall_timer(
@@ -782,8 +794,19 @@ private:
 
     dt = std::clamp(dt, 0.0, 0.1);
 
+    // cmd_vel 超时检测: 若长时间未收到新消息则归零，防止机器狗失控漂移。
+    if (cmd_vel_received_) {
+      const double vel_age = (now - last_cmd_vel_time_).seconds();
+      if (vel_age > cmd_vel_timeout_) {
+        cmd_vel_linear_x_ = 0.0;
+        cmd_vel_angular_z_ = 0.0;
+      }
+    }
+    const double cmd_speed = std::abs(cmd_vel_linear_x_) + std::abs(cmd_vel_angular_z_);
+    teleop_walk_requested_ = cmd_vel_received_ && (cmd_speed > cmd_vel_deadzone_);
+
     // 如果还没捕获到完整的实际关节姿态，站立阶段的插值起点就无法确定，
-    // 因此优先尝试抓取一次“真实起始姿态”。
+    // 因此优先尝试抓取一次”真实起始姿态”。
     maybe_capture_stand_start_positions();
     update_motion_state(dt);
     const bool trot_profile = use_trot_profile();
@@ -887,6 +910,15 @@ private:
         support_pitch_balance_max_offset_);
     }
 
+    // 将 cmd_vel 映射为步长缩放比例，供逐腿循环使用。
+    // 仅在收到过 cmd_vel 消息时生效；未收到时保持原始配置行为（自主行走）。
+    const double cmd_linear_scale =
+      cmd_vel_received_ ?
+      std::clamp(cmd_vel_linear_x_ / std::max(max_linear_vel_, 1e-6), -1.0, 1.0) : 1.0;
+    const double cmd_turn_scale =
+      cmd_vel_received_ ?
+      std::clamp(cmd_vel_angular_z_ / std::max(max_angular_vel_, 1e-6), -1.0, 1.0) : 0.0;
+
     std_msgs::msg::Float64MultiArray msg;
     msg.data.resize(kAggregateCommandSize, 0.0);
 
@@ -899,8 +931,22 @@ private:
       const bool leg_in_swing = legs_in_swing[leg_index];
       const bool rear_leg = !is_front_leg(leg_index);
       const bool hold_startup_crouch_target = use_startup_crouch_pose_ && !enable_startup_stand_;
+
+      // Teleop 差速: 左腿(0,1)与右腿(2,3)施加相反的转向分量，实现原地/行进转弯。
+      // angular.z > 0 为 ROS 左转(CCW): 右腿多走、左腿少走。
+      // 未收到 cmd_vel 时，teleop_amp=1 / local_foot_x_sign=foot_x_signs_ 保持原始配置。
+      const bool left_leg = (leg_index == 0 || leg_index == 1);
+      double local_foot_x_sign = foot_x_signs_[leg_index];
+      double teleop_amp = 1.0;
+      if (cmd_vel_received_) {
+        const double turn_comp = left_leg ? -cmd_turn_scale : cmd_turn_scale;
+        const double combined = cmd_linear_scale + turn_comp;
+        teleop_amp = std::min(std::abs(combined), 1.0);
+        local_foot_x_sign = foot_x_signs_[leg_index] * ((combined >= 0.0) ? 1.0 : -1.0);
+      }
+
       const double leg_step_length =
-        step_length_ * (rear_leg ? rear_swing_step_length_scale_ : 1.0);
+        step_length_ * teleop_amp * (rear_leg ? rear_swing_step_length_scale_ : 1.0);
       const double leg_step_height =
         step_height_ * (rear_leg ? rear_swing_step_height_scale_ : 1.0);
       const double gait_foot_x_offset =
@@ -925,9 +971,9 @@ private:
         const double tau = local_phase / swing_ratio_;
         const FootState trajectory = trajectory_cycloid(
           tau, leg_step_length, leg_step_height, -leg_step_length / 2.0, swing_period_);
-        foot_x = foot_x_signs_[leg_index] * trajectory.x + gait_foot_x_offset;
+        foot_x = local_foot_x_sign * trajectory.x + gait_foot_x_offset;
         foot_y = stance_depth_ + gait_pitch_y_offset - trajectory.y;
-        foot_vx = foot_x_signs_[leg_index] * trajectory.vx;
+        foot_vx = local_foot_x_sign * trajectory.vx;
         foot_vy = -trajectory.vy;
       }
       else
@@ -937,18 +983,18 @@ private:
         {
           const FootState trajectory = trajectory_stance_trot(tau, leg_step_length, stance_period_);
           foot_x =
-            foot_x_signs_[leg_index] * trajectory.x +
+            local_foot_x_sign * trajectory.x +
             gait_foot_x_offset + gait_body_x_shift;
-          foot_vx = foot_x_signs_[leg_index] * trajectory.vx;
+          foot_vx = local_foot_x_sign * trajectory.vx;
         }
         else
         {
           const double front_x = leg_step_length / 2.0;
           const double back_x = -leg_step_length / 2.0;
           foot_x =
-            foot_x_signs_[leg_index] * (front_x + (back_x - front_x) * tau) +
+            local_foot_x_sign * (front_x + (back_x - front_x) * tau) +
             gait_foot_x_offset + gait_body_x_shift;
-          foot_vx = foot_x_signs_[leg_index] * ((back_x - front_x) / stance_period_);
+          foot_vx = local_foot_x_sign * ((back_x - front_x) / stance_period_);
         }
         foot_y = stance_depth_ + gait_pitch_y_offset;
         foot_vy = 0.0;
@@ -1106,6 +1152,15 @@ private:
     joint_state_received_ = true;
   }
 
+  // cmd_vel 回调: 缓存最新的线速度和角速度，并记录时间戳用于超时检测。
+  void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg)
+  {
+    cmd_vel_linear_x_ = msg->linear.x;
+    cmd_vel_angular_z_ = msg->angular.z;
+    last_cmd_vel_time_ = this->now();
+    cmd_vel_received_ = true;
+  }
+
   // 预留调试钩子。当前实现为空，但保留这个函数可以让后续接入周期性
   // 关节跟踪日志时，不需要改动主循环结构。
   void maybe_log_joint_tracking(const rclcpp::Time & now)
@@ -1159,12 +1214,27 @@ private:
         }
         break;
       case MotionState::kStandHold:
-        if (!stand_only_ && state_elapsed_ >= stand_hold_duration_)
+        startup_complete_ = true;
+        if (!stand_only_)
         {
-          transition_to(MotionState::kWalk);
+          // 未接入手柄: 按原逻辑在 hold_duration 后进入行走
+          if (!cmd_vel_received_ && state_elapsed_ >= stand_hold_duration_)
+          {
+            transition_to(MotionState::kWalk);
+          }
+          // 已接入手柄: 只要有非零速度指令就立即开始行走
+          else if (cmd_vel_received_ && teleop_walk_requested_)
+          {
+            transition_to(MotionState::kWalk);
+          }
         }
         break;
       case MotionState::kWalk:
+        // 已接入手柄且速度归零: 切回站立，等待下一次行走指令
+        if (cmd_vel_received_ && startup_complete_ && !teleop_walk_requested_)
+        {
+          transition_to(MotionState::kStandHold);
+        }
         break;
     }
   }
@@ -1645,7 +1715,20 @@ private:
   bool last_time_initialized_{false};
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr cmd_pub_;
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_sub_;
+  rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
   rclcpp::TimerBase::SharedPtr timer_;
+
+  // cmd_vel 遥控状态
+  double cmd_vel_linear_x_{0.0};
+  double cmd_vel_angular_z_{0.0};
+  double cmd_vel_timeout_{0.5};
+  double max_linear_vel_{0.5};
+  double max_angular_vel_{1.0};
+  double cmd_vel_deadzone_{0.05};
+  bool cmd_vel_received_{false};
+  bool teleop_walk_requested_{false};
+  bool startup_complete_{false};
+  rclcpp::Time last_cmd_vel_time_{0, 0, RCL_ROS_TIME};
 };
 
 int main(int argc, char ** argv)

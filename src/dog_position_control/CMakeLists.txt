@@ -10,6 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 
@@ -19,6 +20,7 @@ add_executable(quadruped_gait_controller
 
 ament_target_dependencies(quadruped_gait_controller
   rclcpp
+  geometry_msgs
   sensor_msgs
   std_msgs
 )
