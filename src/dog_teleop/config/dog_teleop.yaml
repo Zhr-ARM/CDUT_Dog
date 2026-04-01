@@ -1,0 +1,31 @@
+# Dog Teleop Configuration
+
+# Joystick input topic
+joy_topic: /joy
+
+# Output command velocity topic
+cmd_topic: /cmd_vel
+
+# Maximum linear velocity (m/s)
+max_linear_vel: 1.0
+
+# Maximum angular velocity (rad/s)
+max_angular_vel: 1.0
+
+# Deadzone - ignore input below this threshold
+# Linear deadzone (0.0-1.0)
+deadzone_linear: 0.1
+
+# Angular deadzone (0.0-1.0)
+deadzone_angular: 0.1
+
+# Joystick timeout for disconnection protection (seconds)
+# If no joystick signal received for this duration, robot stops
+joy_timeout: 0.5
+
+# Joystick axis mapping
+# Left stick Y-axis: forward/backward (axis 1)
+# Right stick X-axis: rotation (axis 2)
+
+# Emergency stop
+# A button (buttons[0]): Emergency stop - stops robot immediately
