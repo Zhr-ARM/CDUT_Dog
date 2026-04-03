@@ -3,10 +3,10 @@
 #查找串口ID
 #udevadm info -a -p $(udevadm info -q path -n /dev/ttyACM0) | grep -iE "idVendor|idProduct|serial" | head -n 3
 
-#查找can端口号
-#for i in {0..3}; do 
-#    printf "Interface: can$i  ->  Exact Path: "
-#    udevadm info -q path -p /sys/class/net/can$i | rev | cut -d'/' -f3 | rev
+#查找can端口号（在 shell 中单独执行，不要直接写进 rules 文件）
+#for i in {0..3}; do
+#   printf "Interface: can$i  ->  Exact Path: "
+#   udevadm info -q path -p /sys/class/net/can$i | rev | cut -d'/' -f3 | rev
 #done
 
 #更新配置
@@ -17,10 +17,11 @@
 SUBSYSTEM=="tty", ATTRS{idVendor}=="19f5", ATTRS{idProduct}=="5740", SYMLINK+="ttyimu"
 
 # 前左腿总线
-SUBSYSTEM=="net", ACTION=="add", KERNELS=="3-7.2", NAME="can_fl"
+SUBSYSTEM=="net", ACTION=="add", KERNELS=="3-1.2", NAME="can0"
 # 前右腿总线
-SUBSYSTEM=="net", ACTION=="add", KERNELS=="3-7.3", NAME="can_fr"
+SUBSYSTEM=="net", ACTION=="add", KERNELS=="3-1.3", NAME="can1"
 # 后左腿总线
-SUBSYSTEM=="net", ACTION=="add", KERNELS=="3-7.1", NAME="can_rl"
+SUBSYSTEM=="net", ACTION=="add", KERNELS=="3-1.1", NAME="can2"
 # 后右腿总线
-SUBSYSTEM=="net", ACTION=="add", KERNELS=="3-7.4", NAME="can_rr"
+SUBSYSTEM=="net", ACTION=="add", KERNELS=="3-1.4", NAME="can3"
+

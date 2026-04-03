@@ -20,13 +20,16 @@ include_directories(include)
 
 # 添加可执行文件
 add_executable(motor_node src/motor_node.cpp)
+add_executable(motor_test_node src/motor_test_node.cpp)
 
 # 链接依赖
 ament_target_dependencies(motor_node rclcpp sensor_msgs std_msgs)
+ament_target_dependencies(motor_test_node rclcpp std_msgs)
 
 # 安装规则
 install(TARGETS
   motor_node
+  motor_test_node
   DESTINATION lib/${PROJECT_NAME}
 )
 

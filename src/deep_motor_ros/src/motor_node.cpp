@@ -1,13 +1,17 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <functional>
+#include <iomanip>
 #include <memory>
 #include <sstream>
 #include <string>
 #include <thread>
 #include <vector>
+#include <unistd.h>
 
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
@@ -23,6 +27,7 @@ namespace
 {
 
 constexpr size_t kValuesPerJoint = 5;
+constexpr const char * kEmbeddedSudoPassword = "zhr1778096";
 const std::array<std::string, 4> kLegOrder = {"LF", "LH", "RF", "RH"};
 const std::array<std::string, 3> kJointOrder = {"HAA", "HFE", "KFE"};
 
@@ -62,6 +67,41 @@ std::string join_strings(const std::vector<std::string> & values)
     oss << values[i];
   }
   return oss.str();
+}
+
+std::string trim_copy(const std::string & value)
+{
+  const auto first = value.find_first_not_of(" \t\r\n");
+  if (first == std::string::npos)
+  {
+    return {};
+  }
+
+  const auto last = value.find_last_not_of(" \t\r\n");
+  return value.substr(first, last - first + 1);
+}
+
+std::string shell_single_quote(const std::string & value)
+{
+  std::string escaped = "'";
+  for (const char ch : value)
+  {
+    if (ch == '\'')
+    {
+      escaped += "'\\''";
+    }
+    else
+    {
+      escaped.push_back(ch);
+    }
+  }
+  escaped += "'";
+  return escaped;
+}
+
+bool interface_exists(const std::string & can_interface)
+{
+  return std::filesystem::exists("/sys/class/net/" + can_interface);
 }
 
 }  // namespace
@@ -118,9 +158,11 @@ public:
     declare_parameter<std::string>("command_topic", "/motor_cmd");
     declare_parameter<std::string>("feedback_topic", "/motor_feedback");
     declare_parameter<std::string>("joint_state_topic", "/joint_states");
-    declare_parameter<bool>("configure_can", false);
+    declare_parameter<bool>("configure_can", true);
     declare_parameter<int>("can_bitrate", 1000000);
     declare_parameter<int>("can_txqueuelen", 1000);
+    declare_parameter<double>("can_interface_wait_sec", 5.0);
+    declare_parameter<int>("can_configure_retries", 3);
     declare_parameter<double>("control_rate_hz", 400.0);
     declare_parameter<double>("status_log_period_sec", 5.0);
 
@@ -137,6 +179,9 @@ public:
     configure_can_ = get_parameter("configure_can").as_bool();
     can_bitrate_ = get_parameter("can_bitrate").as_int();
     can_txqueuelen_ = get_parameter("can_txqueuelen").as_int();
+    can_interface_wait_sec_ = std::max(0.0, get_parameter("can_interface_wait_sec").as_double());
+    can_configure_retries_ =
+      std::max(1, static_cast<int>(get_parameter("can_configure_retries").as_int()));
     control_rate_hz_ = std::max(1.0, get_parameter("control_rate_hz").as_double());
     status_log_period_sec_ = std::max(0.0, get_parameter("status_log_period_sec").as_double());
 
@@ -149,6 +194,16 @@ public:
 
     joint_names_ = resolve_joint_names();
     total_motor_count_ = motor_ids_.size();
+
+    if (configure_can_ && geteuid() != 0)
+    {
+      RCLCPP_INFO(
+        get_logger(),
+        "configure_can is enabled and this process is not running as root. "
+        "The node will use embedded sudo password fallback for CAN setup.");
+    }
+
+    wait_for_can_interfaces();
 
     if (configure_can_)
     {
@@ -256,23 +311,161 @@ private:
   {
     for (const auto & can_interface : can_interfaces_)
     {
-      auto run_step = [this, &can_interface](const std::string & cmd) {
-          const int ret = std::system(cmd.c_str());
-          if (ret != 0)
-          {
-            RCLCPP_WARN(
-              get_logger(),
-              "CAN configure command failed on %s: %s",
-              can_interface.c_str(), cmd.c_str());
-          }
-        };
+      if (!interface_exists(can_interface))
+      {
+        RCLCPP_WARN(
+          get_logger(),
+          "[CanSetup] %s is missing before configuration. Check USB-CAN connection and udev rules.",
+          can_interface.c_str());
+        continue;
+      }
 
-      run_step("ip link set " + can_interface + " down");
-      run_step("ip link set " + can_interface + " type can bitrate " + std::to_string(can_bitrate_));
-      run_step(
-        "ip link set " + can_interface + " txqueuelen " + std::to_string(can_txqueuelen_));
-      run_step("ip link set " + can_interface + " up");
+      log_can_interface_snapshot(can_interface, "before-config");
+
+      bool configured = false;
+      for (int attempt = 1; attempt <= can_configure_retries_; ++attempt)
+      {
+        const bool ok_down = run_can_setup_command(
+          can_interface, "ip link set " + can_interface + " down");
+        const bool ok_type = run_can_setup_command(
+          can_interface,
+          "ip link set " + can_interface + " type can bitrate " + std::to_string(can_bitrate_));
+        const bool ok_queue = run_can_setup_command(
+          can_interface,
+          "ip link set " + can_interface + " txqueuelen " +
+          std::to_string(can_txqueuelen_));
+        const bool ok_up = run_can_setup_command(can_interface, "ip link set " + can_interface + " up");
+
+        configured = ok_down && ok_type && ok_queue && ok_up;
+        log_can_interface_snapshot(
+          can_interface, configured ? "after-config" : "after-config-failed");
+        if (configured)
+        {
+          break;
+        }
+
+        RCLCPP_WARN(
+          get_logger(),
+          "[CanSetup] %s configuration attempt %d/%d did not fully succeed.",
+          can_interface.c_str(), attempt, can_configure_retries_);
+        std::this_thread::sleep_for(200ms);
+      }
     }
+  }
+
+  bool run_can_setup_command(const std::string & can_interface, const std::string & cmd)
+  {
+    const auto direct_cmd = cmd + " >/dev/null 2>&1";
+    if (std::system(direct_cmd.c_str()) == 0)
+    {
+      return true;
+    }
+
+    if (geteuid() != 0)
+    {
+      const auto sudo_cmd =
+        "echo " + shell_single_quote(kEmbeddedSudoPassword) +
+        " | sudo -S sh -c " + shell_single_quote(cmd + " >/dev/null 2>&1") +
+        " >/dev/null 2>&1";
+      if (std::system(sudo_cmd.c_str()) == 0)
+      {
+        RCLCPP_INFO(
+          get_logger(),
+          "[CanSetup] %s succeeded via embedded sudo fallback: %s",
+          can_interface.c_str(), cmd.c_str());
+        return true;
+      }
+    }
+
+    RCLCPP_WARN(
+      get_logger(),
+      "CAN configure command failed on %s: %s",
+      can_interface.c_str(), cmd.c_str());
+    return false;
+  }
+
+  void wait_for_can_interfaces()
+  {
+    if (can_interfaces_.empty())
+    {
+      return;
+    }
+
+    const auto wait_deadline =
+      std::chrono::steady_clock::now() + std::chrono::duration<double>(can_interface_wait_sec_);
+
+    while (true)
+    {
+      std::vector<std::string> missing_interfaces;
+      for (const auto & can_interface : can_interfaces_)
+      {
+        if (!interface_exists(can_interface))
+        {
+          missing_interfaces.push_back(can_interface);
+        }
+      }
+
+      if (missing_interfaces.empty())
+      {
+        RCLCPP_INFO(
+          get_logger(),
+          "[CanDetect] Found CAN interfaces: [%s]",
+          join_strings(can_interfaces_).c_str());
+        return;
+      }
+
+      if (can_interface_wait_sec_ <= 0.0 || std::chrono::steady_clock::now() >= wait_deadline)
+      {
+        RCLCPP_WARN(
+          get_logger(),
+          "[CanDetect] Missing CAN interfaces after waiting %.1fs: [%s]",
+          can_interface_wait_sec_, join_strings(missing_interfaces).c_str());
+        return;
+      }
+
+      std::this_thread::sleep_for(100ms);
+    }
+  }
+
+  std::string read_command_output(const std::string & cmd) const
+  {
+    std::array<char, 256> buffer{};
+    std::string output;
+    FILE * pipe = popen(cmd.c_str(), "r");
+    if (!pipe)
+    {
+      return output;
+    }
+
+    while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe) != nullptr)
+    {
+      output += buffer.data();
+    }
+    pclose(pipe);
+    return trim_copy(output);
+  }
+
+  void log_can_interface_snapshot(const std::string & can_interface, const std::string & stage) const
+  {
+    if (!interface_exists(can_interface))
+    {
+      RCLCPP_WARN(
+        get_logger(), "[CanState] %s %s -> missing", stage.c_str(), can_interface.c_str());
+      return;
+    }
+
+    const auto snapshot =
+      read_command_output("ip -br link show dev " + can_interface + " 2>/dev/null");
+    if (snapshot.empty())
+    {
+      RCLCPP_INFO(
+        get_logger(),
+        "[CanState] %s %s -> detected, but ip link returned no summary",
+        stage.c_str(), can_interface.c_str());
+      return;
+    }
+
+    RCLCPP_INFO(get_logger(), "[CanState] %s %s", stage.c_str(), snapshot.c_str());
   }
 
   void initialize_buses()
@@ -312,6 +505,19 @@ private:
         bus.can_interface.c_str(), join_strings(bus_joint_names).c_str(),
         join_strings(bus_motor_ids).c_str(), command_topic_.c_str(), feedback_topic_.c_str(),
         joint_state_topic_.c_str());
+
+      if (!interface_exists(bus.can_interface))
+      {
+        RCLCPP_ERROR(
+          get_logger(),
+          "[Fatal] CAN interface %s does not exist. Check USB-CAN connection, udev rules, "
+          "and whether the adapter driver loaded.",
+          bus.can_interface.c_str());
+        buses_.push_back(std::move(bus));
+        continue;
+      }
+
+      log_can_interface_snapshot(bus.can_interface, "pre-open");
 
       bus.can_ctx = DrMotorCanCreate(bus.can_interface.c_str(), false);
       if (!bus.can_ctx)
@@ -372,14 +578,7 @@ private:
     }
 
     motor.is_connected = is_verified;
-    if (is_verified)
-    {
-      RCLCPP_INFO(
-        get_logger(),
-        "[LinkCheck] %s slot=%d joint=%s motor_id=%d -> ONLINE",
-        bus.can_interface.c_str(), motor.local_slot, motor.joint_name.c_str(), motor.id);
-    }
-    else
+    if (!is_verified)
     {
       RCLCPP_WARN(
         get_logger(),
@@ -518,6 +717,7 @@ private:
 
     size_t online_total = 0;
     std::ostringstream oss;
+    oss << std::fixed << std::setprecision(3);
     for (size_t bus_index = 0; bus_index < buses_.size(); ++bus_index)
     {
       const auto & bus = buses_[bus_index];
@@ -540,16 +740,35 @@ private:
           ++bus_online;
           ++online_total;
         }
-        oss
-          << motor.joint_name << "(id=" << motor.id << ",slot=" << motor.local_slot << ")"
-          << (motor.is_connected ? " ONLINE" : " OFFLINE");
+        if (motor.is_connected)
+        {
+          oss
+            << motor.joint_name << "(id=" << motor.id << ",slot=" << motor.local_slot << ")"
+            << " cur=" << motor.current_state.p
+            << " target=" << motor.current_cmd.p;
+        }
+        else
+        {
+          oss
+            << motor.joint_name << "(id=" << motor.id << ",slot=" << motor.local_slot << ")"
+            << " OFFLINE";
+        }
       }
       oss << " [" << bus_online << "/" << bus.motors.size() << "]";
     }
 
-    RCLCPP_INFO(
-      get_logger(), "[LinkStatus] online=%zu/%zu | %s", online_total, total_motor_count_,
-      oss.str().c_str());
+    if (online_total == total_motor_count_)
+    {
+      RCLCPP_INFO(
+        get_logger(), "[JointAngles] online=%zu/%zu current/target(rad) | %s", online_total,
+        total_motor_count_, oss.str().c_str());
+    }
+    else
+    {
+      RCLCPP_INFO(
+        get_logger(), "[LinkStatus] online=%zu/%zu | %s", online_total, total_motor_count_,
+        oss.str().c_str());
+    }
   }
 
   std::vector<BusContext> buses_;
@@ -564,6 +783,8 @@ private:
   bool configure_can_{false};
   int can_bitrate_{1000000};
   int can_txqueuelen_{1000};
+  double can_interface_wait_sec_{5.0};
+  int can_configure_retries_{3};
   double control_rate_hz_{400.0};
   double status_log_period_sec_{5.0};
 

@@ -1,0 +1,102 @@
+quadruped_gait_controller:
+  ros__parameters:
+    # Real-robot stand-only profile.
+    # This file is intentionally stronger than the Gazebo config:
+    # - no walking
+    # - faster startup support ramp
+    # - larger stand gains
+    # - stronger gravity feedforward
+
+    use_sim_time: false
+    command_topic: /motor_cmd
+
+    # Gait values are kept conservative because stand_only=true.
+    gait_profile: trot
+    step_length: 0.0
+    step_height: 0.0
+    gait_period: 1.0
+    stance_depth: 0.39
+    control_rate: 400.0
+    swing_ratio: 0.50
+
+    swing_gain_scale: 0.60
+    swing_hfe_motion_scale: 0.40
+    swing_extra_kfe_flexion: 0.10
+    rear_swing_step_length_scale: 1.0
+    rear_swing_step_height_scale: 1.0
+    rear_swing_gain_scale: 1.0
+    rear_swing_hfe_motion_scale: 1.0
+    rear_swing_extra_kfe_flexion_scale: 1.0
+    rear_swing_pitch_feedforward_offset: 0.0
+    rear_swing_body_x_shift: 0.0
+    support_pitch_balance_gain: 0.0
+    support_pitch_balance_max_offset: 0.0
+    support_pitch_balance_target_delta: 0.0
+    filter_alpha: 0.85
+
+    # Startup and standing:
+    # - stand_only keeps the robot in stand_hold after rising
+    # - larger support/gain scales help the real hardware lift itself
+    stand_only: true
+    enable_startup_stand: true
+    use_direct_joint_stand_targets: true
+    use_startup_crouch_pose: false
+    allow_partial_joint_state_startup: true
+    joint_isolation_mode: "disabled"
+    joint_isolation_kfe_target: -0.70
+    startup_settle_duration: 0.25
+    startup_min_support_scale: 0.50
+    startup_initial_gain_scale: 0.80
+    stand_up_duration: 2.00
+    startup_knee_first_ratio: 0.55
+    stand_hold_duration: 0.0
+    walk_ramp_duration: 0.0
+    stand_gain_scale: 1.70
+    stand_haa_slew_rate: 0.18
+    stand_hfe_slew_rate: 0.28
+    stand_kfe_slew_rate: 0.32
+
+    # Stronger gravity/feedforward for hardware.
+    gravity_ff_scale: 1.80
+    shank_mass_ratio: 0.5
+    debug_joint_tracking: false
+    debug_log_period: 0.5
+
+    # Array order: LF, LH, RF, RH
+    phase_offsets: [0.0, 0.5, 0.5, 0.0]
+    foot_x_signs: [1.0, 1.0, 1.0, 1.0]
+    gait_foot_x_offsets: [0.0, 0.0, 0.0, 0.0]
+    stand_foot_x_offsets: [0.0, 0.0, 0.0, 0.0]
+
+    nominal_haa_angles: [0.0, 0.0, 0.0, 0.0]
+    nominal_hfe_angles: [-0.67, -0.67, -0.67, -0.67]
+    nominal_kfe_angles: [0.09, 0.09, 0.09, 0.09]
+    direct_haa_signs: [1.0, 1.0, 1.0, 1.0]
+    direct_hfe_signs: [1.0, 1.0, 1.0, 1.0]
+    direct_kfe_signs: [1.0, 1.0, 1.0, 1.0]
+
+    # Keep the calibrated stand pose from the current robot setup.
+    stand_haa_targets: [0.0, 0.0, 0.0, 0.0]
+    stand_hfe_targets: [0.35, 0.40, -0.35, -0.40]
+    stand_kfe_targets: [-1.0, -1.2, 1.0, 1.2]
+    startup_crouch_haa_targets: [0.0, 0.0, 0.0, 0.0]
+    startup_crouch_hfe_targets: [0.22, 0.25, -0.22, -0.25]
+    startup_crouch_kfe_targets: [-0.55, -0.66, 0.55, 0.65]
+
+    thigh_lengths: [0.198825, 0.198825, 0.198825, 0.198825]
+    shank_lengths: [0.22225, 0.22225, 0.22225, 0.22225]
+    gravity_masses: [0.62, 0.62, 0.62, 0.62]
+
+    auto_zero_offsets: false
+    apply_initial_joint_pose_in_gazebo: false
+    hfe_offsets: [-0.264487, -0.324164, -0.264487, -0.324164]
+    kfe_offsets: [-0.884820, -0.974002, -0.884820, -0.974002]
+
+    # Base joint gains. Real stand strength mainly comes from these values
+    # multiplied by stand_gain_scale above.
+    haa_kp: 12.0
+    haa_kd: 2.0
+    hfe_kp: 12.0
+    hfe_kd: 2.0
+    kfe_kp: 20.0
+    kfe_kd: 2.4 

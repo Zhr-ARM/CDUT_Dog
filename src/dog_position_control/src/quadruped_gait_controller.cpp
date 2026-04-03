@@ -5,6 +5,7 @@
 #include <cmath>
 #include <initializer_list>
 #include <memory>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -52,7 +53,7 @@ constexpr double kHaaUpper = 0.5;
 constexpr double kHfeLower = -2.0;
 constexpr double kHfeUpper = 1.6;
 constexpr double kKfeLower = -2.0;
-constexpr double kKfeUpper = 0.5;
+constexpr double kKfeUpper = 2.0;
 
 const std::array<std::string, kLegCount> kLegNames = {"LF", "LH", "RF", "RH"};
 const std::array<std::string, kJointsPerLeg> kJointSuffixes = {"HAA", "HFE", "KFE"};
@@ -544,6 +545,8 @@ public:
     use_direct_joint_stand_targets_ =
       declare_parameter<bool>("use_direct_joint_stand_targets", true);
     use_startup_crouch_pose_ = declare_parameter<bool>("use_startup_crouch_pose", false);
+    allow_partial_joint_state_startup_ =
+      declare_parameter<bool>("allow_partial_joint_state_startup", false);
     joint_isolation_mode_ = declare_parameter<std::string>("joint_isolation_mode", "disabled");
     joint_isolation_kfe_target_ = declare_parameter<double>("joint_isolation_kfe_target", -0.70);
     startup_settle_duration_ = declare_parameter<double>("startup_settle_duration", 2.0);
@@ -752,6 +755,9 @@ public:
     RCLCPP_INFO(get_logger(), "Quadruped gait controller started.");
     RCLCPP_INFO(get_logger(), "Initial motion state: %s", motion_state_name(motion_state_));
     RCLCPP_INFO(get_logger(), "Gait profile: %s", gait_profile_.c_str());
+    RCLCPP_INFO(
+      get_logger(), "allow_partial_joint_state_startup: %s",
+      allow_partial_joint_state_startup_ ? "true" : "false");
   }
 
 private:
@@ -1291,17 +1297,42 @@ private:
       return;
     }
 
-    if (!std::all_of(
-        actual_position_valid_.begin(), actual_position_valid_.end(),
-        [](bool is_valid) {return is_valid;}))
+    const size_t valid_joint_count = std::count(
+      actual_position_valid_.begin(), actual_position_valid_.end(), true);
+    if (valid_joint_count == 0)
     {
       return;
     }
 
+    std::vector<std::string> missing_joint_names;
+    if (valid_joint_count != kTotalJointCount)
+    {
+      if (!allow_partial_joint_state_startup_)
+      {
+        return;
+      }
+
+      missing_joint_names.reserve(kTotalJointCount - valid_joint_count);
+      for (size_t leg_index = 0; leg_index < kLegCount; ++leg_index)
+      {
+        for (size_t joint_index = 0; joint_index < kJointsPerLeg; ++joint_index)
+        {
+          const size_t flat_index = flat_joint_index(leg_index, joint_index);
+          if (!actual_position_valid_[flat_index])
+          {
+            missing_joint_names.push_back(joint_name(leg_index, joint_index));
+          }
+        }
+      }
+    }
+
     for (size_t flat_index = 0; flat_index < kTotalJointCount; ++flat_index)
     {
-      stand_start_positions_[flat_index] = actual_positions_[flat_index];
-      slewed_command_positions_[flat_index] = actual_positions_[flat_index];
+      const double startup_position = actual_position_valid_[flat_index] ?
+        actual_positions_[flat_index] :
+        commanded_positions_[flat_index];
+      stand_start_positions_[flat_index] = startup_position;
+      slewed_command_positions_[flat_index] = startup_position;
       slewed_command_initialized_[flat_index] = true;
     }
 
@@ -1314,6 +1345,29 @@ private:
     }
 
     stand_start_positions_captured_ = true;
+    if (!missing_joint_names.empty())
+    {
+      std::ostringstream oss;
+      for (size_t i = 0; i < missing_joint_names.size(); ++i)
+      {
+        if (i != 0)
+        {
+          oss << ", ";
+        }
+        oss << missing_joint_names[i];
+      }
+
+      RCLCPP_WARN(
+        get_logger(),
+        "Startup continuing with partial joint states: valid=%zu/%zu missing=[%s]",
+        valid_joint_count, kTotalJointCount, oss.str().c_str());
+    }
+    else
+    {
+      RCLCPP_INFO(
+        get_logger(), "Captured complete startup joint state: %zu/%zu",
+        valid_joint_count, kTotalJointCount);
+    }
   }
 
   // 启动姿态是否已经具备:
@@ -1592,6 +1646,7 @@ private:
   bool auto_zero_offsets_{true};
   bool use_direct_joint_stand_targets_{true};
   bool use_startup_crouch_pose_{true};
+  bool allow_partial_joint_state_startup_{false};
   std::string joint_isolation_mode_{"off"};
   double joint_isolation_kfe_target_{-0.70};
   double startup_settle_duration_{2.0};

@@ -19,7 +19,7 @@ def generate_launch_description():
     gait_param_file = os.path.join(
         get_package_share_directory("dog_position_control"),
         "config",
-        "gait_controller_sim_trot.yaml",
+        "gait_controller_real_stand.yaml",
     )
 
     launch_simulation = LaunchConfiguration("launch_simulation")
@@ -55,7 +55,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "launch_simulation",
-                default_value="true",
+                default_value="false",
                 description="Launch Gazebo together with the real robot control stack.",
             ),
             DeclareLaunchArgument(
