@@ -12,6 +12,7 @@ CDUT_Dog/
 │   ├── deep_motor_ros/          # 真机电机驱动，负责 CAN 通信与状态反馈
 │   ├── dog_bringup/             # 机器人模型、消息定义、仿真/真机启动文件
 │   ├── dog_position_control/    # 四足步态控制节点与参数
+│   ├── dog_teleop/              # Xbox/PS4 手柄遥控节点，将摇杆输入转为速度指令
 │   └── mit_controller/          # ros2_control 控制器插件
 ├── build/                       # colcon 编译产物
 ├── install/                     # colcon 安装产物
@@ -47,6 +48,22 @@ CDUT_Dog/
 - `src/mit_controller.cpp`：MIT 风格关节控制器实现
 - `include/mit_controller/`：控制器头文件
 - `mit_controller_plugin.xml`：插件导出描述
+
+#### `src/dog_teleop`
+
+- `src/dog_teleop_node.cpp`：手柄遥控主节点，订阅 `/joy`，发布 `/cmd_vel`
+- `launch/dog_teleop.launch.py`：同时启动 `joy_node`（读取手柄设备）和 `dog_teleop_node`
+- `config/dog_teleop.yaml`：最大线速度、最大角速度、死区阈值、超时时间等参数
+
+摇杆映射关系：
+
+| 输入 | 话题/字段 | 说明 |
+|---|---|---|
+| 左摇杆 Y 轴 | `cmd_vel.linear.x` | 前进（+）/ 后退（−） |
+| 右摇杆 X 轴 | `cmd_vel.angular.z` | 左转（+）/ 右转（−） |
+| A 键 | — | 立即发布零速（急停） |
+
+`/cmd_vel` 由 `dog_position_control` 中的步态控制器订阅，控制实际行走速度与转向。
 
 #### `src/deep_motor_ros`
 
@@ -144,7 +161,89 @@ ros2 launch dog_bringup real.launch.py launch_simulation:=false
   - `command_topic`
   - 站立姿态参数与步态参数
 
-### 5. 常用调试命令
+### 5. 手柄遥控
+
+手柄遥控需要在仿真或真机已启动的基础上，**额外**启动 `dog_teleop`。
+
+#### 5.1 连接手柄并启动遥控节点
+
+将 Xbox 或 PS4 手柄通过 USB / 蓝牙连接到主机，然后：
+
+```bash
+source /opt/ros/<ros_distro>/setup.bash
+source install/setup.bash
+ros2 launch dog_teleop dog_teleop.launch.py
+```
+
+该命令会同时启动：
+- `joy_node`：读取 `/dev/input/js0`（或自动检测手柄设备）
+- `dog_teleop_node`：将摇杆值映射为 `/cmd_vel`
+
+#### 5.2 仿真 + 手柄完整启动流程
+
+打开两个终端：
+
+**终端 1（仿真）：**
+```bash
+source /opt/ros/<ros_distro>/setup.bash
+source install/setup.bash
+ros2 launch dog_bringup sim.launch.py
+```
+
+**终端 2（手柄）：**
+```bash
+source /opt/ros/<ros_distro>/setup.bash
+source install/setup.bash
+ros2 launch dog_teleop dog_teleop.launch.py
+```
+
+#### 5.3 手柄操作说明
+
+| 操作 | 效果 |
+|---|---|
+| 左摇杆向前推 | 机器狗前进，推幅越大速度越快 |
+| 左摇杆向后拉 | 机器狗后退 |
+| 右摇杆向左拨 | 左转（CCW） |
+| 右摇杆向右拨 | 右转（CW） |
+| 摇杆归中 | 速度归零，机器狗自动切换到站立状态 |
+| A 键 | 立即急停，发布零速指令 |
+
+> **注意：** 步态控制器收到非零 `/cmd_vel` 时自动切入行走状态；摇杆归中或手柄超过 0.5 秒未发送数据时自动切回站立。
+
+#### 5.4 不接手柄时用命令行验证
+
+```bash
+# 前进
+ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist \
+  "{linear: {x: 0.3, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+
+# 左转
+ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist \
+  "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.5}}"
+
+# 停止
+ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist \
+  "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+
+# 持续发布（模拟手柄保持前进，Ctrl+C 停止后机器狗自动站立）
+ros2 topic pub --rate 20 /cmd_vel geometry_msgs/msg/Twist \
+  "{linear: {x: 0.3, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+```
+
+#### 5.5 相关参数调整
+
+`src/dog_position_control/config/gait_controller_sim_trot.yaml` 中与遥控相关的参数：
+
+| 参数 | 默认值 | 说明 |
+|---|---|---|
+| `cmd_vel_topic` | `/cmd_vel` | 订阅的速度指令话题 |
+| `cmd_vel_timeout` | `0.5` s | 超时后自动归零 |
+| `max_linear_vel` | `0.5` m/s | 对应满幅步长的线速度上限 |
+| `max_angular_vel` | `1.0` rad/s | 对应满幅差速的角速度上限 |
+| `cmd_vel_deadzone` | `0.05` | 速度幅值低于此值视为停止 |
+| `foot_x_signs` | `[1,1,1,1]` | 各腿前进方向符号；若前进方向反了改为 `[-1,-1,-1,-1]` |
+
+### 6. 常用调试命令
 
 查看关节状态：
 
@@ -162,6 +261,24 @@ ros2 topic echo /motor_feedback
 
 ```bash
 ros2 topic echo /motor_cmd
+```
+
+查看手柄原始输入：
+
+```bash
+ros2 topic echo /joy
+```
+
+查看遥控速度指令：
+
+```bash
+ros2 topic echo /cmd_vel
+```
+
+确认步态控制器已订阅速度指令：
+
+```bash
+ros2 topic info /cmd_vel
 ```
 
 ## 关键配置说明
