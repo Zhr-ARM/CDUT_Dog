@@ -526,6 +526,7 @@ public:
     swing_gain_scale_ = declare_parameter<double>("swing_gain_scale", 0.5);
     swing_hfe_motion_scale_ = declare_parameter<double>("swing_hfe_motion_scale", 0.45);
     swing_extra_kfe_flexion_ = declare_parameter<double>("swing_extra_kfe_flexion", 0.18);
+    front_swing_gain_scale_ = declare_parameter<double>("front_swing_gain_scale", 1.0);
     rear_swing_step_length_scale_ = declare_parameter<double>("rear_swing_step_length_scale", 1.0);
     rear_swing_step_height_scale_ = declare_parameter<double>("rear_swing_step_height_scale", 1.0);
     rear_swing_gain_scale_ = declare_parameter<double>("rear_swing_gain_scale", 1.0);
@@ -557,6 +558,15 @@ public:
     startup_knee_first_ratio_ = declare_parameter<double>("startup_knee_first_ratio", 0.60);
     stand_hold_duration_ = declare_parameter<double>("stand_hold_duration", 1.0);
     walk_ramp_duration_ = declare_parameter<double>("walk_ramp_duration", 1.0);
+    inplace_mode_enable_ = declare_parameter<bool>("inplace_mode_enable", false);
+    inplace_step_length_threshold_ =
+      declare_parameter<double>("inplace_step_length_threshold", 0.01);
+    inplace_rear_hfe_stance_bias_ =
+      declare_parameter<double>("inplace_rear_hfe_stance_bias", 0.0);
+    inplace_front_hfe_stance_comp_ =
+      declare_parameter<double>("inplace_front_hfe_stance_comp", 0.0);
+    inplace_bias_ramp_duration_ =
+      declare_parameter<double>("inplace_bias_ramp_duration", 0.5);
     stand_gain_scale_ = declare_parameter<double>("stand_gain_scale", 1.8);
     stand_haa_slew_rate_ = declare_parameter<double>("stand_haa_slew_rate", 0.15);
     stand_hfe_slew_rate_ = declare_parameter<double>("stand_hfe_slew_rate", 0.20);
@@ -576,12 +586,30 @@ public:
 
     // 第二组参数是“按腿配置”的数组，约定顺序统一为 LF/LH/RF/RH。
     // 这类参数允许对前后腿或左右腿做不对称补偿。
+    gait_hfe_axis_signs_ =
+      declare_parameter<std::vector<double>>("gait_hfe_axis_signs", {1.0, 1.0, 1.0, 1.0});
+    // 默认关闭“轴向符号二次乘法”，让 HFE 符号行为与 KFE 更一致:
+    // 只改 gait_hfe_signs 就能直接观察到方向反转。
+    use_gait_hfe_axis_sign_ = declare_parameter<bool>("use_gait_hfe_axis_sign", false);
+    gait_hfe_signs_ =
+      declare_parameter<std::vector<double>>("gait_hfe_signs", {1.0, 1.0, 1.0, 1.0});
+    gait_kfe_signs_ =
+      declare_parameter<std::vector<double>>("gait_kfe_signs", {1.0, 1.0, 1.0, 1.0});
+    // 摆动相额外 KFE 卷膝允许按腿单独设置:
+    // - signs: 方向（-1~1）
+    // - scales: 幅度倍率（>=0）
+    swing_extra_kfe_signs_ =
+      declare_parameter<std::vector<double>>("swing_extra_kfe_signs", {1.0, 1.0, 1.0, 1.0});
+    swing_extra_kfe_scales_ =
+      declare_parameter<std::vector<double>>("swing_extra_kfe_scales", {1.0, 1.0, 1.0, 1.0});
     phase_offsets_ =
       declare_parameter<std::vector<double>>("phase_offsets", {0.0, 0.5, 0.5, 0.0});
     foot_x_signs_ =
       declare_parameter<std::vector<double>>("foot_x_signs", {1.0, 1.0, 1.0, 1.0});
     gait_foot_x_offsets_ =
       declare_parameter<std::vector<double>>("gait_foot_x_offsets", {0.0, 0.0, 0.0, 0.0});
+    gait_foot_y_offsets_ =
+      declare_parameter<std::vector<double>>("gait_foot_y_offsets", {0.0, 0.0, 0.0, 0.0});
     stand_foot_x_offsets_ =
       declare_parameter<std::vector<double>>("stand_foot_x_offsets", {0.0, 0.0, 0.0, 0.0});
     nominal_haa_angles_ =
@@ -627,12 +655,16 @@ public:
     kfe_kp_ = declare_parameter<double>("kfe_kp", 60.0);
     kfe_kd_ = declare_parameter<double>("kfe_kd", 6.0);
 
+    // 在参数声明区新增
+    gait_hfe_sign_mode_ = declare_parameter<std::string>("gait_hfe_sign_mode", "delta");  // delta | absolute
+
     // 配置文件一旦长度不对，就在启动阶段直接抛错，避免控制循环期
     // 才触发数组越界。
     validate_vector_sizes({
       {"phase_offsets", &phase_offsets_},
       {"foot_x_signs", &foot_x_signs_},
       {"gait_foot_x_offsets", &gait_foot_x_offsets_},
+      {"gait_foot_y_offsets", &gait_foot_y_offsets_},
       {"stand_foot_x_offsets", &stand_foot_x_offsets_},
       {"nominal_haa_angles", &nominal_haa_angles_},
       {"nominal_hfe_angles", &nominal_hfe_angles_},
@@ -651,6 +683,11 @@ public:
       {"gravity_masses", &gravity_masses},
       {"hfe_offsets", &manual_hfe_offsets_},
       {"kfe_offsets", &manual_kfe_offsets_},
+      {"gait_hfe_axis_signs", &gait_hfe_axis_signs_},
+      {"gait_hfe_signs", &gait_hfe_signs_},
+      {"gait_kfe_signs", &gait_kfe_signs_},
+      {"swing_extra_kfe_signs", &swing_extra_kfe_signs_},
+      {"swing_extra_kfe_scales", &swing_extra_kfe_scales_},
     });
 
     // 对容易引发数值问题或物理不合理的参数做基础裁剪。
@@ -660,12 +697,17 @@ public:
     swing_gain_scale_ = std::clamp(swing_gain_scale_, 0.05, 1.0);
     swing_hfe_motion_scale_ = std::clamp(swing_hfe_motion_scale_, 0.0, 1.0);
     swing_extra_kfe_flexion_ = std::max(swing_extra_kfe_flexion_, 0.0);
+    front_swing_gain_scale_ = std::clamp(front_swing_gain_scale_, 0.1, 2.0);
     rear_swing_step_length_scale_ = std::clamp(rear_swing_step_length_scale_, 0.1, 2.0);
     rear_swing_step_height_scale_ = std::clamp(rear_swing_step_height_scale_, 0.1, 2.0);
     rear_swing_gain_scale_ = std::clamp(rear_swing_gain_scale_, 0.1, 2.0);
     rear_swing_hfe_motion_scale_ = std::clamp(rear_swing_hfe_motion_scale_, 0.1, 4.0);
     rear_swing_extra_kfe_flexion_scale_ =
       std::clamp(rear_swing_extra_kfe_flexion_scale_, 0.5, 4.0);
+    for (double & value : swing_extra_kfe_scales_)
+    {
+      value = std::clamp(value, 0.0, 4.0);
+    }
     rear_swing_pitch_feedforward_offset_ = std::max(rear_swing_pitch_feedforward_offset_, 0.0);
     rear_swing_body_x_shift_ = std::max(rear_swing_body_x_shift_, 0.0);
     support_pitch_balance_gain_ = std::max(support_pitch_balance_gain_, 0.0);
@@ -678,6 +720,10 @@ public:
     joint_isolation_kfe_target_ = std::clamp(joint_isolation_kfe_target_, kKfeLower, kKfeUpper);
     stand_hold_duration_ = std::max(stand_hold_duration_, 0.0);
     walk_ramp_duration_ = std::max(walk_ramp_duration_, 0.0);
+    inplace_step_length_threshold_ = std::max(inplace_step_length_threshold_, 0.0);
+    inplace_rear_hfe_stance_bias_ = std::clamp(inplace_rear_hfe_stance_bias_, -0.6, 0.6);
+    inplace_front_hfe_stance_comp_ = std::clamp(inplace_front_hfe_stance_comp_, -0.6, 0.6);
+    inplace_bias_ramp_duration_ = std::max(inplace_bias_ramp_duration_, 0.0);
     stand_gain_scale_ = std::max(stand_gain_scale_, 0.0);
     startup_min_support_scale_ = std::clamp(startup_min_support_scale_, 0.0, 1.0);
     startup_initial_gain_scale_ = std::clamp(startup_initial_gain_scale_, 0.0, stand_gain_scale_);
@@ -768,6 +814,9 @@ public:
     RCLCPP_INFO(get_logger(), "Initial motion state: %s", motion_state_name(motion_state_));
     RCLCPP_INFO(get_logger(), "Gait profile: %s", gait_profile_.c_str());
     RCLCPP_INFO(
+      get_logger(), "HFE sign mode: %s",
+      use_gait_hfe_axis_sign_ ? "gait_hfe_signs * gait_hfe_axis_signs" : "gait_hfe_signs only");
+    RCLCPP_INFO(
       get_logger(), "allow_partial_joint_state_startup: %s",
       allow_partial_joint_state_startup_ ? "true" : "false");
   }
@@ -824,6 +873,11 @@ private:
     const double support_scale = current_support_scale();
     const double gait_blend = current_gait_blend();
     const double gain_scale = current_gain_scale();
+    const bool inplace_mode_active =
+      inplace_mode_enable_ &&
+      motion_state_ == MotionState::kWalk &&
+      std::abs(step_length_) <= inplace_step_length_threshold_;
+    const double inplace_bias_alpha = inplace_mode_active ? current_inplace_bias_alpha() : 0.0;
     const double stand_hip_alpha = current_stand_hip_alpha();
     const double stand_knee_alpha = current_stand_knee_alpha();
 
@@ -957,6 +1011,7 @@ private:
         step_height_ * (rear_leg ? rear_swing_step_height_scale_ : 1.0);
       const double gait_foot_x_offset =
         foot_x_signs_[leg_index] * gait_foot_x_offsets_[leg_index];
+      const double gait_foot_y_offset = gait_foot_y_offsets_[leg_index];
       const double gait_pitch_y_offset =
         is_front_leg(leg_index) ? -support_pitch_balance_offset : support_pitch_balance_offset;
       const double gait_body_x_shift =
@@ -965,7 +1020,7 @@ private:
         0.0;
 
       double foot_x = 0.0;
-      double foot_y = stance_depth_ + gait_pitch_y_offset;
+      double foot_y = stance_depth_ + gait_pitch_y_offset + gait_foot_y_offset;
       double foot_vx = 0.0;
       double foot_vy = 0.0;
 
@@ -978,7 +1033,7 @@ private:
         const FootState trajectory = trajectory_cycloid(
           tau, leg_step_length, leg_step_height, -leg_step_length / 2.0, swing_period_);
         foot_x = local_foot_x_sign * trajectory.x + gait_foot_x_offset;
-        foot_y = stance_depth_ + gait_pitch_y_offset - trajectory.y;
+        foot_y = stance_depth_ + gait_pitch_y_offset + gait_foot_y_offset - trajectory.y;
         foot_vx = local_foot_x_sign * trajectory.vx;
         foot_vy = -trajectory.vy;
       }
@@ -1029,13 +1084,53 @@ private:
           stand_start_targets.kfe, joint_isolation_kfe_target_, stand_knee_alpha);
       }
 
+      // const double gait_haa = std::clamp(nominal_haa_angles_[leg_index], kHaaLower, kHaaUpper);
+      // double gait_hfe = std::clamp(
+      //   leg.hfe_filter.filter(ik.hfe + leg.hfe_offset), kHfeLower, kHfeUpper);
+      // double gait_kfe = std::clamp(
+      //   leg.kfe_filter.filter(ik.kfe + leg.kfe_offset), kKfeLower, kKfeUpper);
+      // double gait_hfe_velocity = leg.hfe_velocity_filter.filter(joint_velocity.hfe);
+      // double gait_kfe_velocity = leg.kfe_velocity_filter.filter(joint_velocity.kfe);
+      
       const double gait_haa = std::clamp(nominal_haa_angles_[leg_index], kHaaLower, kHaaUpper);
-      double gait_hfe = std::clamp(
+
+      const double raw_gait_hfe = std::clamp(
         leg.hfe_filter.filter(ik.hfe + leg.hfe_offset), kHfeLower, kHfeUpper);
-      double gait_kfe = std::clamp(
+      const double raw_gait_kfe = std::clamp(
         leg.kfe_filter.filter(ik.kfe + leg.kfe_offset), kKfeLower, kKfeUpper);
-      double gait_hfe_velocity = leg.hfe_velocity_filter.filter(joint_velocity.hfe);
-      double gait_kfe_velocity = leg.kfe_velocity_filter.filter(joint_velocity.kfe);
+
+      const double gait_hfe_sign = std::clamp(signed_target(gait_hfe_signs_, leg_index, 1.0), -1.0, 1.0);
+      double effective_hfe_sign = gait_hfe_sign;
+      if (use_gait_hfe_axis_sign_)
+      {
+        const double axis_hfe_sign =
+          std::clamp(signed_target(gait_hfe_axis_signs_, leg_index, 1.0), -1.0, 1.0);
+        effective_hfe_sign *= axis_hfe_sign;
+      }
+      const double kfe_sign = std::clamp(signed_target(gait_kfe_signs_, leg_index, 1.0), -1.0, 1.0);
+
+      // 只反转 gait 偏移，不破坏站立目标
+      double gait_hfe = 0.0;
+      if (gait_hfe_sign_mode_ == "absolute")
+      {
+        // 直接反转绝对 gait HFE
+        gait_hfe = std::clamp(effective_hfe_sign * raw_gait_hfe, kHfeLower, kHfeUpper);
+      }
+      else
+      {
+        // 现有逻辑：反转相对 stand 偏差
+        gait_hfe = std::clamp(
+          stand_targets.hfe + effective_hfe_sign * (raw_gait_hfe - stand_targets.hfe),
+          kHfeLower, kHfeUpper);
+      }
+      double gait_kfe = std::clamp(
+      stand_targets.kfe + kfe_sign * (raw_gait_kfe - stand_targets.kfe),
+      kKfeLower, kKfeUpper);
+
+      double gait_hfe_velocity =
+        effective_hfe_sign * leg.hfe_velocity_filter.filter(joint_velocity.hfe);
+      double gait_kfe_velocity = kfe_sign * leg.kfe_velocity_filter.filter(joint_velocity.kfe);
+
 
       // 摆动相时，允许对 HFE/KFE 做额外调制:
       // - HFE 可以更保守或更激进地朝轨迹目标摆动
@@ -1045,9 +1140,15 @@ private:
         const double swing_tau = clamp01(local_phase / swing_ratio_);
         const double leg_swing_hfe_motion_scale =
           swing_hfe_motion_scale_ * (rear_leg ? rear_swing_hfe_motion_scale_ : 1.0);
+        const double leg_extra_kfe_sign = std::clamp(
+          signed_target(swing_extra_kfe_signs_, leg_index, 1.0), -1.0, 1.0);
+        const double leg_extra_kfe_scale = std::clamp(
+          swing_extra_kfe_scales_[leg_index], 0.0, 4.0);
         const double leg_swing_extra_kfe_flexion =
           swing_extra_kfe_flexion_ *
-          (rear_leg ? rear_swing_extra_kfe_flexion_scale_ : 1.0);
+          (rear_leg ? rear_swing_extra_kfe_flexion_scale_ : 1.0) *
+          leg_extra_kfe_scale *
+          leg_extra_kfe_sign;
         const double knee_flex_alpha = std::sin(kPi * swing_tau);
         const double extra_kfe_velocity =
           swing_period_ > 1e-6 ?
@@ -1062,6 +1163,17 @@ private:
           kKfeLower, kKfeUpper);
         gait_hfe_velocity *= leg_swing_hfe_motion_scale;
         gait_kfe_velocity += extra_kfe_velocity;
+      }
+
+      if (inplace_mode_active && !leg_in_swing && inplace_bias_alpha > 1e-6)
+      {
+        const double stance_hfe_bias = rear_leg ?
+          inplace_rear_hfe_stance_bias_ :
+          inplace_front_hfe_stance_comp_;
+        gait_hfe = std::clamp(
+          gait_hfe + inplace_bias_alpha * stance_hfe_bias,
+          kHfeLower,
+          kHfeUpper);
       }
 
       const double stand_thigh_ff = gravity_ff_scale_ * compute_thigh_feedforward(
@@ -1090,7 +1202,7 @@ private:
       const double knee_ff = support_scale * interpolate(stand_knee_ff, gait_knee_ff, gait_blend);
       const double leg_gain_scale =
         (motion_state_ == MotionState::kWalk && leg_in_swing) ?
-        swing_gain_scale_ * (rear_leg ? rear_swing_gain_scale_ : 1.0) : 1.0;
+        swing_gain_scale_ * (rear_leg ? rear_swing_gain_scale_ : front_swing_gain_scale_) : 1.0;
       const double effective_gain_scale = support_scale * gain_scale * leg_gain_scale;
 
       // 最终输出采用 MIT 风格五元组:
@@ -1168,7 +1280,7 @@ private:
   }
 
   // 预留调试钩子。当前实现为空，但保留这个函数可以让后续接入周期性
-  // 关节跟踪日志时，不需要改动主循环结构。
+  // 闭环跟踪日志时，不需要改动主循环结构。
   void maybe_log_joint_tracking(const rclcpp::Time & now)
   {
     (void) now;
@@ -1287,6 +1399,22 @@ private:
     }
 
     return interpolate(startup_initial_gain_scale_, stand_gain_scale_, current_stand_alpha());
+  }
+
+  // 踏步专用后腿支撑偏置采用独立渐入，避免 walk 切换瞬间再引入阶跃。
+  double current_inplace_bias_alpha() const
+  {
+    if (motion_state_ != MotionState::kWalk || !inplace_mode_enable_)
+    {
+      return 0.0;
+    }
+
+    if (inplace_bias_ramp_duration_ <= 1e-6)
+    {
+      return 1.0;
+    }
+
+    return smoothstep(state_elapsed_ / inplace_bias_ramp_duration_);
   }
 
   // stand_alpha 表示整个站起过程的总进度。
@@ -1457,7 +1585,7 @@ private:
 
   // 建立 joint name -> flat index 的查找表，避免回调里反复字符串比较。
   void initialize_joint_name_to_index()
-  {
+ {
     for (size_t leg_index = 0; leg_index < kLegCount; ++leg_index)
     {
       for (size_t joint_index = 0; joint_index < kJointsPerLeg; ++joint_index)
@@ -1541,6 +1669,7 @@ private:
   }
 
   // 预置 crouch 目标到多个内部缓存数组中，保证后续插值和 slew limit
+
   // 都以一致的起点开始。
   void set_startup_crouch_targets(size_t leg_index, bool initialize_commanded_positions)
   {
@@ -1678,6 +1807,7 @@ private:
   std::string command_topic_;
   std::string joint_state_topic_;
   std::string gait_profile_{"legacy_walk"};
+  std::string gait_hfe_sign_mode_{"delta"};
   double step_length_{0.10};
   double step_height_{0.05};
   double gait_period_{3.0};
@@ -1687,6 +1817,7 @@ private:
   double swing_gain_scale_{0.5};
   double swing_hfe_motion_scale_{0.45};
   double swing_extra_kfe_flexion_{0.18};
+  double front_swing_gain_scale_{1.0};
   double rear_swing_step_length_scale_{1.0};
   double rear_swing_step_height_scale_{1.0};
   double rear_swing_gain_scale_{1.0};
@@ -1705,6 +1836,11 @@ private:
   double startup_knee_first_ratio_{0.60};
   double stand_hold_duration_{1.0};
   double walk_ramp_duration_{1.0};
+  bool inplace_mode_enable_{false};
+  double inplace_step_length_threshold_{0.01};
+  double inplace_rear_hfe_stance_bias_{0.0};
+  double inplace_front_hfe_stance_comp_{0.0};
+  double inplace_bias_ramp_duration_{0.5};
   double stand_gain_scale_{1.8};
   double stand_haa_slew_rate_{0.15};
   double stand_hfe_slew_rate_{0.20};
@@ -1729,6 +1865,7 @@ private:
   std::vector<double> phase_offsets_;
   std::vector<double> foot_x_signs_;
   std::vector<double> gait_foot_x_offsets_;
+  std::vector<double> gait_foot_y_offsets_;
   std::vector<double> stand_foot_x_offsets_;
   std::vector<double> nominal_haa_angles_;
   std::vector<double> nominal_hfe_angles_;
@@ -1744,6 +1881,12 @@ private:
   std::vector<double> startup_crouch_kfe_targets_;
   std::vector<double> manual_hfe_offsets_;
   std::vector<double> manual_kfe_offsets_;
+  std::vector<double> gait_hfe_signs_;
+  std::vector<double> gait_kfe_signs_;
+  std::vector<double> swing_extra_kfe_signs_;
+  std::vector<double> swing_extra_kfe_scales_;
+  std::vector<double> gait_hfe_axis_signs_;
+  bool use_gait_hfe_axis_sign_{false};
 
   double haa_kp_{20.0};
   double haa_kd_{2.2};
@@ -1784,6 +1927,10 @@ private:
   bool teleop_walk_requested_{false};
   bool startup_complete_{false};
   rclcpp::Time last_cmd_vel_time_{0, 0, RCL_ROS_TIME};
+
+  // 参数读取处新增
+  double inplace_hfe_amplitude_;
+  bool inplace_hfe_only_in_swing_;
 };
 
 int main(int argc, char ** argv)

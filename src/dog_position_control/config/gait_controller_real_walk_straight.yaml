@@ -1,0 +1,121 @@
+quadruped_gait_controller:
+  ros__parameters:
+    # Real-robot conservative in-place stepping profile.
+    # Goal: verify safe lift/landing timing before adding forward stride.
+
+    use_sim_time: false
+    command_topic: /motor_cmd
+
+    use_gait_hfe_axis_sign: false
+
+    # Keep cmd_vel interface available (optional), but auto-start is enabled below.
+    cmd_vel_topic: /cmd_vel
+    cmd_vel_timeout: 0.4
+    max_linear_vel: 0.15
+    max_angular_vel: 0.30
+    cmd_vel_deadzone: 0.05
+
+    gait_profile: trot
+    # In-place stepping: no x stride, only lift/drop rhythm.
+    step_length: 0.02
+    step_height: 0.045
+    gait_period: 0.75
+    stance_depth: 0.39
+    control_rate: 400.0
+    swing_ratio: 0.5
+
+    # Keep front/rear symmetric for initial hardware verification.
+    swing_gain_scale: 1.00
+    swing_hfe_motion_scale: 0.5
+    swing_extra_kfe_flexion: 0.16
+    # 摆动相额外 KFE 调制（顺序 LF, LH, RF, RH）
+    # signs 控方向，scales 控每条腿额外卷膝幅度。
+    swing_extra_kfe_signs: [1.0, 1.0, -1.0, -1.0]
+    swing_extra_kfe_scales: [1.0, 1.0, 1.0, 1.0]
+    rear_swing_step_length_scale: 1.0
+    rear_swing_step_height_scale: 1.0
+    rear_swing_gain_scale: 1.4
+    front_swing_gain_scale: 1.6
+    rear_swing_hfe_motion_scale: 1.0
+    rear_swing_extra_kfe_flexion_scale: 1.0
+    rear_swing_pitch_feedforward_offset: 0.0
+    rear_swing_body_x_shift: 0.0
+    support_pitch_balance_gain: 0.05
+    support_pitch_balance_max_offset: 0.006
+    support_pitch_balance_target_delta: 0.002
+    filter_alpha: 0.85
+
+    # Startup/standing behavior
+    stand_only: false
+    enable_startup_stand: true
+    use_direct_joint_stand_targets: true
+    use_startup_crouch_pose: false
+    allow_partial_joint_state_startup: true
+    joint_isolation_mode: "disabled"
+    joint_isolation_kfe_target: -0.70
+    startup_settle_duration: 0.25
+    startup_min_support_scale: 0.50
+    startup_initial_gain_scale: 0.80
+    stand_up_duration: 1.00
+    startup_knee_first_ratio: 0.55
+    # Auto-start stepping after stand-up (no remote required).
+    stand_hold_duration: 2.50
+    walk_ramp_duration: 1.50
+    stand_gain_scale: 1.40
+    stand_haa_slew_rate: 0.18
+    stand_hfe_slew_rate: 0.30
+    stand_kfe_slew_rate: 0.40
+
+    gravity_ff_scale: 1.80
+    shank_mass_ratio: 0.5
+    debug_joint_tracking: false
+    debug_log_period: 0.5
+
+    # Array order: LF, LH, RF, RH
+    phase_offsets: [0.0, 0.5, 0.5, 0.0]
+    foot_x_signs: [1.0, 1.0, 1.0, 1.0]
+    gait_foot_x_offsets: [0.0, -0.005, -0.00, -0.005] # 后腿名义落点往前挪一点，减轻后腿起摆时把机身往后顶的趋势
+    # gait 足端 y 偏置（LF, LH, RF, RH）；后腿加正值可抬后身、抑制后仰
+    gait_foot_y_offsets: [0.0, 0.015, 0.0, 0.015]
+    stand_foot_x_offsets: [0.00, 0.0, 0.0, -0.015]
+
+    # Align gait nominal joint pose with validated real-robot stand posture.
+    # This avoids a large posture jump when blending from stand targets to gait IK targets.
+    nominal_haa_angles: [0.50, -0.43, -0.50, 0.43]
+    nominal_hfe_angles: [0.45, 0.00, -0.55, -0.10]
+    nominal_kfe_angles: [-1.19, -1.19, 1.19, 1.19]
+    direct_haa_signs: [1.0, 1.0, 1.0, 1.0]
+    direct_hfe_signs: [1.0, 1.0, 1.0, 1.0]
+    direct_kfe_signs: [1.0, 1.0, 1.0, 1.0]
+
+    gait_hfe_signs: [-1.0, -1.0, 1.0, 1.0]   # 先反后腿
+    gait_kfe_signs: [1.0,  1.0, -1.0,  -1.0]   # 反膝盖
+    gait_hfe_axis_signs: [1.0, 1.0, 1.0, -1.0]
+
+
+    # Keep calibrated stand posture from hardware stand profile.
+    stand_haa_targets: [0.50, -0.43, -0.50, 0.43]
+    stand_hfe_targets: [0.45, 0.00, -0.55, -0.10]
+    stand_kfe_targets: [-1.19, -1.19, 1.19, 1.19]
+    startup_crouch_haa_targets: [0.0, 0.0, 0.0, 0.0]
+    startup_crouch_hfe_targets: [0.0, 0.0, 0.0, 0.0]
+    startup_crouch_kfe_targets: [0.0, 0.0, 0.0, 0.0]
+
+    thigh_lengths: [0.198825, 0.198825, 0.198825, 0.198825]
+    shank_lengths: [0.22225, 0.22225, 0.22225, 0.22225]
+    gravity_masses: [0.62, 0.62, 0.62, 0.62]
+
+    auto_zero_offsets: false
+    # hfe_offsets: [-0.264487, -0.324164, -0.264487, -0.324164]
+    # kfe_offsets: [-0.884820, -0.974002, -0.884820, -0.974002]
+    hfe_offsets: [0.2012, -0.4099, -0.8599, -0.5464]
+    kfe_offsets: [-1.9634, -1.9644, 0.4156, 0.4192]
+
+    haa_kp: 18.0
+    haa_kd: 3.2
+    hfe_kp: 18.0
+    hfe_kd: 2.8
+    kfe_kp: 21.0
+    kfe_kd: 2.8
+    
+    gait_hfe_sign_mode: delta

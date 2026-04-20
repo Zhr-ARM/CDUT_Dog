@@ -69,19 +69,20 @@ quadruped_gait_controller:
     stand_foot_x_offsets: [0.0, 0.0, 0.0, 0.0]
 
     nominal_haa_angles: [0.0, 0.0, 0.0, 0.0]
-    nominal_hfe_angles: [-0.67, -0.67, -0.67, -0.67]
-    nominal_kfe_angles: [0.09, 0.09, 0.09, 0.09]
+    nominal_hfe_angles: [0.0, 0.0, 0.0, 0.0]
+    nominal_kfe_angles: [0.0, 0.0, 0.0, 0.0]
     direct_haa_signs: [1.0, 1.0, 1.0, 1.0]
     direct_hfe_signs: [1.0, 1.0, 1.0, 1.0]
     direct_kfe_signs: [1.0, 1.0, 1.0, 1.0]
 
     # Keep the calibrated stand pose from the current robot setup.
-    stand_haa_targets: [0.0, 0.0, 0.0, 0.0]
-    stand_hfe_targets: [0.35, 0.40, -0.35, -0.40]
-    stand_kfe_targets: [-1.0, -1.2, 1.0, 1.2]
+    #stand_haa_targets: [0.0, 0.0, 0.0, 0.0]
+    stand_haa_targets: [0.43, -0.43, -0.43, 0.43]
+    stand_hfe_targets: [0.59, 0.00, -0.75, -0.10]
+    stand_kfe_targets: [-1.19, -1.19, 1.19, 1.19]
     startup_crouch_haa_targets: [0.0, 0.0, 0.0, 0.0]
-    startup_crouch_hfe_targets: [0.22, 0.25, -0.22, -0.25]
-    startup_crouch_kfe_targets: [-0.55, -0.66, 0.55, 0.65]
+    startup_crouch_hfe_targets: [0.0, 0.0, 0.0, 0.0]
+    startup_crouch_kfe_targets: [0.0, 0.0, 0.0, 0.0]
 
     thigh_lengths: [0.198825, 0.198825, 0.198825, 0.198825]
     shank_lengths: [0.22225, 0.22225, 0.22225, 0.22225]
@@ -94,9 +95,9 @@ quadruped_gait_controller:
 
     # Base joint gains. Real stand strength mainly comes from these values
     # multiplied by stand_gain_scale above.
-    haa_kp: 12.0
-    haa_kd: 2.0
+    haa_kp: 14.0
+    haa_kd: 2.3
     hfe_kp: 12.0
-    hfe_kd: 2.0
+    hfe_kd: 2.3
     kfe_kp: 20.0
     kfe_kd: 2.4 
