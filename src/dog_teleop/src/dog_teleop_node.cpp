@@ -58,24 +58,23 @@ private:
       return;
     }
 
-    // Map joystick axes to robot commands
-    // Assuming standard Xbox/PS4 joystick layout
-    // Left stick Y-axis for forward/backward (axis 1)
-    // Right stick X-axis for rotation (axis 2)
-    if (msg->axes.size() >= 3) {
-      double linear = msg->axes[1] * max_linear_vel_;
-      double angular = msg->axes[2] * max_angular_vel_;
+    if (msg->axes.size() >= 2) {
+      double ax = msg->axes[0];
+      double ay = msg->axes[1];
+      double magnitude = std::sqrt(ax * ax + ay * ay);
 
-      // Apply deadzone
-      if (std::fabs(linear) < deadzone_linear_) {
-        linear = 0.0;
-      }
-      if (std::fabs(angular) < deadzone_angular_) {
-        angular = 0.0;
+      if (magnitude < deadzone_linear_) {
+        cmd_publisher_->publish(cmd);
+        return;
       }
 
-      cmd.linear.x = linear;
-      cmd.angular.z = angular;
+      if (magnitude > 1.0) {
+        ax /= magnitude;
+        ay /= magnitude;
+      }
+
+      cmd.linear.x = ay * max_linear_vel_;
+      cmd.angular.z = ax * max_angular_vel_;
     }
 
     cmd_publisher_->publish(cmd);

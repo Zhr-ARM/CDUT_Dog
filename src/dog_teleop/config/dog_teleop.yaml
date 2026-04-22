@@ -23,9 +23,10 @@ deadzone_angular: 0.1
 # If no joystick signal received for this duration, robot stops
 joy_timeout: 0.5
 
-# Joystick axis mapping
-# Left stick Y-axis: forward/backward (axis 1)
-# Right stick X-axis: rotation (axis 2)
+# Joystick axis mapping (left stick only)
+# Left stick Y-axis (axis 1): forward/backward -> linear.x
+# Left stick X-axis (axis 0): left/right turn -> angular.z
+# Diagonal normalization: magnitude capped to 1.0
 
 # Emergency stop
 # A button (buttons[0]): Emergency stop - stops robot immediately

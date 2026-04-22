@@ -12,6 +12,7 @@ CDUT_Dog/
 │   ├── deep_motor_ros/          # 真机电机驱动，负责 CAN 通信与状态反馈
 │   ├── dog_bringup/             # 机器人模型、消息定义、仿真/真机启动文件
 │   ├── dog_position_control/    # 四足步态控制节点与参数
+│   ├── dog_imu/                 # WitMotion IMU 驱动，发布姿态/角速度/加速度
 │   ├── dog_teleop/              # Xbox/PS4 手柄遥控节点，将摇杆输入转为速度指令
 │   └── mit_controller/          # ros2_control 控制器插件
 ├── build/                       # colcon 编译产物
@@ -55,15 +56,37 @@ CDUT_Dog/
 - `launch/dog_teleop.launch.py`：同时启动 `joy_node`（读取手柄设备）和 `dog_teleop_node`
 - `config/dog_teleop.yaml`：最大线速度、最大角速度、死区阈值、超时时间等参数
 
-摇杆映射关系：
+摇杆映射关系（仅使用左摇杆）：
 
 | 输入 | 话题/字段 | 说明 |
 |---|---|---|
-| 左摇杆 Y 轴 | `cmd_vel.linear.x` | 前进（+）/ 后退（−） |
-| 右摇杆 X 轴 | `cmd_vel.angular.z` | 左转（+）/ 右转（−） |
-| A 键 | — | 立即发布零速（急停） |
+| 左摇杆 Y 轴（axes[1]） | `cmd_vel.linear.x` | 上推前进（+）/ 下拉后退（−） |
+| 左摇杆 X 轴（axes[0]） | `cmd_vel.angular.z` | 左推左转（+）/ 右推右转（−） |
+| A 键（buttons[0]） | — | 立即发布零速（急停） |
+
+左摇杆两轴共同决定运动方向与速度：推向左前方 = 边走边左转，幅度越大速度越快。对角方向自动归一化，合速度不会超过最大值。
 
 `/cmd_vel` 由 `dog_position_control` 中的步态控制器订阅，控制实际行走速度与转向。
+
+#### `src/dog_imu`
+
+WitMotion IMU（型号 IWT603）的 ROS 2 驱动包，支持多种通信协议。
+
+- `dog_imu/wit_normal_node.py`：标准串口协议驱动节点
+- `dog_imu/wit_modbus_node.py`：Modbus 协议驱动节点
+- `dog_imu/wit_can_node.py`：CAN 协议驱动节点
+- `dog_imu/get_imu_rpy.py`：订阅 IMU 数据并打印 Roll/Pitch/Yaw 的调试工具
+- `launch/wit_imu.launch.py`：IMU 驱动启动文件，通过 `type` 参数选择协议
+
+发布的话题：
+
+| 话题 | 类型 | 说明 |
+|---|---|---|
+| `/wit/imu` | `sensor_msgs/Imu` | 四元数姿态、角速度、线加速度 |
+| `/wit/mag` | `sensor_msgs/MagneticField` | 磁力计数据 |
+| `/wit/location` | `sensor_msgs/NavSatFix` | GPS 经纬度与海拔 |
+
+> 当前 IMU 驱动已可独立运行，尚未接入步态控制闭环。后续计划用 IMU 的俯仰角反馈替代步态控制器中基于正运动学的间接姿态估算，实现机身俯仰闭环稳定。
 
 #### `src/deep_motor_ros`
 
@@ -199,16 +222,19 @@ ros2 launch dog_teleop dog_teleop.launch.py
 
 #### 5.3 手柄操作说明
 
+所有运动控制集中在左摇杆，方向与速度由摇杆二维向量决定：
+
 | 操作 | 效果 |
 |---|---|
 | 左摇杆向前推 | 机器狗前进，推幅越大速度越快 |
 | 左摇杆向后拉 | 机器狗后退 |
-| 右摇杆向左拨 | 左转（CCW） |
-| 右摇杆向右拨 | 右转（CW） |
+| 左摇杆向左推 | 原地左转（CCW） |
+| 左摇杆向右推 | 原地右转（CW） |
+| 左摇杆推向对角 | 同时前进/后退 + 转弯，合速度自动归一化不超速 |
 | 摇杆归中 | 速度归零，机器狗自动切换到站立状态 |
 | A 键 | 立即急停，发布零速指令 |
 
-> **注意：** 步态控制器收到非零 `/cmd_vel` 时自动切入行走状态；摇杆归中或手柄超过 0.5 秒未发送数据时自动切回站立。
+> **注意：** 右摇杆无功能。步态控制器收到非零 `/cmd_vel` 时自动切入行走状态；摇杆归中或手柄超过 0.5 秒未发送数据时自动切回站立。
 
 #### 5.4 不接手柄时用命令行验证
 
@@ -243,7 +269,29 @@ ros2 topic pub --rate 20 /cmd_vel geometry_msgs/msg/Twist \
 | `cmd_vel_deadzone` | `0.05` | 速度幅值低于此值视为停止 |
 | `foot_x_signs` | `[1,1,1,1]` | 各腿前进方向符号；若前进方向反了改为 `[-1,-1,-1,-1]` |
 
-### 6. 常用调试命令
+### 6. 启动 IMU
+
+将 WitMotion IMU 通过 USB 连接后：
+
+```bash
+source /opt/ros/<ros_distro>/setup.bash
+source install/setup.bash
+ros2 launch dog_imu wit_imu.launch.py type:=normal port:=/dev/ttyUSB0 baud:=9600
+```
+
+`type` 可选 `normal`（默认）、`modbus`、`hmodbus`、`can`、`hcan`，根据 IMU 固件协议选择。
+
+验证 IMU 数据：
+
+```bash
+# 查看原始 IMU 消息
+ros2 topic echo /wit/imu
+
+# 查看 Roll/Pitch/Yaw（角度制）
+ros2 run dog_imu get_imu_rpy
+```
+
+### 7. 常用调试命令
 
 查看关节状态：
 
@@ -279,6 +327,18 @@ ros2 topic echo /cmd_vel
 
 ```bash
 ros2 topic info /cmd_vel
+```
+
+查看 IMU 姿态数据：
+
+```bash
+ros2 topic echo /wit/imu
+```
+
+查看 IMU Roll/Pitch/Yaw：
+
+```bash
+ros2 run dog_imu get_imu_rpy
 ```
 
 ## 关键配置说明
