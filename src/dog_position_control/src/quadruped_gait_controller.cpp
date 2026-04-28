@@ -156,6 +156,13 @@ public:
     startup_initial_gain_scale_ = declare_parameter<double>("startup_initial_gain_scale", 0.15);
     stand_up_duration_ = declare_parameter<double>("stand_up_duration", 3.0);
     startup_knee_first_ratio_ = declare_parameter<double>("startup_knee_first_ratio", 0.60);
+    startup_front_legs_first_ = declare_parameter<bool>("startup_front_legs_first", false);
+    startup_front_leg_complete_ratio_ =
+      declare_parameter<double>("startup_front_leg_complete_ratio", 1.0);
+    startup_rear_hip_start_ratio_ =
+      declare_parameter<double>("startup_rear_hip_start_ratio", 0.0);
+    startup_rear_knee_start_ratio_ =
+      declare_parameter<double>("startup_rear_knee_start_ratio", 0.0);
     stand_hold_duration_ = declare_parameter<double>("stand_hold_duration", 1.0);
     walk_ramp_duration_ = declare_parameter<double>("walk_ramp_duration", 1.0);
     stand_gain_scale_ = declare_parameter<double>("stand_gain_scale", 1.8);
@@ -278,6 +285,10 @@ public:
     startup_settle_duration_ = std::max(startup_settle_duration_, 0.0);
     stand_up_duration_ = std::max(stand_up_duration_, 0.0);
     startup_knee_first_ratio_ = std::clamp(startup_knee_first_ratio_, 0.0, 1.0);
+    startup_front_leg_complete_ratio_ =
+      std::clamp(startup_front_leg_complete_ratio_, 0.05, 1.0);
+    startup_rear_hip_start_ratio_ = std::clamp(startup_rear_hip_start_ratio_, 0.0, 0.95);
+    startup_rear_knee_start_ratio_ = std::clamp(startup_rear_knee_start_ratio_, 0.0, 0.95);
     joint_isolation_kfe_target_ = std::clamp(joint_isolation_kfe_target_, kKfeLower, kKfeUpper);
     stand_hold_duration_ = std::max(stand_hold_duration_, 0.0);
     walk_ramp_duration_ = std::max(walk_ramp_duration_, 0.0);
@@ -618,15 +629,35 @@ private:
       const JointTargets stand_targets =
         stand_targets_for_leg(leg_index, leg, hold_startup_crouch_target);
       const JointTargets stand_start_targets = current_stand_start_targets(indices);
-      double stand_haa = interpolate(stand_start_targets.haa, stand_targets.haa, stand_hip_alpha);
-      double stand_hfe = interpolate(stand_start_targets.hfe, stand_targets.hfe, stand_hip_alpha);
-      double stand_kfe = interpolate(stand_start_targets.kfe, stand_targets.kfe, stand_knee_alpha);
+      double leg_hip_alpha = stand_hip_alpha;
+      double leg_knee_alpha = stand_knee_alpha;
+      if (startup_front_legs_first_ && motion_state_ == MotionState::kStandUp)
+      {
+        const double stand_phase = current_stand_phase();
+        if (is_front_leg(leg_index))
+        {
+          const double front_alpha =
+            startup_phase_window_alpha(stand_phase, 0.0, startup_front_leg_complete_ratio_);
+          leg_hip_alpha = front_alpha;
+          leg_knee_alpha = front_alpha;
+        }
+        else
+        {
+          leg_hip_alpha =
+            startup_phase_window_alpha(stand_phase, startup_rear_hip_start_ratio_, 1.0);
+          leg_knee_alpha =
+            startup_phase_window_alpha(stand_phase, startup_rear_knee_start_ratio_, 1.0);
+        }
+      }
+      double stand_haa = interpolate(stand_start_targets.haa, stand_targets.haa, leg_hip_alpha);
+      double stand_hfe = interpolate(stand_start_targets.hfe, stand_targets.hfe, leg_hip_alpha);
+      double stand_kfe = interpolate(stand_start_targets.kfe, stand_targets.kfe, leg_knee_alpha);
       if (joint_isolation_kfe_only())
       {
         stand_haa = stand_start_targets.haa;
         stand_hfe = stand_start_targets.hfe;
         stand_kfe = interpolate(
-          stand_start_targets.kfe, joint_isolation_kfe_target_, stand_knee_alpha);
+          stand_start_targets.kfe, joint_isolation_kfe_target_, leg_knee_alpha);
       }
 
       const double gait_haa = std::clamp(nominal_haa_angles_[leg_index], kHaaLower, kHaaUpper);
@@ -945,6 +976,21 @@ private:
     const double delayed_phase =
       (current_stand_phase() - startup_knee_first_ratio_) / (1.0 - startup_knee_first_ratio_);
     return smoothstep(delayed_phase);
+  }
+
+  double startup_phase_window_alpha(double phase, double start, double end) const
+  {
+    if (motion_state_ != MotionState::kStandUp)
+    {
+      return 1.0;
+    }
+
+    if (end <= start + 1e-6)
+    {
+      return phase >= end ? 1.0 : 0.0;
+    }
+
+    return smoothstep((phase - start) / (end - start));
   }
 
   // 一旦收到完整 joint_states，就把该时刻的真实关节角记为站立插值起点。
@@ -1299,6 +1345,10 @@ private:
   bool enable_startup_stand_{true};
   double stand_up_duration_{3.0};
   double startup_knee_first_ratio_{0.60};
+  bool startup_front_legs_first_{false};
+  double startup_front_leg_complete_ratio_{1.0};
+  double startup_rear_hip_start_ratio_{0.0};
+  double startup_rear_knee_start_ratio_{0.0};
   double stand_hold_duration_{1.0};
   double walk_ramp_duration_{1.0};
   double stand_gain_scale_{1.8};

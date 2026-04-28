@@ -47,8 +47,12 @@ quadruped_gait_controller:
     startup_settle_duration: 0.25          # 站起前等待 joint_states 稳定的时间，单位 s
     startup_min_support_scale: 0.50        # 站起初期支撑/前馈缩放下限
     startup_initial_gain_scale: 0.80       # 站起初期 PD 增益倍率
-    stand_up_duration: 2.00                # 从当前姿态过渡到站姿目标的时间，单位 s
-    startup_knee_first_ratio: 0.55         # 站起过程中先动膝盖的阶段占比
+    stand_up_duration: 4.00                # 从当前姿态过渡到站姿目标的时间，单位 s
+    startup_knee_first_ratio: 0.55         # 传统“先膝后髋”比例；startup_front_legs_first=true 时主要作为备用逻辑
+    startup_front_legs_first: true         # 起立时前腿先接管载荷，再让后腿髋/膝追目标
+    startup_front_leg_complete_ratio: 0.45 # 前腿在站起前 45% 基本到站立目标
+    startup_rear_hip_start_ratio: 0.15     # 后腿髋关节从站起 15% 后开始追目标
+    startup_rear_knee_start_ratio: 0.45    # 后腿膝关节从站起 45% 后再伸，减少后髋重载卡滞
     stand_hold_duration: 0.0               # 站起完成后保持站立多久再允许行走；stand_only=true 时无影响
     walk_ramp_duration: 0.0                # 从站立混入步态轨迹的时间；stand_only=true 时无影响
     stand_gain_scale: 1.70                 # 站立相整体 PD 增益倍率
@@ -58,7 +62,7 @@ quadruped_gait_controller:
 
     # 重力前馈、质量分配和调试参数。
     gravity_ff_scale: 1.80          # 重力补偿前馈倍率；越大越主动托起腿部
-    shank_mass_ratio: 0.5           # 等效腿质量中分配给小腿的比例
+    shank_mass_ratio: 0.3           # 等效腿质量中分配给小腿的比例
     debug_joint_tracking: false     # 是否周期性打印关节跟踪调试信息
     debug_log_period: 0.5           # 调试日志打印周期，单位 s
 
@@ -77,10 +81,10 @@ quadruped_gait_controller:
     direct_kfe_signs: [1.0, 1.0, 1.0, 1.0]           # 直接关节目标模式下 KFE 方向符号
 
     # 站立目标关节角，数组顺序为 LF, LH, RF, RH。
-    stand_haa_targets: [0.4, -0.4, -0.4, 0.4]        # 站姿 HAA 外展/内收目标角
-    stand_hfe_targets: [0.35, 0.35, -0.345, -0.345]    # 站姿 HFE 目标角
-    stand_kfe_targets: [-1.0, -1.0, 0.98, 0.98]        # 站姿 KFE 目标角
-    startup_crouch_haa_targets: [0.0, 0.0, 0.0, 0.0] # 启动低趴姿态 HAA 目标角
+    stand_haa_targets: [0.4, -0.45, -0.4, 0.45]        # 站姿 HAA 外展/内收目标角
+    stand_hfe_targets: [0.35, 0.4, -0.35, -0.4]      # 站姿 HFE 目标角
+    stand_kfe_targets: [-1.0, -1.2, 1.0, 1.2]          # 站姿 KFE 目标角
+    startup_crouch_haa_targets: [0.2, -0.45, -0.2, 0.45] # 启动低趴姿态 HAA 目标角
     startup_crouch_hfe_targets: [0.22, 0.25, -0.22, -0.25] # 启动低趴姿态 HFE 目标角
     startup_crouch_kfe_targets: [-0.55, -0.66, 0.55, 0.65] # 启动低趴姿态 KFE 目标角
 
@@ -96,9 +100,9 @@ quadruped_gait_controller:
     kfe_offsets: [-0.884820, -0.974002, -0.884820, -0.974002] # KFE 手动零位偏置
 
     # 基础关节 PD 增益；实际站立增益还会乘以 stand_gain_scale。
-    haa_kp: 18.0                    # HAA 位置比例增益
-    haa_kd: 2.0                    # HAA 速度阻尼增益
-    hfe_kp: 12.0                    # HFE 位置比例增益
-    hfe_kd: 2.0                     # HFE 速度阻尼增益
+    haa_kp: 20.0                    # HAA 位置比例增益
+    haa_kd: 2.4                    # HAA 速度阻尼增益
+    hfe_kp: 20.0                    # HFE 位置比例增益
+    hfe_kd: 2.4                     # HFE 速度阻尼增益
     kfe_kp: 30.0                    # KFE 位置比例增益
-    kfe_kd: 3.0                     # KFE 速度阻尼增益
+    kfe_kd: 3.2                     # KFE 速度阻尼增益
