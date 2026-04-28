@@ -16,6 +16,13 @@
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
 
+#include "dog_position_control/command_layout.hpp"
+#include "dog_position_control/gait_schedule.hpp"
+#include "dog_position_control/gait_trajectory.hpp"
+#include "dog_position_control/leg_kinematics.hpp"
+#include "dog_position_control/math_utils.hpp"
+#include "dog_position_control/robot_model.hpp"
+
 // 这个节点是整机级的高层步态控制器。
 //
 // 它的职责不是直接驱动单个执行器，而是:
@@ -26,313 +33,14 @@
 //    发布到 /motor_cmd，供 mit_controller 或硬件节点消费。
 //
 // 代码结构上可以把本文件分成三层:
-// - 匿名命名空间: 数学工具、轨迹函数、命令布局等基础组件
+// - dog_position_control 公共模块: 数学工具、运动学、轨迹函数、命令布局
 // - QuadrupedGaitController: 参数加载、状态机、主控制循环
 // - main(): 普通 ROS 2 节点入口
 
+namespace dog_position_control
+{
 namespace
 {
-
-// 整机固定拓扑:
-// - 4 条腿
-// - 每条腿 3 个关节: HAA / HFE / KFE
-// - 每个关节的输出命令都采用 5 个槽位的 MIT 风格协议
-constexpr size_t kLegCount = 4;
-constexpr size_t kJointsPerLeg = 3;
-constexpr size_t kValuesPerJoint = 5;
-constexpr size_t kLegCommandSize = kJointsPerLeg * kValuesPerJoint;
-constexpr size_t kAggregateCommandSize = kLegCount * kLegCommandSize;
-constexpr size_t kTotalJointCount = kLegCount * kJointsPerLeg;
-constexpr size_t kHaaJointIndex = 0;
-constexpr size_t kHfeJointIndex = 1;
-constexpr size_t kKfeJointIndex = 2;
-constexpr double kPi = M_PI;
-
-// CDUT 模型的关节限位，需要与 dog_bringup/xacro/cdut_dog/const.xacro 保持一致。
-constexpr double kHaaLower = -0.5;
-constexpr double kHaaUpper = 0.5;
-constexpr double kHfeLower = -2.0;
-constexpr double kHfeUpper = 1.6;
-constexpr double kKfeLower = -2.0;
-constexpr double kKfeUpper = 2.0;
-
-const std::array<std::string, kLegCount> kLegNames = {"LF", "LH", "RF", "RH"};
-const std::array<std::string, kJointsPerLeg> kJointSuffixes = {"HAA", "HFE", "KFE"};
-
-// 把二维索引 [腿, 关节] 映射到长度为 12 的扁平关节数组中。
-constexpr size_t flat_joint_index(size_t leg_index, size_t joint_index)
-{
-  return leg_index * kJointsPerLeg + joint_index;
-}
-
-// 为一条腿缓存三个关节在扁平数组中的索引，避免后续频繁手写偏移。
-struct JointIndices
-{
-  size_t haa;
-  size_t hfe;
-  size_t kfe;
-};
-
-constexpr JointIndices joint_indices(size_t leg_index)
-{
-  return {
-    flat_joint_index(leg_index, kHaaJointIndex),
-    flat_joint_index(leg_index, kHfeJointIndex),
-    flat_joint_index(leg_index, kKfeJointIndex)};
-}
-
-std::string joint_name(size_t leg_index, size_t joint_index)
-{
-  return kLegNames[leg_index] + "_" + kJointSuffixes[joint_index];
-}
-
-// 当前命名约定下，LF/RF 视为前腿，LH/RH 视为后腿。
-// 这个辅助函数主要用于步态补偿里区分前后支撑。
-bool is_front_leg(size_t leg_index)
-{
-  return leg_index == 0 || leg_index == 2;
-}
-
-// 某些目标量在不同腿上需要乘方向符号，例如直接给关节角目标时，
-// 左右腿或前后腿可能需要不同的正方向定义。
-double signed_target(const std::vector<double> & signs, size_t leg_index, double value)
-{
-  if (leg_index >= signs.size())
-  {
-    return value;
-  }
-  return signs[leg_index] * value;
-}
-
-// 读取“直接关节目标”模式下的第 leg_index 条腿目标值，并统一做:
-// - 符号修正
-// - 越界保护
-// 这样后续控制逻辑只处理已经规范化的关节目标。
-double direct_target_value(
-  const std::vector<double> & values,
-  const std::vector<double> & signs,
-  size_t leg_index,
-  double lower,
-  double upper)
-{
-  if (leg_index >= values.size())
-  {
-    return 0.0;
-  }
-  return std::clamp(signed_target(signs, leg_index, values[leg_index]), lower, upper);
-}
-
-// 以下是几个基础插值/限幅工具:
-// - clamp01: 把相位或权重限制到 [0, 1]
-// - smoothstep: 提供一阶导连续的平滑过渡
-// - interpolate: 统一的线性插值
-// - slew_limit: 对命令变化率做限幅，避免站立阶段目标跳变
-double clamp01(double value)
-{
-  return std::clamp(value, 0.0, 1.0);
-}
-
-double smoothstep(double value)
-{
-  value = clamp01(value);
-  return value * value * (3.0 - 2.0 * value);
-}
-
-double interpolate(double start, double end, double alpha)
-{
-  return start + (end - start) * clamp01(alpha);
-}
-
-double slew_limit(double previous, double target, double max_delta)
-{
-  if (max_delta <= 0.0)
-  {
-    return previous;
-  }
-
-  return std::clamp(target, previous - max_delta, previous + max_delta);
-}
-
-// 腿部几何参数。这里采用平面二连杆近似，只关心 HFE-KFE 平面。
-struct LegGeometry
-{
-  double thigh_length{0.2};
-  double shank_length{0.22};
-};
-
-// 逆运动学输出的两个俯仰关节目标角。
-struct IKResult
-{
-  double hfe{0.0};
-  double kfe{0.0};
-};
-
-// 足端轨迹在腿平面内的位姿和速度。
-// x: 前后方向
-// y: 向下的支撑深度方向
-struct FootState
-{
-  double x{0.0};
-  double y{0.0};
-  double vx{0.0};
-  double vy{0.0};
-};
-
-// 由足端速度映射得到的关节角速度。
-struct JointVel
-{
-  double hfe{0.0};
-  double kfe{0.0};
-};
-
-// 一条腿三个关节的目标角集合。
-struct JointTargets
-{
-  double haa{0.0};
-  double hfe{0.0};
-  double kfe{0.0};
-};
-
-// 正运动学返回的简化足端位置。
-struct LegPose2D
-{
-  double x{0.0};
-  double y{0.0};
-};
-
-// 简单一阶低通滤波器。
-// 在这里主要用于:
-// - 平滑 IK 输出的关节角
-// - 平滑由雅可比近似得到的关节速度
-// 从而降低高频抖动对下游 MIT 控制器的影响。
-class LowPassFilter
-{
-public:
-  LowPassFilter() = default;
-
-  explicit LowPassFilter(double alpha)
-  : alpha_(alpha)
-  {
-  }
-
-  void set_alpha(double alpha)
-  {
-    alpha_ = std::clamp(alpha, 0.01, 1.0);
-  }
-
-  double filter(double input)
-  {
-    if (!initialized_)
-    {
-      value_ = input;
-      initialized_ = true;
-    }
-    else
-    {
-      value_ = alpha_ * input + (1.0 - alpha_) * value_;
-    }
-    return value_;
-  }
-
-private:
-  double alpha_{0.3};
-  bool initialized_{false};
-  double value_{0.0};
-};
-
-// 二连杆腿的逆运动学。
-//
-// 输入:
-// - x: 足端前后位置
-// - y: 足端向下的支撑深度
-//
-// 输出:
-// - HFE / KFE 关节角
-//
-// 这里会先把足端距离夹到可达工作空间内，避免因为参数设置或轨迹
-// 短时越界导致 acos 出现数值错误。
-IKResult inverse_kinematics(const LegGeometry & geometry, double x, double y)
-{
-  const double l1 = geometry.thigh_length;
-  const double l2 = geometry.shank_length;
-
-  double l_sq = x * x + y * y;
-  double l = std::sqrt(l_sq);
-
-  const double l_min = std::abs(l1 - l2) + 0.001;
-  const double l_max = l1 + l2 - 0.001;
-  l = std::clamp(l, l_min, l_max);
-  l_sq = l * l;
-
-  double cos_knee = (l1 * l1 + l2 * l2 - l_sq) / (2.0 * l1 * l2);
-  cos_knee = std::clamp(cos_knee, -1.0, 1.0);
-  const double theta_kfe = kPi - std::acos(cos_knee);
-
-  const double phi1 = std::atan2(-x, y);
-  double cos_phi2 = (l_sq + l1 * l1 - l2 * l2) / (2.0 * l * l1);
-  cos_phi2 = std::clamp(cos_phi2, -1.0, 1.0);
-  const double phi2 = std::acos(cos_phi2);
-  const double theta_hfe = phi2 + phi1;
-
-  return {theta_hfe, theta_kfe};
-}
-
-// 与 inverse_kinematics 对应的正运动学，主要用于从实际关节角反推
-// 当前足端支撑深度，以便做前后腿支撑平衡补偿。
-LegPose2D forward_kinematics(const LegGeometry & geometry, double hfe, double kfe)
-{
-  LegPose2D pose;
-  pose.x =
-    -geometry.thigh_length * std::sin(hfe) -
-    geometry.shank_length * std::sin(hfe + kfe);
-  pose.y =
-    geometry.thigh_length * std::cos(hfe) +
-    geometry.shank_length * std::cos(hfe + kfe);
-  return pose;
-}
-
-// 摆动相轨迹:
-// 采用 cycloid 形式，让抬脚和落脚都比较平滑，同时天然可得到解析速度。
-FootState trajectory_cycloid(
-  double tau,
-  double step_length,
-  double step_height,
-  double start_x,
-  double period)
-{
-  FootState state;
-  state.x = start_x + step_length * (tau - std::sin(2.0 * kPi * tau) / (2.0 * kPi));
-  state.y = step_height * (1.0 - std::cos(2.0 * kPi * tau)) / 2.0;
-
-  if (period > 0.0)
-  {
-    const double dtau = 1.0 / period;
-    state.vx = step_length * (1.0 - std::cos(2.0 * kPi * tau)) * dtau;
-    state.vy = step_height * kPi * std::sin(2.0 * kPi * tau) * dtau;
-  }
-
-  return state;
-}
-
-// trot 支撑相轨迹:
-// 这里没有使用简单直线回拉，而是用了余弦形式，使支撑相前后过渡更柔和。
-FootState trajectory_stance_trot(
-  double tau,
-  double step_length,
-  double period)
-{
-  FootState state;
-  tau = clamp01(tau);
-  const double half_step = step_length * 0.5;
-  state.x = half_step * std::cos(kPi * tau);
-
-  if (period > 0.0)
-  {
-    state.vx = -half_step * kPi * std::sin(kPi * tau) / period;
-  }
-
-  return state;
-}
 
 std::string to_lower_copy(std::string value)
 {
@@ -340,58 +48,6 @@ std::string to_lower_copy(std::string value)
     value.begin(), value.end(), value.begin(),
     [](unsigned char c) {return static_cast<char>(std::tolower(c));});
   return value;
-}
-
-// 把足端笛卡尔速度近似映射到关节角速度。
-// 这个函数本质上是在做局部雅可比的解析求导，用于给 MIT 控制器中的
-// v_des 提供一个与轨迹一致的关节速度参考。
-JointVel compute_joint_velocity(
-  const LegGeometry & geometry,
-  double x,
-  double y,
-  double vx,
-  double vy)
-{
-  const double l1 = geometry.thigh_length;
-  const double l2 = geometry.shank_length;
-
-  double l_sq = x * x + y * y;
-  double l = std::sqrt(l_sq);
-  if (l < 0.01)
-  {
-    return {};
-  }
-
-  const double l_min = std::abs(l1 - l2) + 0.001;
-  const double l_max = l1 + l2 - 0.001;
-  l = std::clamp(l, l_min, l_max);
-  l_sq = l * l;
-
-  double cos_knee = (l1 * l1 + l2 * l2 - l_sq) / (2.0 * l1 * l2);
-  cos_knee = std::clamp(cos_knee, -0.999, 0.999);
-  double sin_knee = std::sqrt(1.0 - cos_knee * cos_knee);
-  sin_knee = std::max(sin_knee, 1e-6);
-  const double dtheta_kfe_dl = l / (l1 * l2 * sin_knee);
-
-  double cos_phi2 = (l_sq + l1 * l1 - l2 * l2) / (2.0 * l * l1);
-  cos_phi2 = std::clamp(cos_phi2, -0.999, 0.999);
-  double sin_phi2 = std::sqrt(1.0 - cos_phi2 * cos_phi2);
-  sin_phi2 = std::max(sin_phi2, 1e-6);
-  const double dphi2_dl = -(l_sq - l1 * l1 + l2 * l2) / (2.0 * l_sq * l1 * sin_phi2);
-
-  const double dl_dx = x / l;
-  const double dl_dy = y / l;
-  const double dphi1_dx = -y / l_sq;
-  const double dphi1_dy = -x / l_sq;
-
-  const double dtheta_hfe_dx = dphi1_dx + dphi2_dl * dl_dx;
-  const double dtheta_hfe_dy = dphi1_dy + dphi2_dl * dl_dy;
-  const double dtheta_kfe_dx = dtheta_kfe_dl * dl_dx;
-  const double dtheta_kfe_dy = dtheta_kfe_dl * dl_dy;
-
-  return {
-    dtheta_hfe_dx * vx + dtheta_hfe_dy * vy,
-    dtheta_kfe_dx * vx + dtheta_kfe_dy * vy};
 }
 
 // 所有按腿配置的参数都必须严格是 4 个元素，对应 LF/LH/RF/RH。
@@ -418,64 +74,6 @@ void validate_vector_sizes(std::initializer_list<NamedVectorParameter> parameter
     validate_vector_size(parameter.name, *parameter.values);
   }
 }
-
-// 将单个关节命令写入整机扁平数组。
-//
-// 数组布局固定为:
-//   leg_0 joint_0 [p, v, t_ff, kp, kd]
-//   leg_0 joint_1 [p, v, t_ff, kp, kd]
-//   ...
-//   leg_3 joint_2 [p, v, t_ff, kp, kd]
-//
-// 这个布局必须与 mit_controller / deep_motor_ros 的解析顺序保持一致。
-void write_joint_command(
-  std::vector<double> & command_data,
-  size_t leg_index,
-  size_t joint_index,
-  double position,
-  double velocity,
-  double effort,
-  double kp,
-  double kd)
-{
-  const size_t base = leg_index * kLegCommandSize + joint_index * kValuesPerJoint;
-  command_data[base + 0] = position;
-  command_data[base + 1] = velocity;
-  command_data[base + 2] = effort;
-  command_data[base + 3] = kp;
-  command_data[base + 4] = kd;
-}
-
-// 把一条腿的三个关节目标统一写到指定数组中。
-// 该辅助函数会被用于:
-// - commanded_positions_
-// - stand_start_positions_
-// - slewed_command_positions_
-void set_leg_joint_values(
-  std::array<double, kTotalJointCount> & joint_values,
-  const JointIndices & indices,
-  const JointTargets & targets)
-{
-  joint_values[indices.haa] = targets.haa;
-  joint_values[indices.hfe] = targets.hfe;
-  joint_values[indices.kfe] = targets.kfe;
-}
-
-// 每条腿在控制循环中需要维护的状态:
-// - 低通滤波器
-// - 零位偏置
-// - 用于重力前馈的等效质量分配
-struct LegState
-{
-  LowPassFilter hfe_filter;
-  LowPassFilter kfe_filter;
-  LowPassFilter hfe_velocity_filter;
-  LowPassFilter kfe_velocity_filter;
-  double hfe_offset{0.0};
-  double kfe_offset{0.0};
-  double thigh_mass{0.0};
-  double shank_mass{0.0};
-};
 
 }  // namespace
 
@@ -523,6 +121,9 @@ public:
     stance_depth_ = declare_parameter<double>("stance_depth", 0.33);
     control_rate_ = declare_parameter<double>("control_rate", 50.0);
     swing_ratio_ = declare_parameter<double>("swing_ratio", 0.7);
+    stance_transition_ratio_ = declare_parameter<double>("stance_transition_ratio", 0.15);
+    reset_phase_on_walk_start_ = declare_parameter<bool>("reset_phase_on_walk_start", true);
+    walk_start_phase_ = declare_parameter<double>("walk_start_phase", 0.0);
     swing_gain_scale_ = declare_parameter<double>("swing_gain_scale", 0.5);
     swing_hfe_motion_scale_ = declare_parameter<double>("swing_hfe_motion_scale", 0.45);
     swing_extra_kfe_flexion_ = declare_parameter<double>("swing_extra_kfe_flexion", 0.18);
@@ -657,6 +258,8 @@ public:
     // 这一步的目标不是“自动修正错误配置”，而是把参数限制在控制器
     // 能够稳定工作的范围内。
     swing_ratio_ = std::clamp(swing_ratio_, 0.05, 0.95);
+    stance_transition_ratio_ = std::clamp(stance_transition_ratio_, 0.0, 0.45);
+    walk_start_phase_ = normalize_gait_phase(walk_start_phase_);
     swing_gain_scale_ = std::clamp(swing_gain_scale_, 0.05, 1.0);
     swing_hfe_motion_scale_ = std::clamp(swing_hfe_motion_scale_, 0.0, 1.0);
     swing_extra_kfe_flexion_ = std::max(swing_extra_kfe_flexion_, 0.0);
@@ -827,18 +430,11 @@ private:
     const double stand_hip_alpha = current_stand_hip_alpha();
     const double stand_knee_alpha = current_stand_knee_alpha();
 
-    std::array<double, kLegCount> local_phases{};
-    std::array<bool, kLegCount> legs_in_swing{};
-
-    // 每条腿的相位 = 全局相位 + 腿间相位偏移。
-    // 当 local_phase < swing_ratio_ 时，认为该腿处于摆动相。
-    for (size_t leg_index = 0; leg_index < kLegCount; ++leg_index)
-    {
-      local_phases[leg_index] = normalized_phase(global_phase_ + phase_offsets_[leg_index]);
-      legs_in_swing[leg_index] = local_phases[leg_index] < swing_ratio_;
-    }
+    // 每条腿的相位、摆动/支撑状态和局部 tau 统一由 gait schedule 生成。
+    // 这样后续扩展 crawl/pace/bound 时，主控制循环不需要继续堆相位细节。
+    const auto gait_schedule = make_gait_schedule(global_phase_, phase_offsets_, swing_ratio_);
     const bool rear_leg_in_swing =
-      !trot_profile && (legs_in_swing[1] || legs_in_swing[3]);
+      !trot_profile && (gait_schedule[1].in_swing || gait_schedule[3].in_swing);
 
     double front_support_y_sum = 0.0;
     double rear_support_y_sum = 0.0;
@@ -860,16 +456,17 @@ private:
         continue;
       }
 
+      const auto & leg = leg_states_[leg_index];
       const LegPose2D actual_pose = forward_kinematics(
         geometries_[leg_index],
-        actual_positions_[indices.hfe],
-        actual_positions_[indices.kfe]);
+        actual_positions_[indices.hfe] - leg.hfe_offset,
+        actual_positions_[indices.kfe] - leg.kfe_offset);
 
       if (is_front_leg(leg_index))
       {
         front_all_y_sum += actual_pose.y;
         ++front_all_count;
-        if (!legs_in_swing[leg_index])
+        if (gait_schedule[leg_index].contact_weight > 0.5)
         {
           front_support_y_sum += actual_pose.y;
           ++front_support_count;
@@ -879,7 +476,7 @@ private:
       {
         rear_all_y_sum += actual_pose.y;
         ++rear_all_count;
-        if (!legs_in_swing[leg_index])
+        if (gait_schedule[leg_index].contact_weight > 0.5)
         {
           rear_support_y_sum += actual_pose.y;
           ++rear_support_count;
@@ -933,8 +530,8 @@ private:
     for (size_t leg_index = 0; leg_index < kLegCount; ++leg_index)
     {
       const auto indices = joint_indices(leg_index);
-      const double local_phase = local_phases[leg_index];
-      const bool leg_in_swing = legs_in_swing[leg_index];
+      const LegPhaseState phase_state = gait_schedule[leg_index];
+      const bool leg_in_swing = phase_state.in_swing;
       const bool rear_leg = !is_front_leg(leg_index);
       const bool hold_startup_crouch_target = use_startup_crouch_pose_ && !enable_startup_stand_;
 
@@ -974,9 +571,12 @@ private:
       // - 支撑相强调机体相对足端的推进/回拉
       if (leg_in_swing)
       {
-        const double tau = local_phase / swing_ratio_;
         const FootState trajectory = trajectory_cycloid(
-          tau, leg_step_length, leg_step_height, -leg_step_length / 2.0, swing_period_);
+          phase_state.swing_tau,
+          leg_step_length,
+          leg_step_height,
+          -leg_step_length / 2.0,
+          swing_period_);
         foot_x = local_foot_x_sign * trajectory.x + gait_foot_x_offset;
         foot_y = stance_depth_ + gait_pitch_y_offset - trajectory.y;
         foot_vx = local_foot_x_sign * trajectory.vx;
@@ -984,10 +584,10 @@ private:
       }
       else
       {
-        const double tau = (local_phase - swing_ratio_) / (1.0 - swing_ratio_);
         if (trot_profile)
         {
-          const FootState trajectory = trajectory_stance_trot(tau, leg_step_length, stance_period_);
+          const FootState trajectory = trajectory_stance_trot(
+            phase_state.stance_tau, leg_step_length, stance_period_, stance_transition_ratio_);
           foot_x =
             local_foot_x_sign * trajectory.x +
             gait_foot_x_offset + gait_body_x_shift;
@@ -998,7 +598,7 @@ private:
           const double front_x = leg_step_length / 2.0;
           const double back_x = -leg_step_length / 2.0;
           foot_x =
-            local_foot_x_sign * (front_x + (back_x - front_x) * tau) +
+            local_foot_x_sign * (front_x + (back_x - front_x) * phase_state.stance_tau) +
             gait_foot_x_offset + gait_body_x_shift;
           foot_vx = local_foot_x_sign * ((back_x - front_x) / stance_period_);
         }
@@ -1042,7 +642,7 @@ private:
       // - KFE 可以额外加一段“卷膝”动作，帮助离地
       if (motion_state_ == MotionState::kWalk && leg_in_swing)
       {
-        const double swing_tau = clamp01(local_phase / swing_ratio_);
+        const double swing_tau = phase_state.swing_tau;
         const double leg_swing_hfe_motion_scale =
           swing_hfe_motion_scale_ * (rear_leg ? rear_swing_hfe_motion_scale_ : 1.0);
         const double leg_swing_extra_kfe_flexion =
@@ -1133,7 +733,7 @@ private:
 
     if (motion_state_ == MotionState::kWalk)
     {
-      global_phase_ = normalized_phase(global_phase_ + dt / gait_period_);
+      global_phase_ = normalize_gait_phase(global_phase_ + dt / gait_period_);
     }
   }
 
@@ -1172,17 +772,6 @@ private:
   void maybe_log_joint_tracking(const rclcpp::Time & now)
   {
     (void) now;
-  }
-
-  // 把任意实数相位折叠到 [0, 1) 周期区间内。
-  static double normalized_phase(double phase)
-  {
-    phase = std::fmod(phase, 1.0);
-    if (phase < 0.0)
-    {
-      phase += 1.0;
-    }
-    return phase;
   }
 
   // 当前只显式支持 legacy_walk 和 trot 两种步态，其中 trot 会启用
@@ -1650,6 +1239,10 @@ private:
 
     motion_state_ = next_state;
     state_elapsed_ = 0.0;
+    if (motion_state_ == MotionState::kWalk && reset_phase_on_walk_start_)
+    {
+      global_phase_ = walk_start_phase_;
+    }
     RCLCPP_INFO(get_logger(), "Motion state -> %s", motion_state_name(motion_state_));
   }
 
@@ -1684,6 +1277,9 @@ private:
   double stance_depth_{0.33};
   double control_rate_{50.0};
   double swing_ratio_{0.7};
+  double stance_transition_ratio_{0.15};
+  bool reset_phase_on_walk_start_{true};
+  double walk_start_phase_{0.0};
   double swing_gain_scale_{0.5};
   double swing_hfe_motion_scale_{0.45};
   double swing_extra_kfe_flexion_{0.18};
@@ -1786,10 +1382,12 @@ private:
   rclcpp::Time last_cmd_vel_time_{0, 0, RCL_ROS_TIME};
 };
 
+}  // namespace dog_position_control
+
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
-  auto node = std::make_shared<QuadrupedGaitController>();
+  auto node = std::make_shared<dog_position_control::QuadrupedGaitController>();
   rclcpp::spin(node);
   rclcpp::shutdown();
   return 0;

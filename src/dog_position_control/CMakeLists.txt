@@ -15,7 +15,15 @@ find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 
 add_executable(quadruped_gait_controller
+  src/command_layout.cpp
+  src/gait_schedule.cpp
+  src/gait_trajectory.cpp
+  src/leg_kinematics.cpp
   src/quadruped_gait_controller.cpp
+)
+
+target_include_directories(quadruped_gait_controller
+  PRIVATE include
 )
 
 ament_target_dependencies(quadruped_gait_controller
@@ -33,6 +41,11 @@ install(
 install(
   DIRECTORY config launch
   DESTINATION share/${PROJECT_NAME}
+)
+
+install(
+  DIRECTORY include/
+  DESTINATION include
 )
 
 if(BUILD_TESTING)

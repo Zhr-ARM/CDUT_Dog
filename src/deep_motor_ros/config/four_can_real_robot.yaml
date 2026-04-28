@@ -1,10 +1,10 @@
 deep_motor_node:
   ros__parameters:
-    # Current host port mapping observed on 2026-04-03:
-    # 3-1.1 -> can0, 3-1.2 -> can1, 3-1.3 -> can2, 3-1.4 -> can3
-    # Desired leg order is LF, LH, RF, RH by physical USB port:
-    # LF=3-1.2, LH=3-1.1, RF=3-1.3, RH=3-1.4
-    can_interfaces: [can1, can0, can2, can3]
+    # Stable udev names from dog_bringup/config/99-serial-can.rules.
+    # Desired leg order is LF, LH, RF, RH.
+    # LF=3-1.2 -> can_lf, LH=3-1.1 -> can_lh,
+    # RF=3-1.3 -> can_rf, RH=3-1.4 -> can_rh
+    can_interfaces: [can_lf, can_lh, can_rf, can_rh]
     motors_per_can: 3
     motor_ids: [0, 1, 2]
     joint_names:
@@ -30,3 +30,32 @@ deep_motor_node:
     can_configure_retries: 3
     control_rate_hz: 400.0
     status_log_period_sec: 5.0
+    auto_set_home_on_startup: true
+    require_home_on_startup: false
+    home_command_retries: 3
+    home_command_delay_sec: 0.05
+
+    # Ctrl+C 退出 motor_node 前，先插值回到一个安全关节角，再 disable 电机。
+    # 数组顺序必须与 joint_names 一致: LF_HAA, LF_HFE, LF_KFE, LH_..., RF_..., RH_...
+    # 如果启动时 auto_set_home_on_startup=true 且机器人是在趴姿/零位姿态上电，
+    # 全 0.0 就表示退出前回到该零位趴姿。
+    shutdown_move_on_exit: true
+    shutdown_duration_sec: 2.0
+    shutdown_rate_hz: 20.0
+    shutdown_command_timeout_ms: 5
+    shutdown_kp: 8.0
+    shutdown_kd: 1.0
+    shutdown_torque: 0.0
+    shutdown_positions:
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0

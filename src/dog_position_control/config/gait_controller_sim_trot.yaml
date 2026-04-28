@@ -19,6 +19,9 @@ quadruped_gait_controller:
     stance_depth: 0.39              # 名义站高/支撑深度，越大腿越“长”
     control_rate: 400.0             # 控制循环频率，单位 Hz
     swing_ratio: 0.50               # 摆动相占整个周期的比例；trot 常取 0.5 左右
+    stance_transition_ratio: 0.15   # 支撑相两端用于速度缓入/缓出的比例
+    reset_phase_on_walk_start: true # 每次从站立进入行走时重置全局步态相位
+    walk_start_phase: 0.0           # trot 下从一组对角腿刚开始摆动的位置起步
 
     # 摆动相与后腿补偿
     swing_gain_scale: 0.65          # 摆动相整体 PD 增益倍率
