@@ -1,32 +1,31 @@
-# Dog Teleop Configuration
+joy_node:
+  ros__parameters:
+    dev: /dev/input/js0
+    deadzone: 0.05
+    autorepeat_rate: 20.0
 
-# Joystick input topic
-joy_topic: /joy
+dog_teleop:
+  ros__parameters:
+    # Joystick input topic from joy_node.
+    joy_topic: /joy
 
-# Output command velocity topic
-cmd_topic: /cmd_vel
+    # High-level action topic consumed by quadruped_gait_controller.
+    gait_action_topic: /gait_action
 
-# Maximum linear velocity (m/s)
-max_linear_vel: 1.0
+    # Left stick mapping:
+    # axis 1 > 0 -> forward, axis 1 < 0 -> backward
+    # axis 0 > 0 -> turn_left, axis 0 < 0 -> turn_right
+    linear_axis: 1
+    angular_axis: 0
+    invert_linear: false
+    invert_angular: false
 
-# Maximum angular velocity (rad/s)
-max_angular_vel: 1.0
+    # Deadzone - ignore input below this threshold.
+    deadzone_linear: 0.25
+    deadzone_angular: 0.25
 
-# Deadzone - ignore input below this threshold
-# Linear deadzone (0.0-1.0)
-deadzone_linear: 0.1
+    # If no joystick signal is received for this duration, publish "stand".
+    joy_timeout: 0.5
 
-# Angular deadzone (0.0-1.0)
-deadzone_angular: 0.1
-
-# Joystick timeout for disconnection protection (seconds)
-# If no joystick signal received for this duration, robot stops
-joy_timeout: 0.5
-
-# Joystick axis mapping (left stick only)
-# Left stick Y-axis (axis 1): forward/backward -> linear.x
-# Left stick X-axis (axis 0): left/right turn -> angular.z
-# Diagonal normalization: magnitude capped to 1.0
-
-# Emergency stop
-# A button (buttons[0]): Emergency stop - stops robot immediately
+    # A button (buttons[0]) publishes "stand" immediately.
+    emergency_stop_button: 0

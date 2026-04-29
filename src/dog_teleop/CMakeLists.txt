@@ -12,7 +12,6 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
-find_package(geometry_msgs REQUIRED)
 
 add_executable(dog_teleop_node
   src/dog_teleop_node.cpp
@@ -22,7 +21,6 @@ ament_target_dependencies(dog_teleop_node
   rclcpp
   sensor_msgs
   std_msgs
-  geometry_msgs
 )
 
 install(
