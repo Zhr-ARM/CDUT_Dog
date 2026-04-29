@@ -120,6 +120,22 @@ void CanInterfaceManager::configure_interfaces(
   }
 }
 
+void CanInterfaceManager::bring_interfaces_down(
+  const std::vector<std::string> & can_interfaces) const
+{
+  for (const auto & can_interface : can_interfaces)
+  {
+    if (!interface_exists(can_interface))
+    {
+      continue;
+    }
+
+    const bool ok_down = run_setup_command(
+      can_interface, "ip link set " + can_interface + " down");
+    log_interface_snapshot(can_interface, ok_down ? "after-down" : "after-down-failed");
+  }
+}
+
 void CanInterfaceManager::log_interface_snapshot(
   const std::string & can_interface,
   const std::string & stage) const

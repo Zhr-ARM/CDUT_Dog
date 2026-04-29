@@ -33,9 +33,17 @@ private:
 
   void initialize_buses();
   bool enable_and_verify_motor(BusContext & bus, MotorContext & motor);
+  bool control_probe_motor(BusContext & bus, MotorContext & motor);
+  bool disable_motor_with_retries(
+    BusContext & bus,
+    MotorContext & motor,
+    int retries,
+    double delay_sec,
+    const char * stage);
   bool set_home_for_motor(BusContext & bus, MotorContext & motor);
   void normalize_shutdown_positions();
   void move_to_shutdown_pose_if_requested();
+  void bring_can_interfaces_down_on_exit();
 
   void command_callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg);
   void control_loop();
@@ -60,8 +68,15 @@ private:
   double status_log_period_sec_{5.0};
   bool auto_set_home_on_startup_{false};
   bool require_home_on_startup_{false};
+  bool disable_motors_before_enable_{true};
+  bool verify_control_after_enable_{true};
+  int startup_disable_retries_{3};
+  double startup_disable_delay_sec_{0.02};
   int home_command_retries_{3};
   double home_command_delay_sec_{0.05};
+  int shutdown_disable_retries_{3};
+  double shutdown_disable_delay_sec_{0.02};
+  bool can_down_on_shutdown_{false};
   bool shutdown_move_on_exit_{false};
   std::vector<double> shutdown_positions_;
   double shutdown_duration_sec_{1.5};

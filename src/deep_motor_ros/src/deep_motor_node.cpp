@@ -51,13 +51,16 @@ DeepMotorNode::~DeepMotorNode()
     {
       if (bus.can_handle && motor.is_connected && motor.cmd_handle && motor.data_handle)
       {
-        send_disable_motor(bus, motor);
+        disable_motor_with_retries(
+          bus, motor, shutdown_disable_retries_, shutdown_disable_delay_sec_, "ShutdownDisable");
       }
       destroy_motor_io(motor);
     }
 
     close_can_bus(bus);
   }
+
+  bring_can_interfaces_down_on_exit();
 }
 
 void DeepMotorNode::declare_parameters()
@@ -79,8 +82,15 @@ void DeepMotorNode::declare_parameters()
   declare_parameter<double>("status_log_period_sec", 5.0);
   declare_parameter<bool>("auto_set_home_on_startup", false);
   declare_parameter<bool>("require_home_on_startup", false);
+  declare_parameter<bool>("disable_motors_before_enable", true);
+  declare_parameter<bool>("verify_control_after_enable", true);
+  declare_parameter<int>("startup_disable_retries", 3);
+  declare_parameter<double>("startup_disable_delay_sec", 0.02);
   declare_parameter<int>("home_command_retries", 3);
   declare_parameter<double>("home_command_delay_sec", 0.05);
+  declare_parameter<int>("shutdown_disable_retries", 3);
+  declare_parameter<double>("shutdown_disable_delay_sec", 0.02);
+  declare_parameter<bool>("can_down_on_shutdown", false);
   declare_parameter<bool>("shutdown_move_on_exit", false);
   declare_parameter<std::vector<double>>("shutdown_positions", std::vector<double>{});
   declare_parameter<double>("shutdown_duration_sec", 1.5);
@@ -113,9 +123,20 @@ void DeepMotorNode::load_parameters()
   status_log_period_sec_ = std::max(0.0, get_parameter("status_log_period_sec").as_double());
   auto_set_home_on_startup_ = get_parameter("auto_set_home_on_startup").as_bool();
   require_home_on_startup_ = get_parameter("require_home_on_startup").as_bool();
+  disable_motors_before_enable_ = get_parameter("disable_motors_before_enable").as_bool();
+  verify_control_after_enable_ = get_parameter("verify_control_after_enable").as_bool();
+  startup_disable_retries_ =
+    std::max(0, static_cast<int>(get_parameter("startup_disable_retries").as_int()));
+  startup_disable_delay_sec_ =
+    std::max(0.0, get_parameter("startup_disable_delay_sec").as_double());
   home_command_retries_ =
     std::max(1, static_cast<int>(get_parameter("home_command_retries").as_int()));
   home_command_delay_sec_ = std::max(0.0, get_parameter("home_command_delay_sec").as_double());
+  shutdown_disable_retries_ =
+    std::max(1, static_cast<int>(get_parameter("shutdown_disable_retries").as_int()));
+  shutdown_disable_delay_sec_ =
+    std::max(0.0, get_parameter("shutdown_disable_delay_sec").as_double());
+  can_down_on_shutdown_ = get_parameter("can_down_on_shutdown").as_bool();
   shutdown_move_on_exit_ = get_parameter("shutdown_move_on_exit").as_bool();
   shutdown_positions_ = get_parameter("shutdown_positions").as_double_array();
   shutdown_duration_sec_ = std::max(0.0, get_parameter("shutdown_duration_sec").as_double());
@@ -301,8 +322,25 @@ void DeepMotorNode::initialize_buses()
         continue;
       }
 
+      if (disable_motors_before_enable_)
+      {
+        disable_motor_with_retries(
+          bus, motor, startup_disable_retries_, startup_disable_delay_sec_, "StartupDisable");
+      }
+
       if (enable_and_verify_motor(bus, motor))
       {
+        if (verify_control_after_enable_ && !control_probe_motor(bus, motor))
+        {
+          motor.is_connected = false;
+          RCLCPP_ERROR(
+            get_logger(),
+            "[ControlProbe] %s slot=%d joint=%s motor_id=%d enable replied, "
+            "but MIT control probe failed. Motor will stay offline.",
+            bus.can_interface.c_str(), motor.local_slot, motor.joint_name.c_str(), motor.id);
+          continue;
+        }
+
         if (auto_set_home_on_startup_)
         {
           if (set_home_for_motor(bus, motor))
@@ -392,6 +430,81 @@ bool DeepMotorNode::enable_and_verify_motor(BusContext & bus, MotorContext & mot
       bus.can_interface.c_str(), motor.local_slot, motor.joint_name.c_str(), motor.id);
   }
   return is_verified;
+}
+
+bool DeepMotorNode::control_probe_motor(BusContext & bus, MotorContext & motor)
+{
+  const ControlCommand saved_cmd = motor.current_cmd;
+  motor.current_cmd.p = motor.has_feedback ? motor.current_state.p : saved_cmd.p;
+  motor.current_cmd.v = 0.0;
+  motor.current_cmd.t = 0.0;
+  motor.current_cmd.kp = 0.0;
+  motor.current_cmd.kd = 0.0;
+
+  const MotorIoResult result = send_control_motor_with_timeout(bus, motor, 20);
+  motor.current_cmd = saved_cmd;
+
+  if (send_recv_ok(result) && reply_matches(result, motor))
+  {
+    motor.current_state = result.state;
+    motor.has_feedback = true;
+    RCLCPP_INFO(
+      get_logger(),
+      "[ControlProbe] %s slot=%d joint=%s motor_id=%d OK p=%.4f v=%.4f t=%.4f.",
+      bus.can_interface.c_str(), motor.local_slot, motor.joint_name.c_str(), motor.id,
+      result.state.p, result.state.v, result.state.t);
+    return true;
+  }
+
+  RCLCPP_ERROR(
+    get_logger(),
+    "[ControlProbe] %s slot=%d joint=%s motor_id=%d failed ret=%d reply_id=%u reply_cmd=%u.",
+    bus.can_interface.c_str(), motor.local_slot, motor.joint_name.c_str(), motor.id,
+    result.ret, result.reply_motor_id, result.reply_cmd);
+  return false;
+}
+
+bool DeepMotorNode::disable_motor_with_retries(
+  BusContext & bus,
+  MotorContext & motor,
+  int retries,
+  double delay_sec,
+  const char * stage)
+{
+  if (!bus.can_handle || !motor.cmd_handle || !motor.data_handle || retries <= 0)
+  {
+    return false;
+  }
+
+  for (int attempt = 1; attempt <= retries; ++attempt)
+  {
+    const MotorIoResult result = send_disable_motor(bus, motor);
+    if (send_recv_ok(result) && reply_matches(result, motor))
+    {
+      motor.current_state = result.state;
+      motor.has_feedback = true;
+      motor.is_connected = false;
+      RCLCPP_INFO(
+        get_logger(),
+        "[%s] %s slot=%d joint=%s motor_id=%d disabled on attempt %d/%d.",
+        stage, bus.can_interface.c_str(), motor.local_slot, motor.joint_name.c_str(), motor.id,
+        attempt, retries);
+      return true;
+    }
+
+    RCLCPP_WARN(
+      get_logger(),
+      "[%s] %s slot=%d joint=%s motor_id=%d disable attempt %d/%d failed ret=%d reply_id=%u.",
+      stage, bus.can_interface.c_str(), motor.local_slot, motor.joint_name.c_str(), motor.id,
+      attempt, retries, result.ret, result.reply_motor_id);
+
+    if (delay_sec > 0.0)
+    {
+      std::this_thread::sleep_for(std::chrono::duration<double>(delay_sec));
+    }
+  }
+
+  return false;
 }
 
 bool DeepMotorNode::set_home_for_motor(BusContext & bus, MotorContext & motor)
@@ -571,6 +684,22 @@ void DeepMotorNode::move_to_shutdown_pose_if_requested()
     const auto sleep_until_time = std::max(next_step_time, clock::now());
     std::this_thread::sleep_until(sleep_until_time);
   }
+}
+
+void DeepMotorNode::bring_can_interfaces_down_on_exit()
+{
+  if (!can_down_on_shutdown_ || can_interfaces_.empty())
+  {
+    return;
+  }
+
+  CanInterfaceConfig config;
+  config.bitrate = can_bitrate_;
+  config.txqueuelen = can_txqueuelen_;
+  config.wait_sec = can_interface_wait_sec_;
+  config.configure_retries = can_configure_retries_;
+  const CanInterfaceManager can_manager(get_logger(), config);
+  can_manager.bring_interfaces_down(can_interfaces_);
 }
 
 void DeepMotorNode::command_callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)

@@ -24,6 +24,7 @@ public:
 
   void wait_for_interfaces(const std::vector<std::string> & can_interfaces) const;
   void configure_interfaces(const std::vector<std::string> & can_interfaces) const;
+  void bring_interfaces_down(const std::vector<std::string> & can_interfaces) const;
   void log_interface_snapshot(
     const std::string & can_interface,
     const std::string & stage) const;

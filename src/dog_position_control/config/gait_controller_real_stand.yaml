@@ -1,29 +1,44 @@
 quadruped_gait_controller:
   ros__parameters:
-    # 真机站立专用配置:
-    # - 只站立，不进入行走
+    # 真机站立 + 保守原地踏步配置:
+    # - 先按当前标定站姿站稳
+    # - 再围绕站姿关节角做小幅对角线原地踏步
     # - 启动时先从当前姿态平滑站起
     # - 增益和重力前馈比仿真配置更强
 
     use_sim_time: false             # 是否使用仿真时间；真机必须为 false
     command_topic: /motor_cmd       # 输出给电机驱动节点的 MIT 五元组命令话题
+    gait_action_topic: /gait_action # 外部节点只需向此话题发布一个动作字符串: stand/step/forward/backward/turn_left/turn_right
 
-    # 步态基础参数；当前 stand_only=true，所以这些参数只保留接口一致性，不会真正行走。
-    gait_profile: trot              # 步态类型；站立配置中保留 trot 以兼容控制器逻辑
-    step_length: 0.0                # 单步前后摆动距离；站立时设为 0
-    step_height: 0.0                # 摆动相抬脚高度；站立时设为 0
-    gait_period: 1.0                # 一个完整步态周期时长，单位 s；站立时基本不参与
+    # 步态基础参数；这里使用保守的对角线原地踏步。
+    gait_profile: legacy_walk       # 使用 legacy_walk 避免 trot 对 swing_ratio 的限制；实际相位仍按对角线配置
+    step_length: 0.0                # 原地踏步不做前后摆动，避免身体被足端轨迹推走
+    step_height: 0.0                # direct_joint_in_place_step=true 时不使用足端 IK 抬脚高度
+    gait_period: 0.68               # 一个完整对角踏步周期时长，单位 s；数值越小步频越高
     stance_depth: 0.39              # 名义腿长/站高，数值越大腿越伸直
-    control_rate: 400.0             # gait 控制器发布命令频率，单位 Hz
-    swing_ratio: 0.50               # 摆动相占周期比例；站立时仅保持参数有效
-    stance_transition_ratio: 0.15   # 支撑相两端速度缓入/缓出的比例；站立时基本不参与
+    control_rate: 1000.0             # gait 控制器发布命令频率，单位 Hz
+    swing_ratio: 0.20               # 对角摆动相占周期比例；缩短单腿卸载时间，优先压住后仰
+    stance_transition_ratio: 0.20   # 支撑相两端速度缓入/缓出的比例
     reset_phase_on_walk_start: true # 从站立切入行走时是否重置全局步态相位
-    walk_start_phase: 0.0           # 进入行走时使用的初始全局相位
+    walk_start_phase: 0.95          # 进入踏步时先处于全支撑小空窗，然后从 LF+RH 对角组开始
 
-    # 摆动相和后腿补偿参数；stand_only=true 时不会真正触发摆动，只保留安全默认值。
-    swing_gain_scale: 0.60          # 摆动相 PD 增益倍率；小于 1 表示摆动腿更软
-    swing_hfe_motion_scale: 0.40    # 摆动相 HFE 朝足端轨迹目标运动的比例
-    swing_extra_kfe_flexion: 0.10   # 摆动相额外屈膝量，用于帮助抬脚离地
+    # 摆动相和后腿补偿参数。
+    swing_gain_scale: 0.85          # 摆动腿 PD 增益倍率；提高一点，避免目标动了但脚抬不起来
+    swing_hfe_motion_scale: 0.30    # IK 踏步模式下 HFE 轨迹比例；direct 模式下基本不用
+    swing_extra_kfe_flexion: 0.06   # IK 踏步模式下额外屈膝；direct 模式下基本不用
+    use_direct_joint_in_place_step: true # 原地踏步直接围绕 stand_*_targets 做关节小幅收腿，避免切到 IK 基准姿态
+    direct_step_hfe_amplitude: 0.032 # 每次抬脚时 HFE 朝自动抬脚方向变化的幅度，单位 rad
+    direct_step_kfe_amplitude: 0.24 # 每次抬脚时 KFE 朝自动抬脚方向变化的幅度，单位 rad
+    direct_step_support_hfe_amplitude: 0.00 # 对角摆动时，支撑腿 HFE 额外伸腿幅度，先关闭以减少前后晃
+    direct_step_support_kfe_amplitude: 0.00 # 对角摆动时，支撑腿 KFE 额外伸腿幅度；先关闭，避免支撑腿扰动导致后仰
+    direct_step_hfe_signs: [1.0, 1.0, -1.0, -1.0] # 只作用于踏步增量；顺序 LF,LH,RF,RH
+    direct_step_kfe_signs: [1.0, 1.0, -1.0, -1.0] # 只作用于踏步增量；顺序 LF,LH,RF,RH
+    direct_step_swing_scales: [1.0, 1.0, 1.0, 1.0]   # LF,LH,RF,RH；总摆动倍率，细分倍率由下面 HFE/KFE 参数控制
+    direct_step_hfe_swing_scales: [0.35, 0.28, 0.35, 0.28] # LF,LH,RF,RH；后腿 HFE 明显收小，改善大腿角度过大
+    direct_step_kfe_swing_scales: [1.25, 1.22, 1.25, 1.22] # LF,LH,RF,RH；后腿主要靠 KFE 小幅收腿，补偿 HFE 减小后的离地量
+    direct_step_support_scales: [0.00, 0.00, 0.00, 0.00] # LF,LH,RF,RH；支撑腿不额外改角度，减少姿态扰动
+    direct_step_hfe_support_scales: [1.0, 1.0, 1.0, 1.0] # LF,LH,RF,RH；支撑相 HFE 细分倍率，当前总支撑倍率为 0
+    direct_step_kfe_support_scales: [1.0, 1.0, 1.0, 1.0] # LF,LH,RF,RH；支撑相 KFE 细分倍率，当前总支撑倍率为 0
     rear_swing_step_length_scale: 1.0  # 后腿摆动步长相对前腿的倍率
     rear_swing_step_height_scale: 1.0  # 后腿抬脚高度相对前腿的倍率
     rear_swing_gain_scale: 1.0         # 后腿摆动相增益相对全局 swing_gain_scale 的倍率
@@ -34,31 +49,57 @@ quadruped_gait_controller:
     support_pitch_balance_gain: 0.0          # 前后腿实际高度差到俯仰补偿的比例增益
     support_pitch_balance_max_offset: 0.0    # 俯仰补偿最大足端 y 偏移，单位 m
     support_pitch_balance_target_delta: 0.0  # 期望前后腿支撑高度差，单位 m
-    filter_alpha: 0.85                       # 关节目标和速度的一阶低通滤波系数；越大响应越快
+    filter_alpha: 0.78                       # 关节目标和速度的一阶低通滤波系数；越大响应越快，越小越平顺
 
-    # 启动和站立状态机参数。
-    stand_only: true                # 是否只站立不行走；真机初测建议保持 true
+    # 启动、站立和踏步状态机参数。
+    stand_only: true                # 默认站住等待 /gait_action；收到动作命令后会覆盖这个站立等待
     enable_startup_stand: true      # 是否启用从当前姿态平滑站起的启动流程
     use_direct_joint_stand_targets: true  # 站姿目标是否直接使用关节角数组，而不是足端 IK
     use_startup_crouch_pose: false        # 未收到实际关节状态前，是否先使用预设低趴姿态
     allow_partial_joint_state_startup: true  # joint_states 不完整时是否允许继续启动
     joint_isolation_mode: "disabled"      # 关节隔离测试模式；disabled 表示正常控制
     joint_isolation_kfe_target: -0.70      # kfe_only 隔离测试时 KFE 的目标角
-    startup_settle_duration: 0.25          # 站起前等待 joint_states 稳定的时间，单位 s
+    startup_settle_duration: 0.15          # 站起前等待 joint_states 稳定的时间，单位 s
     startup_min_support_scale: 0.50        # 站起初期支撑/前馈缩放下限
     startup_initial_gain_scale: 0.80       # 站起初期 PD 增益倍率
-    stand_up_duration: 4.00                # 从当前姿态过渡到站姿目标的时间，单位 s
+    stand_up_duration: 0.50                # 从当前姿态过渡到站姿目标的时间，单位 s
     startup_knee_first_ratio: 0.55         # 传统“先膝后髋”比例；startup_front_legs_first=true 时主要作为备用逻辑
     startup_front_legs_first: true         # 起立时前腿先接管载荷，再让后腿髋/膝追目标
     startup_front_leg_complete_ratio: 0.45 # 前腿在站起前 45% 基本到站立目标
     startup_rear_hip_start_ratio: 0.15     # 后腿髋关节从站起 15% 后开始追目标
     startup_rear_knee_start_ratio: 0.45    # 后腿膝关节从站起 45% 后再伸，减少后髋重载卡滞
-    stand_hold_duration: 0.0               # 站起完成后保持站立多久再允许行走；stand_only=true 时无影响
-    walk_ramp_duration: 0.0                # 从站立混入步态轨迹的时间；stand_only=true 时无影响
+    stand_hold_duration: 1.5               # 站起完成后先稳定站立，再进入踏步
+    walk_ramp_duration: 1.0                # 每段动作都重新 ramp；稍柔和一点，减少动作切换冲击
     stand_gain_scale: 1.70                 # 站立相整体 PD 增益倍率
-    stand_haa_slew_rate: 0.18              # HAA 站立目标最大变化速度，单位 rad/s
-    stand_hfe_slew_rate: 0.28              # HFE 站立目标最大变化速度，单位 rad/s
-    stand_kfe_slew_rate: 0.32              # KFE 站立目标最大变化速度，单位 rad/s
+    walk_gain_scale: 1.60                  # 踏步相整体增益倍率；避免进入踏步后支撑腿突然变软后仰
+
+    # 自动动作序列: 站立 -> 原地踏步 -> 前进 -> 后退 -> 右转 -> 左转 -> 站立保持。
+    # 原地踏步阶段继续使用上面的 direct joint 踏步参数。
+    # 移动阶段仍使用 direct joint 踏步，额外叠加 HFE 前后摆。
+    # direct 模式下 step_length 主要决定方向正负，实际幅度主要由 hfe_amplitude 和 hfe_scales 控制。
+    enable_auto_sequence: false     # true 只用于自动演示；正常由 /gait_action 外部接口接管
+    auto_sequence_initial_stand_duration: 2.0
+    auto_sequence_in_place_step_duration: 5.0
+    auto_sequence_forward_duration: 5.0
+    auto_sequence_backward_duration: 5.0
+    auto_sequence_turn_right_duration: 5.0
+    auto_sequence_turn_left_duration: 5.0
+    auto_sequence_forward_use_direct_step: true
+    auto_sequence_forward_step_length: 0.030      # 真机演示映射后：正数为前进，负数会反成后退
+    auto_sequence_backward_step_length: -0.030    # 真机演示映射后：负数为后退，正数会反成前进
+    auto_sequence_turn_step_length: 0.030         # 真机演示映射后：正数为右转，负数会反成左转
+    auto_sequence_turn_left_step_length: -0.030   # 真机演示映射后：负数为左转，正数会反成右转
+    auto_sequence_forward_step_height: 0.010      # direct 移动模式不用；保留给关闭 direct 前进时的 IK fallback
+    auto_sequence_forward_hfe_amplitude: 0.095    # 前进阶段 HFE 前后摆基础幅度，单位 rad
+    auto_sequence_backward_hfe_amplitude: 0.095   # 后退阶段 HFE 前后摆基础幅度，单位 rad
+    auto_sequence_turn_hfe_amplitude: 0.100       # 转向阶段 HFE 前后摆基础幅度，单位 rad
+    auto_sequence_forward_hfe_scales: [1.55, 1.15, 1.55, 1.15] # LF,LH,RF,RH；保留现象但比大幅演示版更稳
+    auto_sequence_backward_hfe_scales: [1.55, 1.15, 1.55, 1.15] # LF,LH,RF,RH；后退幅度与前进接近
+    auto_sequence_turn_hfe_scales: [1.60, 1.20, 1.60, 1.20] # LF,LH,RF,RH；转向差速明显但不过猛
+
+    stand_haa_slew_rate: 0.45              # HAA 站立目标最大变化速度，单位 rad/s
+    stand_hfe_slew_rate: 0.70              # HFE 站立目标最大变化速度，单位 rad/s
+    stand_kfe_slew_rate: 0.85              # KFE 站立目标最大变化速度，单位 rad/s
 
     # 重力前馈、质量分配和调试参数。
     gravity_ff_scale: 1.80          # 重力补偿前馈倍率；越大越主动托起腿部
@@ -67,7 +108,7 @@ quadruped_gait_controller:
     debug_log_period: 0.5           # 调试日志打印周期，单位 s
 
     # 数组顺序统一为: LF, LH, RF, RH。
-    phase_offsets: [0.0, 0.5, 0.5, 0.0]      # 四条腿的步态相位偏移
+    phase_offsets: [0.0, 0.5, 0.5, 0.0]      # 对角线原地踏步相位，LF+RH 一组，LH+RF 一组
     foot_x_signs: [1.0, 1.0, 1.0, 1.0]       # 足端 x 方向符号，用于统一腿部坐标方向
     gait_foot_x_offsets: [0.0, 0.0, 0.0, 0.0] # 行走轨迹中每条腿的足端 x 静态偏移
     stand_foot_x_offsets: [0.0, 0.0, 0.0, 0.0] # IK 站姿模式下每条腿的足端 x 偏移
@@ -76,13 +117,13 @@ quadruped_gait_controller:
     nominal_haa_angles: [0.0, 0.0, 0.0, 0.0]          # gait 模式下 HAA 名义角
     nominal_hfe_angles: [-0.67, -0.67, -0.67, -0.67] # HFE 名义角，用于自动零位推算参考
     nominal_kfe_angles: [0.09, 0.09, 0.09, 0.09]     # KFE 名义角，用于自动零位推算参考
-    direct_haa_signs: [1.0, 1.0, 1.0, 1.0]           # 直接关节目标模式下 HAA 方向符号
-    direct_hfe_signs: [1.0, 1.0, 1.0, 1.0]           # 直接关节目标模式下 HFE 方向符号
-    direct_kfe_signs: [1.0, 1.0, 1.0, 1.0]           # 直接关节目标模式下 KFE 方向符号
+    direct_haa_signs: [1.0, 1.0, 1.0, 1.0]        # 直接关节目标模式下 HAA 方向符号；站立正常时不要改这里
+    direct_hfe_signs: [1.0, 1.0, 1.0, 1.0]        # 直接关节目标模式下 HFE 方向符号；站立正常时不要改这里
+    direct_kfe_signs: [1.0, 1.0, 1.0, 1.0]        # 直接关节目标模式下 KFE 方向符号；站立正常时不要改这里
 
     # 站立目标关节角，数组顺序为 LF, LH, RF, RH。
     stand_haa_targets: [0.4, -0.45, -0.4, 0.45]        # 站姿 HAA 外展/内收目标角
-    stand_hfe_targets: [0.35, 0.4, -0.35, -0.4]      # 站姿 HFE 目标角
+    stand_hfe_targets: [0.35, 0.39, -0.35, -0.39]      # 站姿 HFE 目标角
     stand_kfe_targets: [-1.0, -1.2, 1.0, 1.2]          # 站姿 KFE 目标角
     startup_crouch_haa_targets: [0.2, -0.45, -0.2, 0.45] # 启动低趴姿态 HAA 目标角
     startup_crouch_hfe_targets: [0.22, 0.25, -0.22, -0.25] # 启动低趴姿态 HFE 目标角
@@ -91,7 +132,7 @@ quadruped_gait_controller:
     # 腿部几何和重力补偿等效质量。
     thigh_lengths: [0.198825, 0.198825, 0.198825, 0.198825] # 四条腿大腿长度，单位 m
     shank_lengths: [0.22225, 0.22225, 0.22225, 0.22225]    # 四条腿小腿长度，单位 m
-    gravity_masses: [0.62, 0.62, 0.62, 0.62]               # 每条腿用于重力补偿的等效质量，单位 kg
+    gravity_masses: [0.82, 0.82, 0.82, 0.82]               # 每条腿用于重力补偿的等效质量，单位 kg
 
     # 零位偏置和 Gazebo 辅助参数。
     auto_zero_offsets: false        # 是否根据名义站姿自动推算 HFE/KFE 零位偏置
@@ -101,8 +142,8 @@ quadruped_gait_controller:
 
     # 基础关节 PD 增益；实际站立增益还会乘以 stand_gain_scale。
     haa_kp: 20.0                    # HAA 位置比例增益
-    haa_kd: 2.4                    # HAA 速度阻尼增益
+    haa_kd: 2.1                    # HAA 速度阻尼增益
     hfe_kp: 20.0                    # HFE 位置比例增益
-    hfe_kd: 2.4                     # HFE 速度阻尼增益
-    kfe_kp: 30.0                    # KFE 位置比例增益
-    kfe_kd: 3.2                     # KFE 速度阻尼增益
+    hfe_kd: 2.1                     # HFE 速度阻尼增益
+    kfe_kp: 35.0                    # KFE 位置比例增益
+    kfe_kd: 4.0                     # KFE 速度阻尼增益

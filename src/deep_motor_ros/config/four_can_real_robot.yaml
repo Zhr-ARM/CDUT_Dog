@@ -28,10 +28,15 @@ deep_motor_node:
     can_txqueuelen: 1000
     can_interface_wait_sec: 5.0
     can_configure_retries: 3
-    control_rate_hz: 400.0
+    control_rate_hz: 1000.0
     status_log_period_sec: 5.0
     auto_set_home_on_startup: true
     require_home_on_startup: false
+    # 启动时先发 disable，再 enable。用于清掉上次异常退出后电机保持的最后控制状态。
+    disable_motors_before_enable: true
+    verify_control_after_enable: true
+    startup_disable_retries: 5
+    startup_disable_delay_sec: 0.03
     home_command_retries: 3
     home_command_delay_sec: 0.05
 
@@ -46,6 +51,9 @@ deep_motor_node:
     shutdown_kp: 8.0
     shutdown_kd: 1.0
     shutdown_torque: 0.0
+    shutdown_disable_retries: 5
+    shutdown_disable_delay_sec: 0.03
+    can_down_on_shutdown: true
     shutdown_positions:
       - 0.0
       - 0.0
