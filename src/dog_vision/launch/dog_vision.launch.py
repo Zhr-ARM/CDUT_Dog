@@ -1,3 +1,6 @@
+import os
+
+from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
@@ -6,15 +9,19 @@ from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
+    package_share = get_package_share_directory('dog_vision')
+    default_model = os.path.join(package_share, 'models', 'task_2', 'best.pt')
+    default_data = os.path.join(package_share, 'config', 'task_2_data.yaml')
+
     arguments = [
         DeclareLaunchArgument(
             'model',
-            default_value='/home/angela/YOLO_ALL/Runs/task_2/train_task2/weights/best.pt',
+            default_value=default_model,
             description='Path to the YOLO .pt or ONNX model file.',
         ),
         DeclareLaunchArgument(
             'data',
-            default_value='/home/angela/YOLO_ALL/Dataset/task_2/yolo/data.yaml',
+            default_value=default_data,
             description='Path to the YOLO data.yaml file.',
         ),
         DeclareLaunchArgument(

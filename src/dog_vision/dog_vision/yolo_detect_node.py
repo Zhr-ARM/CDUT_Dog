@@ -10,14 +10,20 @@ import cv2
 import numpy as np
 import rclpy
 import yaml
+from ament_index_python.packages import get_package_share_directory
 from dog_bringup.msg import Detection2D, Detection2DArray
 from rclpy.node import Node
 
 
+PACKAGE_SHARE = Path(get_package_share_directory('dog_vision'))
+DEFAULT_MODEL_PATH = PACKAGE_SHARE / 'models' / 'task_2' / 'best.pt'
+DEFAULT_DATA_PATH = PACKAGE_SHARE / 'config' / 'task_2_data.yaml'
+
+
 DEFAULT_CONFIG = {
-    'model': '/home/angela/YOLO_ALL/Runs/task_2/train_task2/weights/best.pt',
+    'model': str(DEFAULT_MODEL_PATH),
     'mode': 'auto',
-    'data': '/home/angela/YOLO_ALL/Dataset/task_2/yolo/data.yaml',
+    'data': str(DEFAULT_DATA_PATH),
     'device': '/dev/video2',
     'width': 1920,
     'height': 1080,

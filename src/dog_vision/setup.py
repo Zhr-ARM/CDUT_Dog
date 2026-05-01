@@ -13,6 +13,8 @@ setup(
         ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch', glob('launch/*.launch.py')),
+        ('share/' + package_name + '/config', glob('config/*')),
+        ('share/' + package_name + '/models/task_2', glob('models/task_2/*')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
