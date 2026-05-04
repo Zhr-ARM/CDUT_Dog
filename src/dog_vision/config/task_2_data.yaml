@@ -1,0 +1,8 @@
+path: .
+train: images/train
+val: images/val
+names:
+  0: food
+  1: tool
+  2: medicine
+  3: instrument

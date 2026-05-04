@@ -1,0 +1,32 @@
+#文件路径： /etc/udev/rules.d/
+
+#查找串口ID
+#udevadm info -a -p $(udevadm info -q path -n /dev/ttyACM0) | grep -iE "idVendor|idProduct|serial" | head -n 3
+
+#查找can端口号（在 shell 中单独执行，不要直接写进 rules 文件）
+#for iface in /sys/class/net/can* /sys/class/net/can_*; do
+#   [ -e "$iface" ] || continue
+#   name=$(basename "$iface")
+#   printf "Interface: %-8s -> Exact Path: " "$name"
+#   udevadm info -q path -p "$iface" | rev | cut -d'/' -f3 | rev
+#done
+
+#更新配置
+#sudo udevadm control --reload-rules
+#sudo udevadm trigger
+
+#IMU 串口
+SUBSYSTEM=="tty", ATTRS{idVendor}=="19f5", ATTRS{idProduct}=="5740", SYMLINK+="ttyimu"
+
+# CAN 口不要重命名为 can0/can1/can2/can3。
+# 这些名字会先被内核自动分配，udev 再重命名时很容易因为目标名已占用而失败。
+# 改成语义名后，每个目标名都唯一且不会与内核默认 can%d 冲突。
+
+# 前左腿总线
+SUBSYSTEM=="net", ACTION=="add", KERNEL=="can*", KERNELS=="3-1.2:1.0", NAME="can_lf"
+# 前右腿总线
+SUBSYSTEM=="net", ACTION=="add", KERNEL=="can*", KERNELS=="3-1.3:1.0", NAME="can_rf"
+# 后左腿总线
+SUBSYSTEM=="net", ACTION=="add", KERNEL=="can*", KERNELS=="3-1.1:1.0", NAME="can_lh"
+# 后右腿总线
+SUBSYSTEM=="net", ACTION=="add", KERNEL=="can*", KERNELS=="3-1.4:1.0", NAME="can_rh"

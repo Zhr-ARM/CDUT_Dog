@@ -1,0 +1,337 @@
+// 动力学模型类型：0 - 全质心动力学，1 - 单刚体动力学
+centroidalModelType             0  
+  
+// 机器人接口全局设置
+legged_robot_interface
+{
+  verbose                                 false  // 是否在启动时打印所有加载的参数
+  useAnalyticalGradientsDynamics          false  // 是否使用解析导数计算动力学（false 则使用自动微分 CppAd）
+  useAnalyticalGradientsConstraints       false  // 是否使用解析导数计算约束
+}
+
+// 模型生成与自动微分设置
+model_settings
+{
+  positionErrorGain             0.0  // 位置误差增益（通常在 SRBD 中设为 0）
+  phaseTransitionStanceTime     0.1   // 步态相位切换时的支撑过渡时间 ##（0.4）
+  
+  verboseCppAd                  true  // 编译 CppAd 生成库时是否显示详细信息
+  recompileLibrariesCppAd       false  // 每次启动是否强制重新编译导数库 ##（true）
+  modelFolderCppAd              /var/tmp/ocs2 // 生成的 C++ 导数库代码存放路径
+}
+
+// 摆动腿轨迹规划配置
+swing_trajectory_config
+{
+  liftOffVelocity               0.05   // 抬脚瞬间的垂直速度 (m/s)  ##(0.2)
+  touchDownVelocity            -0.1   // 落脚瞬间的垂直速度 (m/s)   ##(-0.4)
+  swingHeight                   0.08   // 摆动腿最高抬起高度 (m)    ##(0.1)
+  touchdownAfterHorizon         0.2   // 允许在预测时域之外预测落脚点的时间
+  swingTimeScale                0.15  // 摆动轨迹的时间缩放因子
+}
+
+// SQP (序贯二次规划) 求解器设置：适用于非线性较强的问题
+sqp
+{
+  nThreads                              3     // 并行计算线程数
+  dt                                    0.015 // MPC 内部离散步长 (s)
+  sqpIteration                          1     // 每次控制周期的最大 SQP 迭代次数
+  deltaTol                              1e-4  // 收敛容差
+  g_max                                 1e-2  // 最大的约束违反允许值
+  g_min                                 1e-6  // 最小的约束违反允许值
+  inequalityConstraintMu                0.1   // 不等式约束的惩罚因子
+  inequalityConstraintDelta             5.0   // 不等式约束的松弛因子
+  projectStateInputEqualityConstraints  true  // 是否将状态输入等式约束投影到线性子空间
+  printSolverStatistics                 true  // 是否打印求解器统计信息（如耗时）
+  printSolverStatus                     false // 是否打印求解器状态
+  printLinesearch                       false // 是否打印线搜索细节
+  useFeedbackPolicy                     true  // 是否计算并使用最优反馈增益 K
+  integratorType                        RK2   // 积分器类型 (二阶龙格库塔)
+  threadPriority                        50    // 线程优先级
+}
+
+// IPM (内点法) 求解器设置
+ipm
+{
+  nThreads                              3
+  dt                                    0.015
+  ipmIteration                          1
+  deltaTol                              1e-4
+  g_max                                 10.0
+  g_min                                 1e-6
+  computeLagrangeMultipliers            true  // 是否计算拉格朗日乘子
+  printSolverStatistics                 true
+  printSolverStatus                     false
+  printLinesearch                       false
+  useFeedbackPolicy                     true
+  integratorType                        RK2
+  threadPriority                        50
+
+  initialBarrierParameter               1e-4  // 初始障碍函数参数
+  targetBarrierParameter                1e-4  // 目标障碍函数参数
+  barrierLinearDecreaseFactor           0.2   // 障碍参数线性下降因子
+  barrierSuperlinearDecreasePower       1.5   // 障碍参数超线性下降幂次
+  barrierReductionCostTol               1e-3
+  barrierReductionConstraintTol         1e-3
+
+  fractionToBoundaryMargin              0.995 // 边界步长缩减比例
+  usePrimalStepSizeForDual              false // 双变量是否使用与主变量相同的步长
+
+  initialSlackLowerBound                1e-4  // 松弛变量初始下界
+  initialDualLowerBound                 1e-4  // 对偶变量初始下界
+  initialSlackMarginRate                1e-2
+  initialDualMarginRate                 1e-2
+}
+
+// DDP (微分动态规划) 求解器设置：OCS2 最经典的求解器
+ddp
+{
+  algorithm                       SLQ         // 使用 SLQ 算法
+
+  nThreads                        3
+  threadPriority                  50
+
+  maxNumIterations                1           // 每一帧最大迭代次数
+  minRelCost                      1e-1        // 最小相对代价减小量
+  constraintTolerance             5e-3        // 约束容差
+
+  displayInfo                     false
+  displayShortSummary             false
+  checkNumericalStability         false       // 是否进行数值稳定性检查
+  debugPrintRollout               false
+
+  AbsTolODE                       1e-5        // ODE 积分绝对容差
+  RelTolODE                       1e-3        // ODE 积分相对容差
+  maxNumStepsPerSecond            10000       // 积分最大步数限制
+  timeStep                        0.015       // 步长
+  backwardPassIntegratorType      ODE45       // 反向传递使用的积分器
+
+  constraintPenaltyInitialValue   20.0        // 约束惩罚初始值
+  constraintPenaltyIncreaseRate   2.0         // 约束惩罚增长率
+
+  preComputeRiccatiTerms          true        // 是否预计算黎卡提项
+
+  useFeedbackPolicy               false
+
+  strategy                        LINE_SEARCH // 搜索策略：线搜索
+  lineSearch
+  {
+    minStepLength                 1e-2
+    maxStepLength                 1.0
+    hessianCorrectionStrategy     DIAGONAL_SHIFT // 海森矩阵修正策略
+    hessianCorrectionMultiple     1e-5
+  }
+}
+
+// 仿真预测（Rollout）设置
+rollout
+{
+  AbsTolODE                       1e-5
+  RelTolODE                       1e-3
+  timeStep                        0.015
+  integratorType                  ODE45
+  maxNumStepsPerSecond            10000
+  checkNumericalStability         false
+}
+
+// MPC 核心参数
+mpc
+{
+  timeHorizon                     1.0  ; // 预测时域长度（秒）
+  solutionTimeWindow              -1   ; // 解决方案的时间窗口（-1 代表不限制）
+  coldStart                       false // 是否冷启动（不使用上一帧解）
+
+  debugPrint                      false
+
+  mpcDesiredFrequency             50  ; // MPC 求解期望频率 (Hz)         ##（100）
+  mrtDesiredFrequency             1000 ; // 模型参考追踪（MRT）频率 (Hz)  ##（400）
+}
+
+// 机器人初始状态定义
+initialState
+{
+   ;; 归一化质心动量: [线动量(3), 角动量(3)] ;;
+   (0,0)  0.0     ; vcom_x (质心 x 速度)
+   (1,0)  0.0     ; vcom_y
+   (2,0)  0.0     ; vcom_z
+   (3,0)  0.0     ; L_x / robotMass (归一化角动量)
+   (4,0)  0.0     ; L_y / robotMass
+   (5,0)  0.0     ; L_z / robotMass
+
+   ;; 基座姿态: [位置(3), 欧拉角(3)] ;;
+   (6,0)  0.0     ; p_base_x
+   (7,0)  0.0     ; p_base_y
+   (8,0)  0.306    ; p_base_z (初始站立高度)
+   (9,0)  0.0     ; theta_base_z (偏航角 Yaw)
+   (10,0) 0.0     ; theta_base_y (俯仰角 Pitch)
+   (11,0) 0.0     ; theta_base_x (横滚角 Roll)
+
+   ;; 关节位置: [左前, 左后, 右前, 右后] ;;
+   (12,0)  0.0   ; LF_HAA
+   (13,0)  0.10  ; LF_HFE
+   (14,0) -0.16  ; LF_KFE
+   (15,0)  0.0   ; LH_HAA
+   (16,0)  0.10  ; LH_HFE
+   (17,0) -0.16  ; LH_KFE
+   (18,0)  0.0   ; RF_HAA
+   (19,0)  0.10  ; RF_HFE
+   (20,0) -0.16  ; RF_KFE
+   (21,0)  0.0   ; RH_HAA
+   (22,0)  0.10  ; RH_HFE
+   (23,0) -0.16  ; RH_KFE
+}
+
+// 状态权重矩阵 Q：数值越大，代表对该项偏差的惩罚越重（机器人越听话）
+Q
+{
+  scaling 1e+0
+
+  ;; 质心动量权重 ;;
+  (0,0)   15.0     ; vcom_x
+  (1,1)   15.0     ; vcom_y
+  (2,2)   100.0    ; vcom_z ##(30)
+  (3,3)   10.0     ; L_x  ##(5) 
+  (4,4)   30.0     ; L_y  ##(10)
+  (5,5)   30.0     ; L_z  ##(10)
+
+  ;; 基座姿态权重 ;;
+  (6,6)   1000.0   ; p_base_x (水平位置权重通常较大) ##(500)
+  (7,7)   1000.0   ; p_base_y                    ##(500)
+  (8,8)   1500.0   ; p_base_z (高度权重)          ##(500)
+  (9,9)   100.0    ; theta_base_z (朝向权重)      
+  (10,10) 300.0    ; theta_base_y               ##(200)
+  (11,11) 300.0    ; theta_base_x               ##(200)
+
+  ;; 关节位置权重 ;; ##(20) [LF, LH, RF, RH]
+  (12,12) 5.0     ; LF_HAA
+  (13,13) 5.0     ; LF_HFE
+  (14,14) 2.5     ; LF_KFE
+  (15,15) 5.0     ; LH_HAA
+  (16,16) 5.0     ; LH_HFE
+  (17,17) 2.5     ; LH_KFE
+  (18,18) 5.0     ; RF_HAA
+  (19,19) 5.0     ; RF_HFE
+  (20,20) 2.5     ; RF_KFE
+  (21,21) 5.0     ; RH_HAA
+  (22,22) 5.0     ; RH_HFE
+  (23,23) 2.5     ; RH_KFE
+}
+
+// 控制输入权重矩阵 R：数值越大，代表对控制力的消耗越在意（动作越轻微）
+R
+{
+  scaling 1e-3
+
+  ;; 足端触地力权重: [左前, 右前, 左后, 右后] ;;
+  (0,0)   1.0       ; 惩罚足端力的大小，防止过度用力
+  (1,1)   1.0
+  (2,2)   1.0
+  (3,3)   1.0
+  (4,4)   1.0
+  (5,5)   1.0
+  (6,6)   1.0
+  (7,7)   1.0
+  (8,8)   1.0
+  (9,9)   1.0
+  (10,10) 1.0
+  (11,11) 1.0
+
+  ;; 相对于基座的足端速度权重 ;;[左前, 右前, 左后, 右后] 
+  (12,12) 5000.0    ; x 很大，代表希望摆动腿精准追踪轨迹，不要乱晃
+  (13,13) 5000.0    ; y
+  (14,14) 5000.0    ; z
+  (15,15) 5000.0    ; x
+  (16,16) 5000.0    ; y
+  (17,17) 5000.0    ; z
+  (18,18) 5000.0    ; x
+  (19,19) 5000.0    ; y
+  (20,20) 5000.0    ; z
+  (21,21) 5000.0    ; x
+  (22,22) 5000.0    ; y
+  (23,23) 5000.0    ; z
+}
+
+// 摩擦锥软约束设置：防止足端打滑
+frictionConeSoftConstraint
+{
+  frictionCoefficient    0.4  ; 预期的地面摩擦系数 ##(0.5)
+
+  ; 松弛对数障碍参数 (Relaxed Log Barrier)
+  mu                     0.1
+  delta                  5.0
+}
+
+//自定义结构//自定义结构//自定义结构//自定义结构//自定义结构//自定义结构//自定义结构//自定义结构//自定义结构//自定义结构//自定义结构//自定义结构
+
+// 自碰撞检测设置：防止机器人的腿部或连杆在运动中互相撞击
+selfCollision
+{
+  ; 原始几何体碰撞对（通常留空，通过 link 对来定义）
+  collisionObjectPairs
+  {
+  }
+
+  ; 连杆碰撞对：定义哪些连杆之间需要进行距离检测
+  collisionLinkPairs
+  {
+    [0] "LF_calf, RF_calf" // 左前腿小腿 与 右前腿小腿
+    [1] "LH_calf, RH_calf" // 左后腿小腿 与 右后腿小腿
+    [2] "LF_calf, LH_calf" // 左前腿小腿 与 左后腿小腿
+    [3] "RF_calf, RH_calf" // 右前腿小腿 与 右后腿小腿
+    [4] "LF_FOOT, RF_FOOT" // 左前足端 与 右前足端
+    [5] "LH_FOOT, RH_FOOT" // 左后足端 与 右后足端
+    [6] "LF_FOOT, LH_FOOT" // 左前足端 与 左后足端
+    [7] "RF_FOOT, RH_FOOT" // 右前足端 与 右后足端
+  }
+
+  minimumDistance  0.05    // 最小安全距离阈值（单位：m），小于此距离将产生惩罚力
+
+  ; 松弛对数障碍函数参数（用于将硬碰撞转化为软约束代价）
+  mu      1e-2             // 惩罚强度系数
+  delta   1e-3             // 松弛边界参数
+}
+//-----------------------------------------------------------WBC配置参数----------------------------------
+// 电机力矩限制
+torqueLimitsTask
+{
+   HAA  36     ; （N.M）
+   HFE  36     ; （N.M）
+   KFE  36     ; （N.M）
+}
+
+// WBC 摩擦锥任务
+frictionConeTask
+{
+  frictionCoefficient    0.3 // 物理摩擦系数（应与 MPC 中的设置保持一致或略小以保证安全）
+}
+
+
+// 摆动腿追踪任务
+swingLegTask
+{
+    kp                   350 // 比例增益：值越大，摆动腿追踪轨迹越精准、越硬
+    kd                   37  // 阻尼增益：用于抑制震荡，提高稳定性
+}
+
+// WBC 各项子任务的权重分配平方：数值越大，优先级越高
+weight
+{
+    nWSR            20 //迭代次数
+    swingLeg        100      
+    baseAccel       0     //会失控（1）
+    contactForce    0.01     
+}
+
+
+//-----------------------------------------------------------状态估计（卡尔曼滤波）配置参数----------------------------------
+kalmanFilter
+{
+    accelFilterAlpha            1    // 加速度低通滤波系数：0~1 之间
+    footRadius                  0.023   // 足端球头半径（用于计算足端相对于地面的高度）
+    imuProcessNoisePosition     0.02   // IMU 位置估计的过程噪声（值越大，越不相信 IMU 的位置积分）
+    imuProcessNoiseVelocity     0.02   // IMU 速度估计的过程噪声
+    footProcessNoisePosition    0.002  // 足端位置的过程噪声（假设足端在支撑期是不动的）
+    footSensorNoisePosition     0.005  // 足端位置传感器的测量噪声
+    footSensorNoiseVelocity     0.1    // 足端速度传感器的测量噪声
+    footHeightSensorNoise       0.01   // 足端高度估计的测量噪声
+}

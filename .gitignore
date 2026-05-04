@@ -1,0 +1,15 @@
+# ROS / colcon build artifacts
+/build/
+/install/
+/log/
+/compile_commands.json
+
+# IDE settings
+/.vscode/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store

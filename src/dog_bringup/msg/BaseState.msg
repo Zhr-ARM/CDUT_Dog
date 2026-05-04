@@ -1,0 +1,10 @@
+# 欧拉角
+geometry_msgs/Vector3 orientation
+# 世界坐标
+geometry_msgs/Point position
+# 基座在世界系下的角速度
+geometry_msgs/Vector3 world_angular_velocity
+# 基座在世界系下的线速度
+geometry_msgs/Vector3 world_linear_velocity
+# 基座相对于自身的线加速度
+geometry_msgs/Vector3 imu_linear_acceleration
