@@ -33,8 +33,9 @@ Eigen::Isometry3d compute_forward_kinematics(
   const JointVector & joint_positions,
   const Eigen::Vector3d & tool_offset)
 {
+  //初始化变换矩阵
   Eigen::Isometry3d transform = Eigen::Isometry3d::Identity();
-
+  //循环遍历每个关节，依次应用平移和旋转变换
   for (std::size_t index = 0; index < joint_origins.size(); ++index) {
     transform.translate(joint_origins[index]);
 

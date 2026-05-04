@@ -115,7 +115,7 @@ def _spawn_scene_objects(context, *args, **kwargs):
         (box_depth, box_width, box_height),
         '0.10 0.45 0.85 1',
         mass=0.5,
-        static=True,
+        static=False,
     )
 
     return [

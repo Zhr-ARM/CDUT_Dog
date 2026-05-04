@@ -58,6 +58,11 @@ ros2 launch arm_bringup control.launch.py backend:=real serial_port:=/dev/ttyACM
   ```bash
   ros2 topic pub /arm_box_motion/start std_msgs/msg/Empty {} -1
   ```
+- **停止吸附并回原位**：
+  先发布吸盘关闭命令，再让机械臂回到 `home_joint_positions` 配置的关节角：
+  ```bash
+  ros2 topic pub /arm_home_motion/start std_msgs/msg/Empty {} -1
+  ```
 - **吸盘控制**：
   ```bash
   ros2 topic pub /suction/enable std_msgs/msg/Bool "{data: true}" -1
@@ -87,6 +92,7 @@ ros2 launch arm_bringup control.launch.py backend:=real serial_port:=/dev/ttyACM
 | `command_rate_hz` | 控制指令发布频率，默认推荐 `50.0` Hz。 |
 | `max_joint_speed_rad_s` | 关节最大运行角速度 (rad/s)，控制插补时的平滑程度。 |
 | `position_tolerance_m` | 逆运动学算法的位置收敛容差。 |
+| `home_joint_positions` | 回原位动作的目标关节角 `[base_yaw, shoulder, elbow, wrist]`，单位为 rad。 |
 
 ### 3. 箱子搬运任务专属参数
 用于微调通过 `/arm_box_motion/start` 触发的轨迹系列点。

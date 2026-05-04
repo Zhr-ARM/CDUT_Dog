@@ -13,6 +13,9 @@ arm_controller_node:
     # 够箱子动作开始话题；向这个话题发送 std_msgs/msg/Empty 后，节点会自动执行“接近-触碰-抬起-回收”动作。
     box_motion_start_topic: /arm_box_motion/start
 
+    # 回原位动作开始话题；向这个话题发送 std_msgs/msg/Empty 后，节点会先关闭吸盘，再回到 home_joint_positions。
+    home_motion_start_topic: /arm_home_motion/start
+
     # 吸盘开关命令话题；够箱子动作下降到接触点后会向这里发布 std_msgs/msg/Bool，true 表示开启吸盘。
     suction_command_topic: /suction/enable
 
@@ -112,6 +115,9 @@ arm_controller_node:
 
     # 前馈力矩，单位为 N*m；没有重力补偿模型时默认全为 0，后续可以按关节负载补偿。
     torque_ff: [0.0, 0.0, 0.0, 0.0]
+
+    # 回原位动作的目标关节角，单位为弧度；顺序为 base_yaw、shoulder_pitch、elbow_pitch、wrist_pitch。
+    home_joint_positions: [0.0, 0.0, 0.0, 0.0]
 
     # 箱子中心到 base_link 原点的前向距离，单位为米；仿真中箱子模型中心会放在这个 x 位置。
     # 当前已放宽 shoulder/wrist 软件限位，用于验证更大的臂展。
