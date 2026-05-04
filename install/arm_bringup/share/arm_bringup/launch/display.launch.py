@@ -1,1 +1,0 @@
-/home/zhr/robot_arm/src/arm_bringup/launch/display.launch.py

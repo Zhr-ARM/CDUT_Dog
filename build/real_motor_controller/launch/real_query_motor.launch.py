@@ -1,1 +1,0 @@
-/home/zhr/robot_arm/src/real_motor_controller/launch/real_query_motor.launch.py

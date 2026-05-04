@@ -1,3 +1,0 @@
-[console_scripts]
-sim_motor_controller_node = sim_motor_controller.sim_motor_controller_node:main
-

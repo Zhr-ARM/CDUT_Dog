@@ -1,1 +1,0 @@
-/home/zhr/robot_arm/build/sim_motor_controller/README.md

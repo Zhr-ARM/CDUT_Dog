@@ -1,4 +1,0 @@
-Invoking command in '/home/zhr/robot_arm/build/arm_bringup': CMAKE_PREFIX_PATH=/opt/ros/humble /opt/st/stm32cubeclt_1.17.0/CMake/bin/cmake --build /home/zhr/robot_arm/build/arm_bringup -- -j8 -l8
-Invoked command in '/home/zhr/robot_arm/build/arm_bringup' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /opt/st/stm32cubeclt_1.17.0/CMake/bin/cmake --build /home/zhr/robot_arm/build/arm_bringup -- -j8 -l8
-Invoking command in '/home/zhr/robot_arm/build/arm_bringup': CMAKE_PREFIX_PATH=/opt/ros/humble /opt/st/stm32cubeclt_1.17.0/CMake/bin/cmake --install /home/zhr/robot_arm/build/arm_bringup
-Invoked command in '/home/zhr/robot_arm/build/arm_bringup' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /opt/st/stm32cubeclt_1.17.0/CMake/bin/cmake --install /home/zhr/robot_arm/build/arm_bringup

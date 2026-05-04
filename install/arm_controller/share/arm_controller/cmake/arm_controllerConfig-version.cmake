@@ -1,1 +1,0 @@
-/home/zhr/robot_arm/build/arm_controller/ament_cmake_core/arm_controllerConfig-version.cmake

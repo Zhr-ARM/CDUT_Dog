@@ -1,1 +1,0 @@
-"""Simulation motor controller package."""
