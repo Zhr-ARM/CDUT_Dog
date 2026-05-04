@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>sim_motor_controller</name>
+  <version>0.1.0</version>
+  <description>Simulation-side MIT motor controller with the same ROS interface as the real DM-J4340 controller.</description>
+
+  <maintainer email="zhr@example.com">zhr</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>std_srvs</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

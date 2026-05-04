@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<sdf version="1.6">
+  <model name="arm_bringup">
+    <static>true</static>
+    <link name="root" />
+  </model>
+</sdf>

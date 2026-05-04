@@ -1,0 +1,4 @@
+[console_scripts]
+real_motor_controller_node = real_motor_controller.start_motor_node:main
+real_query_motor_node = real_motor_controller.query_motor_node:main
+

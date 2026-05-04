@@ -1,0 +1,202 @@
+arm_controller_node:
+  ros__parameters:
+    # 机械臂 4 个电机对应的 ROS 关节名，顺序必须和电机控制话题 /dm_j4340/mit_commands 的顺序一致。
+    joint_names:
+      - base_yaw_joint
+      - shoulder_pitch_joint
+      - elbow_pitch_joint
+      - wrist_pitch_joint
+
+    # 目标点订阅话题；外部向这个话题发送 geometry_msgs/msg/PointStamped，单位为米。
+    target_point_topic: /arm_target_point
+
+    # 够箱子动作开始话题；向这个话题发送 std_msgs/msg/Empty 后，节点会自动执行“接近-触碰-抬起-回收”动作。
+    box_motion_start_topic: /arm_box_motion/start
+
+    # 吸盘开关命令话题；够箱子动作下降到接触点后会向这里发布 std_msgs/msg/Bool，true 表示开启吸盘。
+    suction_command_topic: /suction/enable
+
+    # 当前关节状态订阅话题；仿真和真机电机控制器都会发布这个话题。
+    joint_states_topic: /dm_j4340/joint_states
+
+    # MIT 电机控制命令发布话题；消息格式为 [p, v, kp, kd, t_ff] * 4。
+    mit_command_topic: /dm_j4340/mit_commands
+
+    # 目标点所在坐标系；当前节点只检查 frame_id，不做 TF 坐标变换。
+    base_frame: base_link
+
+    # 各关节原点在父连杆坐标系下的位置，单位为米；每 3 个数为一组 [x, y, z]。
+    # 顺序依次为 base_yaw、shoulder_pitch、elbow_pitch、wrist_pitch。
+    joint_origins:
+      - 0.000016999
+      - -0.000022768
+      - 0.058
+      - 0.0080913
+      - 0.029425
+      - 0.0395
+      - -0.21008
+      - -0.0094917
+      - 0.0
+      - 0.21061
+      - 0.01142
+      - 0.057
+
+    # 各关节旋转轴在对应关节坐标系下的方向；每 3 个数为一组 [x, y, z]。
+    # 这些值来自 URDF，逆运动学会自动归一化轴向量。
+    joint_axes:
+      - 0.0
+      - 0.0
+      - 1.0
+      - 0.26585
+      - 0.96402
+      - 0.0
+      - -0.26585
+      - -0.96402
+      - 0.0
+      - 0.26585
+      - 0.96402
+      - 0.0
+
+    # 各关节最小角度限制，单位为弧度；逆解和最终命令都会限制在这个范围内。
+    # 为了验证“直接伸出去”动作，已将 shoulder/elbow/wrist 软件限位临时放到全范围；真机使用前必须确认不会撞机械限位。
+    joint_lower_limits: [-3.14, -3.14, -3.14, -3.14]
+
+    # 各关节最大角度限制，单位为弧度；顺序必须和 joint_names 保持一致。
+    # base_yaw 总限位仍放开，但够箱子动作会额外用 box_motion_base_yaw_limit_rad 限制它不能大幅度转动。
+    joint_upper_limits: [3.14, 3.14, 3.14, 3.14]
+
+    # 末端执行器相对 wrist_link 的固定偏移，单位为米；用于计算真正的末端目标点。
+    tool_offset: [0.16309, -0.080763, -0.016359]
+
+    # 逆运动学允许的末端位置误差，单位为米；数值越小越准，但可能更难收敛。
+    position_tolerance_m: 0.005
+
+    # 每个目标点最多迭代次数；目标点接近极限位置时可能需要更多迭代。
+    max_iterations: 100
+
+    # 阻尼最小二乘法的阻尼系数；增大可减少奇异点附近的抖动，但会降低收敛速度。
+    damping: 0.08
+
+    # 单次逆解迭代允许改变的最大关节角，单位为弧度；限制过大容易跳，过小会收敛慢。
+    max_solver_step_rad: 0.12
+
+    # 重复目标点死区，单位为米；连续发布同一个目标时，距离小于该值会被忽略，避免反复重新规划导致抖动。
+    target_repeat_deadband_m: 0.002
+
+    # 电机命令发布频率，单位 Hz；需要小于或等于电机控制器能够稳定处理的频率。
+    command_rate_hz: 50.0
+
+    # 轨迹插值时的最大关节速度，单位为弧度/秒；越小运动越慢越稳。
+    max_joint_speed_rad_s: 0.18
+
+    # 每段轨迹的最短执行时间，单位为秒；避免很短距离也瞬间给出阶跃命令。
+    min_trajectory_duration_s: 1.2
+
+    # 到达目标后是否继续发布保持命令；真实电机和当前仿真控制器建议保持 true，否则命令超时后会卸力。
+    hold_last_command: true
+
+    # 运动过程中的位置刚度 kp；值太低会“想动但动不起来”，值太高会抖。
+    kp: [5.0, 8.0, 7.0, 3.0]
+
+    # 运动过程中的速度阻尼 kd；到目标附近来回振荡时优先增大对应关节 kd。
+    kd: [2.6, 4.0, 3.5, 1.8]
+
+    # 到达目标后的保持位置刚度 kp；通常应小于运动 kp，减少静止时高频抖动。
+    hold_kp: [2.0, 3.0, 2.5, 1.2]
+
+    # 到达目标后的保持速度阻尼 kd；通常应大于或接近运动 kd，用于压住到位后的振荡。
+    hold_kd: [3.0, 4.5, 4.0, 2.0]
+
+    # 发送给 MIT 控制器的目标速度，单位为弧度/秒；目前使用位置控制，所以默认全为 0。
+    command_velocity: [0.0, 0.0, 0.0, 0.0]
+
+    # 前馈力矩，单位为 N*m；没有重力补偿模型时默认全为 0，后续可以按关节负载补偿。
+    torque_ff: [0.0, 0.0, 0.0, 0.0]
+
+    # 箱子中心到 base_link 原点的前向距离，单位为米；仿真中箱子模型中心会放在这个 x 位置。
+    # 当前已放宽 shoulder/wrist 软件限位，用于验证更大的臂展。
+    box_center_distance_m: 0.65
+
+    # 兼容旧命名的箱子中心前向距离，单位为米；sim.launch 会用它放置 Gazebo 箱子中心。
+    # 当前吸盘目标会自动换算到朝向机械臂那一面的中心：x = arm_to_box_distance_m - box_depth_m / 2。
+    arm_to_box_distance_m: 0.65
+
+    # 机械臂平台高度，单位为米；仿真里默认平台高 16 cm，机械臂 base_link 位于平台上表面。
+    platform_height_m: 0.16
+
+    # 箱子放置地面的高度，单位为米；箱子直接放在 Gazebo 地面时为 0。
+    box_ground_z_m: 0.0
+
+    # 箱子左右宽度，单位为米；250 mm = 0.25 m。
+    box_width_m: 0.25
+
+    # 箱子前后深度，单位为米；250 mm = 0.25 m。
+    box_depth_m: 0.25
+
+    # 箱子高度 h，单位为米；你要换不同高度的箱子时，主要改这里。
+    box_height_m: 0.25
+
+    # 箱子重量，单位为 kg；500 g = 0.5 kg，目前用于日志说明，后续可扩展为重力前馈。
+    box_mass_kg: 0.5
+
+    # 箱子中心相对 base_link 的左右偏移，单位为米；0.0 表示箱子在机械臂正前方中心线上。
+    box_motion_y_m: 0.0
+
+    # 够箱子动作允许 base_yaw 偏离箱子方向的最大角度，单位为弧度；限制它绕到背后找奇怪解。
+    # 0.50 rad 约等于 29 度，只允许底座小幅修正吸盘偏心，主要靠肩/肘/腕直接伸出去。
+    box_motion_base_yaw_limit_rad: 0.50
+
+    # 够箱子动作的末端姿态容差；约束末端执行器局部 x 轴指向箱子，0.35 约等于允许 20 度误差。
+    box_motion_tool_direction_tolerance: 0.35
+
+    # 姿态误差在逆运动学里的权重；增大更重视末端朝向，过大会牺牲位置精度。
+    box_motion_tool_direction_weight: 0.12
+
+    # 吸盘动作的预接近点相对吸附点的后退距离，单位为米。
+    box_approach_offset_m: 0.06
+
+    # 预接近点允许的最小前伸距离，单位为米；当前机械臂太靠近底座的位置反而不可达，默认限制在 14 cm。
+    box_min_approach_x_m: 0.14
+
+    # 吸盘贴到箱子侧面后继续向箱子方向轻压的距离，单位为米；用于确保有接触，过大容易顶箱子或让姿态变形。
+    box_touch_push_m: 0.005
+
+    # 吸盘对准箱子侧面的高度比例；0.5 表示箱子朝机械臂这一面的正中心。
+    box_touch_height_ratio: 0.5
+
+    # 吸盘接触点允许的最低高度，单位为米；这里是相对机械臂 base_link 的高度，允许为负。
+    # 机械臂在 16 cm 平台上、25 cm 箱子在地面时，箱子侧面正中心相对 base_link 约为 -0.035 m。
+    box_min_touch_z_m: -0.06
+
+    # 吸盘吸附点的 x 坐标覆盖值，单位为米；设为 0.0 时自动使用“箱子中心 x - box_depth_m/2”，也就是朝向机械臂那一面的中心。
+    box_suction_target_x_m: 0.0
+
+    # 旧的上方吸附动作参数；当前改为侧面正中心吸附后不再用于计算目标点，保留是为了兼容旧配置。
+    box_suction_approach_clearance_m: 0.06
+
+    # 吸盘接触前距离箱子侧面的预贴近距离，单位为米；正值表示先停在箱子表面前方，再执行轻压接触。
+    box_suction_contact_offset_m: 0.01
+
+    # 吸盘开启后等待吸附稳定的时间，单位为秒。
+    box_suction_settle_s: 0.8
+
+    # 举起高度，单位为米；吸盘吸住后末端会在 z 方向抬高这个距离。
+    box_lift_height_m: 0.08
+
+    # 举起后往机械臂方向回收的距离，单位为米；这样比完全伸直举着更稳。
+    box_lift_retract_m: 0.04
+
+    # 动作每一段完成后的停顿时间，单位为秒；给机械臂一点稳定时间，减少连续段切换时的晃动。
+    box_motion_step_wait_s: 0.5
+
+    # 够箱子动作允许的末端位置误差，单位为米；箱子动作更偏接触/搬移动作，默认比普通目标点更宽松。
+    box_motion_position_tolerance_m: 0.02
+
+    # 够箱子动作的肩关节偏置初值，单位为弧度；放宽限位后用较大的肩关节角引导机械臂向前伸出。
+    box_motion_shoulder_bias_rad: 0.85
+
+    # 够箱子动作的肘关节偏置初值，单位为弧度；保持轻微弯肘，避免完全伸直造成奇异和抖动。
+    box_motion_elbow_bias_rad: 0.4
+
+    # 够箱子动作的腕关节偏置初值，单位为弧度；用于让末端姿态更适合接触和抬起。
+    box_motion_wrist_bias_rad: -0.6

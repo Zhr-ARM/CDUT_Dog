@@ -1,0 +1,17 @@
+/home/zhr/robot_arm/install/arm_controller/lib/arm_controller/arm_controller_node
+/home/zhr/robot_arm/install/arm_controller/share/arm_controller/config/arm_controller.yaml
+/home/zhr/robot_arm/install/arm_controller/share/ament_index/resource_index/package_run_dependencies/arm_controller
+/home/zhr/robot_arm/install/arm_controller/share/ament_index/resource_index/parent_prefix_path/arm_controller
+/home/zhr/robot_arm/install/arm_controller/share/arm_controller/environment/ament_prefix_path.sh
+/home/zhr/robot_arm/install/arm_controller/share/arm_controller/environment/ament_prefix_path.dsv
+/home/zhr/robot_arm/install/arm_controller/share/arm_controller/environment/path.sh
+/home/zhr/robot_arm/install/arm_controller/share/arm_controller/environment/path.dsv
+/home/zhr/robot_arm/install/arm_controller/share/arm_controller/local_setup.bash
+/home/zhr/robot_arm/install/arm_controller/share/arm_controller/local_setup.sh
+/home/zhr/robot_arm/install/arm_controller/share/arm_controller/local_setup.zsh
+/home/zhr/robot_arm/install/arm_controller/share/arm_controller/local_setup.dsv
+/home/zhr/robot_arm/install/arm_controller/share/arm_controller/package.dsv
+/home/zhr/robot_arm/install/arm_controller/share/ament_index/resource_index/packages/arm_controller
+/home/zhr/robot_arm/install/arm_controller/share/arm_controller/cmake/arm_controllerConfig.cmake
+/home/zhr/robot_arm/install/arm_controller/share/arm_controller/cmake/arm_controllerConfig-version.cmake
+/home/zhr/robot_arm/install/arm_controller/share/arm_controller/package.xml

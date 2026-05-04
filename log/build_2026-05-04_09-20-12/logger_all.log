@@ -1,0 +1,274 @@
+[0.208s] DEBUG:colcon:Command line arguments: ['/usr/bin/colcon', 'build', '--packages-select', 'arm_controller', 'arm_bringup', 'sim_motor_controller', '--symlink-install']
+[0.208s] DEBUG:colcon:Parsed command line arguments: Namespace(log_base=None, log_level=None, verb_name='build', build_base='build', install_base='install', merge_install=False, symlink_install=True, test_result_base=None, continue_on_error=False, executor='parallel', parallel_workers=8, event_handlers=None, ignore_user_meta=False, metas=['./colcon.meta'], base_paths=['.'], packages_ignore=None, packages_ignore_regex=None, paths=None, packages_up_to=None, packages_up_to_regex=None, packages_above=None, packages_above_and_dependencies=None, packages_above_depth=None, packages_select_by_dep=None, packages_skip_by_dep=None, packages_skip_up_to=None, packages_select_build_failed=False, packages_skip_build_finished=False, packages_select_test_failures=False, packages_skip_test_passed=False, packages_select=['arm_controller', 'arm_bringup', 'sim_motor_controller'], packages_skip=None, packages_select_regex=None, packages_skip_regex=None, packages_start=None, packages_end=None, allow_overriding=[], cmake_args=None, cmake_target=None, cmake_target_skip_unavailable=False, cmake_clean_cache=False, cmake_clean_first=False, cmake_force_configure=False, ament_cmake_args=None, catkin_cmake_args=None, catkin_skip_building_tests=False, verb_parser=<colcon_defaults.argument_parser.defaults.DefaultArgumentsDecorator object at 0x7b7ed2779600>, verb_extension=<colcon_core.verb.build.BuildVerb object at 0x7b7ed2779180>, main=<bound method BuildVerb.main of <colcon_core.verb.build.BuildVerb object at 0x7b7ed2779180>>)
+[0.520s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) check parameters
+[0.520s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) check parameters
+[0.520s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) check parameters
+[0.520s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) check parameters
+[0.520s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) discover
+[0.521s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) discover
+[0.521s] INFO:colcon.colcon_core.package_discovery:Crawling recursively for packages in '/home/zhr/robot_arm'
+[0.521s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ignore', 'ignore_ament_install']
+[0.521s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore'
+[0.521s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore_ament_install'
+[0.521s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_pkg']
+[0.521s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_pkg'
+[0.521s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_meta']
+[0.521s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_meta'
+[0.521s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ros']
+[0.521s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ros'
+[0.544s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['cmake', 'python']
+[0.544s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'cmake'
+[0.544s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python'
+[0.544s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['python_setup_py']
+[0.544s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python_setup_py'
+[0.544s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extensions ['ignore', 'ignore_ament_install']
+[0.544s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extension 'ignore'
+[0.544s] Level 1:colcon.colcon_core.package_identification:_identify(build) ignored
+[0.544s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extensions ['ignore', 'ignore_ament_install']
+[0.545s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extension 'ignore'
+[0.545s] Level 1:colcon.colcon_core.package_identification:_identify(install) ignored
+[0.545s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extensions ['ignore', 'ignore_ament_install']
+[0.545s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extension 'ignore'
+[0.545s] Level 1:colcon.colcon_core.package_identification:_identify(log) ignored
+[0.545s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['ignore', 'ignore_ament_install']
+[0.545s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ignore'
+[0.545s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ignore_ament_install'
+[0.545s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['colcon_pkg']
+[0.545s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'colcon_pkg'
+[0.545s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['colcon_meta']
+[0.546s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'colcon_meta'
+[0.546s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['ros']
+[0.546s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ros'
+[0.546s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['cmake', 'python']
+[0.546s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'cmake'
+[0.546s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'python'
+[0.546s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['python_setup_py']
+[0.546s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'python_setup_py'
+[0.546s] Level 1:colcon.colcon_core.package_identification:_identify(src/arm_bringup) by extensions ['ignore', 'ignore_ament_install']
+[0.546s] Level 1:colcon.colcon_core.package_identification:_identify(src/arm_bringup) by extension 'ignore'
+[0.546s] Level 1:colcon.colcon_core.package_identification:_identify(src/arm_bringup) by extension 'ignore_ament_install'
+[0.546s] Level 1:colcon.colcon_core.package_identification:_identify(src/arm_bringup) by extensions ['colcon_pkg']
+[0.546s] Level 1:colcon.colcon_core.package_identification:_identify(src/arm_bringup) by extension 'colcon_pkg'
+[0.547s] Level 1:colcon.colcon_core.package_identification:_identify(src/arm_bringup) by extensions ['colcon_meta']
+[0.547s] Level 1:colcon.colcon_core.package_identification:_identify(src/arm_bringup) by extension 'colcon_meta'
+[0.547s] Level 1:colcon.colcon_core.package_identification:_identify(src/arm_bringup) by extensions ['ros']
+[0.547s] Level 1:colcon.colcon_core.package_identification:_identify(src/arm_bringup) by extension 'ros'
+[0.550s] DEBUG:colcon.colcon_core.package_identification:Package 'src/arm_bringup' with type 'ros.ament_cmake' and name 'arm_bringup'
+[0.551s] Level 1:colcon.colcon_core.package_identification:_identify(src/arm_controller) by extensions ['ignore', 'ignore_ament_install']
+[0.551s] Level 1:colcon.colcon_core.package_identification:_identify(src/arm_controller) by extension 'ignore'
+[0.551s] Level 1:colcon.colcon_core.package_identification:_identify(src/arm_controller) by extension 'ignore_ament_install'
+[0.551s] Level 1:colcon.colcon_core.package_identification:_identify(src/arm_controller) by extensions ['colcon_pkg']
+[0.551s] Level 1:colcon.colcon_core.package_identification:_identify(src/arm_controller) by extension 'colcon_pkg'
+[0.551s] Level 1:colcon.colcon_core.package_identification:_identify(src/arm_controller) by extensions ['colcon_meta']
+[0.551s] Level 1:colcon.colcon_core.package_identification:_identify(src/arm_controller) by extension 'colcon_meta'
+[0.551s] Level 1:colcon.colcon_core.package_identification:_identify(src/arm_controller) by extensions ['ros']
+[0.551s] Level 1:colcon.colcon_core.package_identification:_identify(src/arm_controller) by extension 'ros'
+[0.553s] DEBUG:colcon.colcon_core.package_identification:Package 'src/arm_controller' with type 'ros.ament_cmake' and name 'arm_controller'
+[0.553s] Level 1:colcon.colcon_core.package_identification:_identify(src/real_motor_controller) by extensions ['ignore', 'ignore_ament_install']
+[0.553s] Level 1:colcon.colcon_core.package_identification:_identify(src/real_motor_controller) by extension 'ignore'
+[0.553s] Level 1:colcon.colcon_core.package_identification:_identify(src/real_motor_controller) by extension 'ignore_ament_install'
+[0.553s] Level 1:colcon.colcon_core.package_identification:_identify(src/real_motor_controller) by extensions ['colcon_pkg']
+[0.553s] Level 1:colcon.colcon_core.package_identification:_identify(src/real_motor_controller) by extension 'colcon_pkg'
+[0.554s] Level 1:colcon.colcon_core.package_identification:_identify(src/real_motor_controller) by extensions ['colcon_meta']
+[0.554s] Level 1:colcon.colcon_core.package_identification:_identify(src/real_motor_controller) by extension 'colcon_meta'
+[0.554s] Level 1:colcon.colcon_core.package_identification:_identify(src/real_motor_controller) by extensions ['ros']
+[0.554s] Level 1:colcon.colcon_core.package_identification:_identify(src/real_motor_controller) by extension 'ros'
+[0.555s] DEBUG:colcon.colcon_core.package_identification:Package 'src/real_motor_controller' with type 'ros.ament_python' and name 'real_motor_controller'
+[0.555s] Level 1:colcon.colcon_core.package_identification:_identify(src/sim_motor_controller) by extensions ['ignore', 'ignore_ament_install']
+[0.555s] Level 1:colcon.colcon_core.package_identification:_identify(src/sim_motor_controller) by extension 'ignore'
+[0.555s] Level 1:colcon.colcon_core.package_identification:_identify(src/sim_motor_controller) by extension 'ignore_ament_install'
+[0.555s] Level 1:colcon.colcon_core.package_identification:_identify(src/sim_motor_controller) by extensions ['colcon_pkg']
+[0.555s] Level 1:colcon.colcon_core.package_identification:_identify(src/sim_motor_controller) by extension 'colcon_pkg'
+[0.556s] Level 1:colcon.colcon_core.package_identification:_identify(src/sim_motor_controller) by extensions ['colcon_meta']
+[0.556s] Level 1:colcon.colcon_core.package_identification:_identify(src/sim_motor_controller) by extension 'colcon_meta'
+[0.556s] Level 1:colcon.colcon_core.package_identification:_identify(src/sim_motor_controller) by extensions ['ros']
+[0.556s] Level 1:colcon.colcon_core.package_identification:_identify(src/sim_motor_controller) by extension 'ros'
+[0.557s] DEBUG:colcon.colcon_core.package_identification:Package 'src/sim_motor_controller' with type 'ros.ament_python' and name 'sim_motor_controller'
+[0.557s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) using defaults
+[0.557s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) discover
+[0.557s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) using defaults
+[0.557s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) discover
+[0.557s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) using defaults
+[0.609s] INFO:colcon.colcon_core.package_selection:Skipping not selected package 'real_motor_controller' in 'src/real_motor_controller'
+[0.610s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) check parameters
+[0.610s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) discover
+[0.617s] DEBUG:colcon.colcon_installed_package_information.package_discovery:Found 432 installed packages in /opt/ros/humble
+[0.619s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) using defaults
+[0.717s] Level 5:colcon.colcon_core.verb:set package 'arm_controller' build argument 'cmake_args' from command line to 'None'
+[0.717s] Level 5:colcon.colcon_core.verb:set package 'arm_controller' build argument 'cmake_target' from command line to 'None'
+[0.717s] Level 5:colcon.colcon_core.verb:set package 'arm_controller' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.717s] Level 5:colcon.colcon_core.verb:set package 'arm_controller' build argument 'cmake_clean_cache' from command line to 'False'
+[0.717s] Level 5:colcon.colcon_core.verb:set package 'arm_controller' build argument 'cmake_clean_first' from command line to 'False'
+[0.717s] Level 5:colcon.colcon_core.verb:set package 'arm_controller' build argument 'cmake_force_configure' from command line to 'False'
+[0.717s] Level 5:colcon.colcon_core.verb:set package 'arm_controller' build argument 'ament_cmake_args' from command line to 'None'
+[0.718s] Level 5:colcon.colcon_core.verb:set package 'arm_controller' build argument 'catkin_cmake_args' from command line to 'None'
+[0.718s] Level 5:colcon.colcon_core.verb:set package 'arm_controller' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.718s] DEBUG:colcon.colcon_core.verb:Building package 'arm_controller' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/zhr/robot_arm/build/arm_controller', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/zhr/robot_arm/install/arm_controller', 'merge_install': False, 'path': '/home/zhr/robot_arm/src/arm_controller', 'symlink_install': True, 'test_result_base': None}
+[0.718s] Level 5:colcon.colcon_core.verb:set package 'sim_motor_controller' build argument 'cmake_args' from command line to 'None'
+[0.718s] Level 5:colcon.colcon_core.verb:set package 'sim_motor_controller' build argument 'cmake_target' from command line to 'None'
+[0.718s] Level 5:colcon.colcon_core.verb:set package 'sim_motor_controller' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.718s] Level 5:colcon.colcon_core.verb:set package 'sim_motor_controller' build argument 'cmake_clean_cache' from command line to 'False'
+[0.718s] Level 5:colcon.colcon_core.verb:set package 'sim_motor_controller' build argument 'cmake_clean_first' from command line to 'False'
+[0.719s] Level 5:colcon.colcon_core.verb:set package 'sim_motor_controller' build argument 'cmake_force_configure' from command line to 'False'
+[0.719s] Level 5:colcon.colcon_core.verb:set package 'sim_motor_controller' build argument 'ament_cmake_args' from command line to 'None'
+[0.719s] Level 5:colcon.colcon_core.verb:set package 'sim_motor_controller' build argument 'catkin_cmake_args' from command line to 'None'
+[0.719s] Level 5:colcon.colcon_core.verb:set package 'sim_motor_controller' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.719s] DEBUG:colcon.colcon_core.verb:Building package 'sim_motor_controller' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/zhr/robot_arm/build/sim_motor_controller', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/zhr/robot_arm/install/sim_motor_controller', 'merge_install': False, 'path': '/home/zhr/robot_arm/src/sim_motor_controller', 'symlink_install': True, 'test_result_base': None}
+[0.719s] Level 5:colcon.colcon_core.verb:set package 'arm_bringup' build argument 'cmake_args' from command line to 'None'
+[0.719s] Level 5:colcon.colcon_core.verb:set package 'arm_bringup' build argument 'cmake_target' from command line to 'None'
+[0.719s] Level 5:colcon.colcon_core.verb:set package 'arm_bringup' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.719s] Level 5:colcon.colcon_core.verb:set package 'arm_bringup' build argument 'cmake_clean_cache' from command line to 'False'
+[0.719s] Level 5:colcon.colcon_core.verb:set package 'arm_bringup' build argument 'cmake_clean_first' from command line to 'False'
+[0.719s] Level 5:colcon.colcon_core.verb:set package 'arm_bringup' build argument 'cmake_force_configure' from command line to 'False'
+[0.720s] Level 5:colcon.colcon_core.verb:set package 'arm_bringup' build argument 'ament_cmake_args' from command line to 'None'
+[0.720s] Level 5:colcon.colcon_core.verb:set package 'arm_bringup' build argument 'catkin_cmake_args' from command line to 'None'
+[0.720s] Level 5:colcon.colcon_core.verb:set package 'arm_bringup' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.720s] DEBUG:colcon.colcon_core.verb:Building package 'arm_bringup' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/zhr/robot_arm/build/arm_bringup', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/zhr/robot_arm/install/arm_bringup', 'merge_install': False, 'path': '/home/zhr/robot_arm/src/arm_bringup', 'symlink_install': True, 'test_result_base': None}
+[0.720s] INFO:colcon.colcon_core.executor:Executing jobs using 'parallel' executor
+[0.721s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete
+[0.722s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/home/zhr/robot_arm/src/arm_controller' with build type 'ament_cmake'
+[0.723s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/home/zhr/robot_arm/src/arm_controller'
+[0.729s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_core.shell.bat': Not used on non-Windows systems
+[0.730s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.731s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.736s] INFO:colcon.colcon_ros.task.ament_python.build:Building ROS package in '/home/zhr/robot_arm/src/sim_motor_controller' with build type 'ament_python'
+[0.736s] Level 1:colcon.colcon_core.shell:create_environment_hook('sim_motor_controller', 'ament_prefix_path')
+[0.737s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller/hook/ament_prefix_path.ps1'
+[0.739s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller/hook/ament_prefix_path.dsv'
+[0.741s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller/hook/ament_prefix_path.sh'
+[0.743s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.743s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.757s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/zhr/robot_arm/build/arm_controller': CMAKE_PREFIX_PATH=/opt/ros/humble /opt/st/stm32cubeclt_1.17.0/CMake/bin/cmake --build /home/zhr/robot_arm/build/arm_controller -- -j8 -l8
+[1.856s] INFO:colcon.colcon_core.task.python.build:Building Python package in '/home/zhr/robot_arm/src/sim_motor_controller'
+[1.856s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[1.856s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[2.912s] DEBUG:colcon.colcon_core.task.python.build:While undoing a previous installation files outside the Python library path are being ignored: /home/zhr/robot_arm/install/sim_motor_controller/share/ament_index/resource_index/packages/sim_motor_controller
+[2.912s] DEBUG:colcon.colcon_core.task.python.build:While undoing a previous installation files outside the Python library path are being ignored: /home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller/package.xml
+[2.912s] DEBUG:colcon.colcon_core.task.python.build:While undoing a previous installation files outside the Python library path are being ignored: /home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller/README.md
+[2.912s] DEBUG:colcon.colcon_core.task.python.build:While undoing a previous installation files outside the Python library path are being ignored: /home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller/config/sim_controllers.yaml
+[2.912s] DEBUG:colcon.colcon_core.task.python.build:While undoing a previous installation files outside the Python library path are being ignored: /home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller/config/sim_motor_controller.yaml
+[2.912s] DEBUG:colcon.colcon_core.task.python.build:While undoing a previous installation files outside the Python library path are being ignored: /home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller/launch/sim_motor_controller.launch.py
+[2.913s] DEBUG:colcon.colcon_core.task.python.build:While undoing a previous installation files outside the Python library path are being ignored: /home/zhr/robot_arm/install/sim_motor_controller/lib/sim_motor_controller/sim_motor_controller_node
+[2.917s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/zhr/robot_arm/build/sim_motor_controller': PYTHONPATH=/home/zhr/robot_arm/build/sim_motor_controller/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/zhr/robot_arm/install/sim_motor_controller/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /home/zhr/robot_arm/build/sim_motor_controller/build --no-deps symlink_data --force
+[4.161s] Level 1:colcon.colcon_core.shell:create_environment_hook('sim_motor_controller', 'pythonpath_develop')
+[4.161s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/zhr/robot_arm/build/sim_motor_controller/src/share/sim_motor_controller/hook/pythonpath_develop.ps1'
+[4.162s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/zhr/robot_arm/build/sim_motor_controller' returned '0': PYTHONPATH=/home/zhr/robot_arm/build/sim_motor_controller/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/zhr/robot_arm/install/sim_motor_controller/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /home/zhr/robot_arm/build/sim_motor_controller/build --no-deps symlink_data --force
+[4.162s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/zhr/robot_arm/build/sim_motor_controller/src/share/sim_motor_controller/hook/pythonpath_develop.dsv'
+[4.163s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/zhr/robot_arm/build/sim_motor_controller/src/share/sim_motor_controller/hook/pythonpath_develop.sh'
+[4.168s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/sim_motor_controller' for CMake module files
+[4.169s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/sim_motor_controller' for CMake config files
+[4.170s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/sim_motor_controller/lib'
+[4.170s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/sim_motor_controller/bin'
+[4.170s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/sim_motor_controller/lib/pkgconfig/sim_motor_controller.pc'
+[4.171s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/sim_motor_controller/lib/python3.10/site-packages'
+[4.171s] Level 1:colcon.colcon_core.shell:create_environment_hook('sim_motor_controller', 'pythonpath')
+[4.171s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller/hook/pythonpath.ps1'
+[4.172s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller/hook/pythonpath.dsv'
+[4.173s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller/hook/pythonpath.sh'
+[4.174s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/sim_motor_controller/bin'
+[4.175s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(sim_motor_controller)
+[4.176s] INFO:colcon.colcon_core.shell:Creating package script '/home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller/package.ps1'
+[4.178s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller/package.dsv'
+[4.179s] INFO:colcon.colcon_core.shell:Creating package script '/home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller/package.sh'
+[4.181s] INFO:colcon.colcon_core.shell:Creating package script '/home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller/package.bash'
+[4.183s] INFO:colcon.colcon_core.shell:Creating package script '/home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller/package.zsh'
+[4.184s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/zhr/robot_arm/install/sim_motor_controller/share/colcon-core/packages/sim_motor_controller)
+[18.289s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/zhr/robot_arm/build/arm_controller' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /opt/st/stm32cubeclt_1.17.0/CMake/bin/cmake --build /home/zhr/robot_arm/build/arm_controller -- -j8 -l8
+[18.295s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/zhr/robot_arm/build/arm_controller': CMAKE_PREFIX_PATH=/opt/ros/humble /opt/st/stm32cubeclt_1.17.0/CMake/bin/cmake --install /home/zhr/robot_arm/build/arm_controller
+[18.304s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(arm_controller)
+[18.305s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_controller' for CMake module files
+[18.305s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/zhr/robot_arm/build/arm_controller' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /opt/st/stm32cubeclt_1.17.0/CMake/bin/cmake --install /home/zhr/robot_arm/build/arm_controller
+[18.306s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_controller' for CMake config files
+[18.306s] Level 1:colcon.colcon_core.shell:create_environment_hook('arm_controller', 'cmake_prefix_path')
+[18.306s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/zhr/robot_arm/install/arm_controller/share/arm_controller/hook/cmake_prefix_path.ps1'
+[18.307s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/zhr/robot_arm/install/arm_controller/share/arm_controller/hook/cmake_prefix_path.dsv'
+[18.307s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/zhr/robot_arm/install/arm_controller/share/arm_controller/hook/cmake_prefix_path.sh'
+[18.308s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_controller/lib'
+[18.308s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_controller/bin'
+[18.308s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_controller/lib/pkgconfig/arm_controller.pc'
+[18.308s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_controller/lib/python3.10/site-packages'
+[18.309s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_controller/bin'
+[18.310s] INFO:colcon.colcon_core.shell:Creating package script '/home/zhr/robot_arm/install/arm_controller/share/arm_controller/package.ps1'
+[18.311s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/zhr/robot_arm/install/arm_controller/share/arm_controller/package.dsv'
+[18.311s] INFO:colcon.colcon_core.shell:Creating package script '/home/zhr/robot_arm/install/arm_controller/share/arm_controller/package.sh'
+[18.312s] INFO:colcon.colcon_core.shell:Creating package script '/home/zhr/robot_arm/install/arm_controller/share/arm_controller/package.bash'
+[18.312s] INFO:colcon.colcon_core.shell:Creating package script '/home/zhr/robot_arm/install/arm_controller/share/arm_controller/package.zsh'
+[18.312s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/zhr/robot_arm/install/arm_controller/share/colcon-core/packages/arm_controller)
+[18.313s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(arm_controller)
+[18.313s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_controller' for CMake module files
+[18.313s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_controller' for CMake config files
+[18.313s] Level 1:colcon.colcon_core.shell:create_environment_hook('arm_controller', 'cmake_prefix_path')
+[18.314s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/zhr/robot_arm/install/arm_controller/share/arm_controller/hook/cmake_prefix_path.ps1'
+[18.314s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/zhr/robot_arm/install/arm_controller/share/arm_controller/hook/cmake_prefix_path.dsv'
+[18.314s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/zhr/robot_arm/install/arm_controller/share/arm_controller/hook/cmake_prefix_path.sh'
+[18.315s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_controller/lib'
+[18.315s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_controller/bin'
+[18.315s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_controller/lib/pkgconfig/arm_controller.pc'
+[18.315s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_controller/lib/python3.10/site-packages'
+[18.315s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_controller/bin'
+[18.315s] INFO:colcon.colcon_core.shell:Creating package script '/home/zhr/robot_arm/install/arm_controller/share/arm_controller/package.ps1'
+[18.316s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/zhr/robot_arm/install/arm_controller/share/arm_controller/package.dsv'
+[18.316s] INFO:colcon.colcon_core.shell:Creating package script '/home/zhr/robot_arm/install/arm_controller/share/arm_controller/package.sh'
+[18.316s] INFO:colcon.colcon_core.shell:Creating package script '/home/zhr/robot_arm/install/arm_controller/share/arm_controller/package.bash'
+[18.317s] INFO:colcon.colcon_core.shell:Creating package script '/home/zhr/robot_arm/install/arm_controller/share/arm_controller/package.zsh'
+[18.317s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/zhr/robot_arm/install/arm_controller/share/colcon-core/packages/arm_controller)
+[18.317s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/home/zhr/robot_arm/src/arm_bringup' with build type 'ament_cmake'
+[18.317s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/home/zhr/robot_arm/src/arm_bringup'
+[18.318s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[18.318s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[18.330s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/zhr/robot_arm/build/arm_bringup': AMENT_PREFIX_PATH=/home/zhr/robot_arm/install/sim_motor_controller:/home/zhr/robot_arm/install/real_motor_controller:/home/zhr/robot_arm/install/arm_controller:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/zhr/robot_arm/install/arm_controller:/opt/ros/humble PYTHONPATH=/home/zhr/robot_arm/build/sim_motor_controller/src:/home/zhr/robot_arm/install/sim_motor_controller/lib/python3.10/site-packages:/home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages:${PYTHONPATH} /opt/st/stm32cubeclt_1.17.0/CMake/bin/cmake --build /home/zhr/robot_arm/build/arm_bringup -- -j8 -l8
+[18.342s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/zhr/robot_arm/build/arm_bringup' returned '0': AMENT_PREFIX_PATH=/home/zhr/robot_arm/install/sim_motor_controller:/home/zhr/robot_arm/install/real_motor_controller:/home/zhr/robot_arm/install/arm_controller:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/zhr/robot_arm/install/arm_controller:/opt/ros/humble PYTHONPATH=/home/zhr/robot_arm/build/sim_motor_controller/src:/home/zhr/robot_arm/install/sim_motor_controller/lib/python3.10/site-packages:/home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages:${PYTHONPATH} /opt/st/stm32cubeclt_1.17.0/CMake/bin/cmake --build /home/zhr/robot_arm/build/arm_bringup -- -j8 -l8
+[18.344s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/zhr/robot_arm/build/arm_bringup': AMENT_PREFIX_PATH=/home/zhr/robot_arm/install/sim_motor_controller:/home/zhr/robot_arm/install/real_motor_controller:/home/zhr/robot_arm/install/arm_controller:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/zhr/robot_arm/install/arm_controller:/opt/ros/humble PYTHONPATH=/home/zhr/robot_arm/build/sim_motor_controller/src:/home/zhr/robot_arm/install/sim_motor_controller/lib/python3.10/site-packages:/home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages:${PYTHONPATH} /opt/st/stm32cubeclt_1.17.0/CMake/bin/cmake --install /home/zhr/robot_arm/build/arm_bringup
+[18.357s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(arm_bringup)
+[18.357s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_bringup' for CMake module files
+[18.357s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/zhr/robot_arm/build/arm_bringup' returned '0': AMENT_PREFIX_PATH=/home/zhr/robot_arm/install/sim_motor_controller:/home/zhr/robot_arm/install/real_motor_controller:/home/zhr/robot_arm/install/arm_controller:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/zhr/robot_arm/install/arm_controller:/opt/ros/humble PYTHONPATH=/home/zhr/robot_arm/build/sim_motor_controller/src:/home/zhr/robot_arm/install/sim_motor_controller/lib/python3.10/site-packages:/home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages:${PYTHONPATH} /opt/st/stm32cubeclt_1.17.0/CMake/bin/cmake --install /home/zhr/robot_arm/build/arm_bringup
+[18.358s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_bringup' for CMake config files
+[18.359s] Level 1:colcon.colcon_core.shell:create_environment_hook('arm_bringup', 'cmake_prefix_path')
+[18.359s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/hook/cmake_prefix_path.ps1'
+[18.361s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/hook/cmake_prefix_path.dsv'
+[18.361s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/hook/cmake_prefix_path.sh'
+[18.362s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_bringup/bin'
+[18.362s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_bringup/lib/pkgconfig/arm_bringup.pc'
+[18.362s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_bringup/lib/python3.10/site-packages'
+[18.362s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_bringup/bin'
+[18.362s] INFO:colcon.colcon_core.shell:Creating package script '/home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/package.ps1'
+[18.363s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/package.dsv'
+[18.363s] INFO:colcon.colcon_core.shell:Creating package script '/home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/package.sh'
+[18.363s] INFO:colcon.colcon_core.shell:Creating package script '/home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/package.bash'
+[18.364s] INFO:colcon.colcon_core.shell:Creating package script '/home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/package.zsh'
+[18.364s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/zhr/robot_arm/install/arm_bringup/share/colcon-core/packages/arm_bringup)
+[18.364s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(arm_bringup)
+[18.365s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_bringup' for CMake module files
+[18.365s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_bringup' for CMake config files
+[18.365s] Level 1:colcon.colcon_core.shell:create_environment_hook('arm_bringup', 'cmake_prefix_path')
+[18.365s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/hook/cmake_prefix_path.ps1'
+[18.366s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/hook/cmake_prefix_path.dsv'
+[18.366s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/hook/cmake_prefix_path.sh'
+[18.366s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_bringup/bin'
+[18.366s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_bringup/lib/pkgconfig/arm_bringup.pc'
+[18.367s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_bringup/lib/python3.10/site-packages'
+[18.367s] Level 1:colcon.colcon_core.environment:checking '/home/zhr/robot_arm/install/arm_bringup/bin'
+[18.367s] INFO:colcon.colcon_core.shell:Creating package script '/home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/package.ps1'
+[18.368s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/package.dsv'
+[18.368s] INFO:colcon.colcon_core.shell:Creating package script '/home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/package.sh'
+[18.368s] INFO:colcon.colcon_core.shell:Creating package script '/home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/package.bash'
+[18.369s] INFO:colcon.colcon_core.shell:Creating package script '/home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/package.zsh'
+[18.369s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/zhr/robot_arm/install/arm_bringup/share/colcon-core/packages/arm_bringup)
+[18.369s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:closing loop
+[18.369s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:loop closed
+[18.370s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete finished with '0'
+[18.370s] DEBUG:colcon.colcon_core.event_reactor:joining thread
+[18.379s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.terminal_notifier': Not used on non-Darwin systems
+[18.380s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.win32': Not used on non-Windows systems
+[18.380s] INFO:colcon.colcon_notification.desktop_notification:Sending desktop notification using 'notify2'
+[18.390s] DEBUG:colcon.colcon_core.event_reactor:joined thread
+[18.390s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/zhr/robot_arm/install/local_setup.ps1'
+[18.391s] INFO:colcon.colcon_core.shell:Creating prefix util module '/home/zhr/robot_arm/install/_local_setup_util_ps1.py'
+[18.394s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/zhr/robot_arm/install/setup.ps1'
+[18.396s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/zhr/robot_arm/install/local_setup.sh'
+[18.397s] INFO:colcon.colcon_core.shell:Creating prefix util module '/home/zhr/robot_arm/install/_local_setup_util_sh.py'
+[18.397s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/zhr/robot_arm/install/setup.sh'
+[18.398s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/zhr/robot_arm/install/local_setup.bash'
+[18.399s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/zhr/robot_arm/install/setup.bash'
+[18.400s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/zhr/robot_arm/install/local_setup.zsh'
+[18.400s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/zhr/robot_arm/install/setup.zsh'

@@ -1,0 +1,31 @@
+[0.905s] Invoking command in '/home/zhr/robot_arm/build/sim_motor_controller': PYTHONPATH=/home/zhr/robot_arm/build/sim_motor_controller/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/zhr/robot_arm/install/sim_motor_controller/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --uninstall --editable --build-directory /home/zhr/robot_arm/build/sim_motor_controller/build
+[1.150s] running develop
+[1.320s] Removing /home/zhr/robot_arm/install/sim_motor_controller/lib/python3.10/site-packages/sim-motor-controller.egg-link (link to src)
+[1.354s] Invoked command in '/home/zhr/robot_arm/build/sim_motor_controller' returned '0': PYTHONPATH=/home/zhr/robot_arm/build/sim_motor_controller/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/zhr/robot_arm/install/sim_motor_controller/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --uninstall --editable --build-directory /home/zhr/robot_arm/build/sim_motor_controller/build
+[1.355s] Invoking command in '/home/zhr/robot_arm/src/sim_motor_controller': PYTHONPATH=/home/zhr/robot_arm/build/sim_motor_controller/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/zhr/robot_arm/install/sim_motor_controller/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/sim_motor_controller build --build-base /home/zhr/robot_arm/build/sim_motor_controller/build install --record /home/zhr/robot_arm/build/sim_motor_controller/install.log --single-version-externally-managed install_data --force
+[1.582s] running egg_info
+[1.583s] writing ../../build/sim_motor_controller/sim_motor_controller.egg-info/PKG-INFO
+[1.583s] writing dependency_links to ../../build/sim_motor_controller/sim_motor_controller.egg-info/dependency_links.txt
+[1.583s] writing entry points to ../../build/sim_motor_controller/sim_motor_controller.egg-info/entry_points.txt
+[1.583s] writing requirements to ../../build/sim_motor_controller/sim_motor_controller.egg-info/requires.txt
+[1.583s] writing top-level names to ../../build/sim_motor_controller/sim_motor_controller.egg-info/top_level.txt
+[1.586s] reading manifest file '../../build/sim_motor_controller/sim_motor_controller.egg-info/SOURCES.txt'
+[1.586s] writing manifest file '../../build/sim_motor_controller/sim_motor_controller.egg-info/SOURCES.txt'
+[1.587s] running build
+[1.587s] running build_py
+[1.587s] running install
+[1.587s] running install_lib
+[1.588s] running install_data
+[1.588s] copying resource/sim_motor_controller -> /home/zhr/robot_arm/install/sim_motor_controller/share/ament_index/resource_index/packages
+[1.588s] copying package.xml -> /home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller
+[1.588s] copying README.md -> /home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller
+[1.589s] copying config/sim_controllers.yaml -> /home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller/config
+[1.589s] copying config/sim_motor_controller.yaml -> /home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller/config
+[1.589s] copying launch/sim_motor_controller.launch.py -> /home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller/launch
+[1.589s] running install_egg_info
+[1.590s] removing '/home/zhr/robot_arm/install/sim_motor_controller/lib/python3.10/site-packages/sim_motor_controller-0.1.0-py3.10.egg-info' (and everything under it)
+[1.591s] Copying ../../build/sim_motor_controller/sim_motor_controller.egg-info to /home/zhr/robot_arm/install/sim_motor_controller/lib/python3.10/site-packages/sim_motor_controller-0.1.0-py3.10.egg-info
+[1.591s] running install_scripts
+[1.611s] Installing sim_motor_controller_node script to /home/zhr/robot_arm/install/sim_motor_controller/lib/sim_motor_controller
+[1.612s] writing list of installed files to '/home/zhr/robot_arm/build/sim_motor_controller/install.log'
+[1.648s] Invoked command in '/home/zhr/robot_arm/src/sim_motor_controller' returned '0': PYTHONPATH=/home/zhr/robot_arm/build/sim_motor_controller/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/zhr/robot_arm/install/sim_motor_controller/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/sim_motor_controller build --build-base /home/zhr/robot_arm/build/sim_motor_controller/build install --record /home/zhr/robot_arm/build/sim_motor_controller/install.log --single-version-externally-managed install_data --force

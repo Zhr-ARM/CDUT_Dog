@@ -1,0 +1,12 @@
+Metadata-Version: 2.1
+Name: sim-motor-controller
+Version: 0.1.0
+Summary: Simulation-side MIT motor controller with the same ROS interface as the real DM-J4340 controller.
+Home-page: UNKNOWN
+Maintainer: zhr
+Maintainer-email: zhr@example.com
+License: MIT
+Platform: UNKNOWN
+
+UNKNOWN
+

@@ -1,0 +1,22 @@
+In file included from /opt/ros/humble/include/rclcpp/rclcpp/client.hpp:40,
+                 from /opt/ros/humble/include/rclcpp/rclcpp/callback_group.hpp:24,
+                 from /opt/ros/humble/include/rclcpp/rclcpp/any_executable.hpp:20,
+                 from /opt/ros/humble/include/rclcpp/rclcpp/memory_strategy.hpp:25,
+                 from /opt/ros/humble/include/rclcpp/rclcpp/memory_strategies.hpp:18,
+                 from /opt/ros/humble/include/rclcpp/rclcpp/executor_options.hpp:20,
+                 from /opt/ros/humble/include/rclcpp/rclcpp/executor.hpp:37,
+                 from /opt/ros/humble/include/rclcpp/rclcpp/executors/multi_threaded_executor.hpp:25,
+                 from /opt/ros/humble/include/rclcpp/rclcpp/executors.hpp:21,
+                 from /opt/ros/humble/include/rclcpp/rclcpp/rclcpp.hpp:155,
+                 from /home/zhr/robot_arm/src/arm_controller/src/arm_controller_node.cpp:13:
+/home/zhr/robot_arm/src/arm_controller/src/arm_controller_node.cpp: In member function ‘void arm_controller::ArmControllerNode::handle_target_point(const PointStamped&)’:
+/home/zhr/robot_arm/src/arm_controller/src/arm_controller_node.cpp:367:22: error: ‘a’ was not declared in this scope
+  367 |         get_logger(),a
+      |                      ^
+/home/zhr/robot_arm/src/arm_controller/src/arm_controller_node.cpp: In lambda function:
+/home/zhr/robot_arm/src/arm_controller/src/arm_controller_node.cpp:366:7: error: ‘c’ was not declared in this scope
+  366 |       RCLCPP_WARN_THROTTLE(
+      |       ^~~~~~~~~~~~~~~~~~~~
+gmake[2]: *** [CMakeFiles/arm_controller_node.dir/build.make:76：CMakeFiles/arm_controller_node.dir/src/arm_controller_node.cpp.o] 错误 1
+gmake[1]: *** [CMakeFiles/Makefile2:137：CMakeFiles/arm_controller_node.dir/all] 错误 2
+gmake: *** [Makefile:146：all] 错误 2

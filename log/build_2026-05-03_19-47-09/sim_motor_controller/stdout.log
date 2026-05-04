@@ -1,0 +1,27 @@
+running develop
+running egg_info
+creating src/sim_motor_controller.egg-info
+writing src/sim_motor_controller.egg-info/PKG-INFO
+writing dependency_links to src/sim_motor_controller.egg-info/dependency_links.txt
+writing entry points to src/sim_motor_controller.egg-info/entry_points.txt
+writing requirements to src/sim_motor_controller.egg-info/requires.txt
+writing top-level names to src/sim_motor_controller.egg-info/top_level.txt
+writing manifest file 'src/sim_motor_controller.egg-info/SOURCES.txt'
+reading manifest file 'src/sim_motor_controller.egg-info/SOURCES.txt'
+writing manifest file 'src/sim_motor_controller.egg-info/SOURCES.txt'
+running build_ext
+Creating /home/zhr/robot_arm/install/sim_motor_controller/lib/python3.10/site-packages/sim-motor-controller.egg-link (link to src)
+Installing sim_motor_controller_node script to /home/zhr/robot_arm/install/sim_motor_controller/lib/sim_motor_controller
+
+Installed /home/zhr/robot_arm/build/sim_motor_controller/src
+running symlink_data
+creating /home/zhr/robot_arm/install/sim_motor_controller/share/ament_index
+creating /home/zhr/robot_arm/install/sim_motor_controller/share/ament_index/resource_index
+creating /home/zhr/robot_arm/install/sim_motor_controller/share/ament_index/resource_index/packages
+symbolically linking /home/zhr/robot_arm/build/sim_motor_controller/resource/sim_motor_controller -> /home/zhr/robot_arm/install/sim_motor_controller/share/ament_index/resource_index/packages
+symbolically linking /home/zhr/robot_arm/build/sim_motor_controller/package.xml -> /home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller
+symbolically linking /home/zhr/robot_arm/build/sim_motor_controller/README.md -> /home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller
+creating /home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller/config
+symbolically linking /home/zhr/robot_arm/build/sim_motor_controller/config/sim_motor_controller.yaml -> /home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller/config
+creating /home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller/launch
+symbolically linking /home/zhr/robot_arm/build/sim_motor_controller/launch/sim_motor_controller.launch.py -> /home/zhr/robot_arm/install/sim_motor_controller/share/sim_motor_controller/launch

@@ -1,0 +1,172 @@
+[0.000000] (-) TimerEvent: {}
+[0.000317] (-) JobUnselected: {'identifier': 'arm_bringup'}
+[0.000488] (-) JobUnselected: {'identifier': 'real_motor_controller'}
+[0.000682] (-) JobUnselected: {'identifier': 'sim_motor_controller'}
+[0.000738] (arm_controller) JobQueued: {'identifier': 'arm_controller', 'dependencies': OrderedDict()}
+[0.000777] (arm_controller) JobStarted: {'identifier': 'arm_controller'}
+[0.022815] (arm_controller) JobProgress: {'identifier': 'arm_controller', 'progress': 'cmake'}
+[0.023571] (arm_controller) JobProgress: {'identifier': 'arm_controller', 'progress': 'build'}
+[0.024234] (arm_controller) Command: {'cmd': ['/opt/st/stm32cubeclt_1.17.0/CMake/bin/cmake', '--build', '/home/zhr/robot_arm/build/arm_controller', '--', '-j8', '-l8'], 'cwd': '/home/zhr/robot_arm/build/arm_controller', 'env': OrderedDict([('GJS_DEBUG_TOPICS', 'JS ERROR;JS LOG'), ('LESSOPEN', '| /usr/bin/lesspipe %s'), ('VSCODE_CWD', '/home/zhr'), ('VSCODE_ESM_ENTRYPOINT', 'vs/workbench/api/node/extensionHostProcess'), ('CODEX_CI', '1'), ('LANGUAGE', 'zh_CN:en'), ('USER', 'zhr'), ('LC_TIME', 'zh_CN.UTF-8'), ('CODEX_INTERNAL_ORIGINATOR_OVERRIDE', 'codex_vscode'), ('VSCODE_NLS_CONFIG', '{"userLocale":"zh-cn","osLocale":"zh-cn","resolvedLanguage":"zh-cn","defaultMessagesFile":"/usr/share/code/resources/app/out/nls.messages.json","languagePack":{"translationsConfigFile":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/tcf.json","messagesFile":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/034f571df509819cc10b0c8129f66ef77a542f0e/nls.messages.json","corruptMarkerFile":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/corrupted.info"},"locale":"zh-cn","availableLanguages":{"*":"zh-cn"},"_languagePackId":"b912e1cc94c8380c6bb426bdce2c540f.zh-cn","_languagePackSupport":true,"_translationsConfigFile":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/tcf.json","_cacheRoot":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn","_resolvedLanguagePackCoreLocation":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/034f571df509819cc10b0c8129f66ef77a542f0e","_corruptedFile":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/corrupted.info"}'), ('VSCODE_HANDLES_UNCAUGHT_ERRORS', 'true'), ('XDG_SESSION_TYPE', 'x11'), ('DEBUG', 'release'), ('SHLVL', '0'), ('LD_LIBRARY_PATH', '/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib'), ('HOME', '/home/zhr'), ('CHROME_DESKTOP', 'code.desktop'), ('DESKTOP_SESSION', 'ubuntu'), ('VSCODE_IPC_HOOK', '/run/user/1001/vscode-9b34bd8d-1.11-main.sock'), ('GIO_LAUNCHED_DESKTOP_FILE', '/usr/share/applications/code.desktop'), ('ROS_PYTHON_VERSION', '3'), ('GNOME_SHELL_SESSION_MODE', 'ubuntu'), ('GTK_MODULES', 'gail:atk-bridge'), ('PAGER', 'cat'), ('LC_MONETARY', 'zh_CN.UTF-8'), ('MANAGERPID', '996'), ('LC_CTYPE', 'C.UTF-8'), ('SYSTEMD_EXEC_PID', '1462'), ('NO_COLOR', '1'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1001/bus'), ('COLORTERM', ''), ('GIO_LAUNCHED_DESKTOP_FILE_PID', '37419'), ('VSCODE_CRASH_REPORTER_PROCESS_TYPE', 'extensionHost'), ('IM_CONFIG_PHASE', '1'), ('ROS_DISTRO', 'humble'), ('GTK_IM_MODULE', 'fcitx'), ('LOGNAME', 'zhr'), ('JOURNAL_STREAM', '8:14589'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('RUST_LOG', 'warn'), ('USERNAME', 'zhr'), ('TERM', 'dumb'), ('GNOME_DESKTOP_SESSION_ID', 'this-is-deprecated'), ('FC_FONTATIONS', '1'), ('ROS_LOCALHOST_ONLY', '0'), ('WINDOWPATH', '2'), ('PATH', '/home/zhr/.npm-global/bin:/home/zhr/.local/bin:/opt/st/stm32cubeclt_1.17.0:/opt/st/stm32cubeclt_1.17.0/STM32CubeProgrammer/bin:/opt/st/stm32cubeclt_1.17.0/STLink-gdb-server/bin:/opt/st/stm32cubeclt_1.17.0/CMake/bin:/opt/st/stm32cubeclt_1.17.0/Ninja/bin:/opt/st/stm32cubeclt_1.17.0/GNU-tools-for-STM32/bin:/home/zhr/.codex/tmp/arg0/codex-arg0I47Dy8:/home/zhr/.npm-global/bin:/home/zhr/.local/bin:/home/zhr/.npm-global/bin:/opt/ros/humble/bin:/opt/st/stm32cubeclt_1.17.0:/opt/st/stm32cubeclt_1.17.0/STM32CubeProgrammer/bin:/opt/st/stm32cubeclt_1.17.0/STLink-gdb-server/bin:/opt/st/stm32cubeclt_1.17.0/CMake/bin:/opt/st/stm32cubeclt_1.17.0/Ninja/bin:/opt/st/stm32cubeclt_1.17.0/GNU-tools-for-STM32/bin:/home/zhr/.npm-global/bin:/home/zhr/.local/bin:/opt/st/stm32cubeclt_1.17.0:/opt/st/stm32cubeclt_1.17.0/STM32CubeProgrammer/bin:/opt/st/stm32cubeclt_1.17.0/STLink-gdb-server/bin:/opt/st/stm32cubeclt_1.17.0/CMake/bin:/opt/st/stm32cubeclt_1.17.0/Ninja/bin:/opt/st/stm32cubeclt_1.17.0/GNU-tools-for-STM32/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin:/home/zhr/.vscode/extensions/openai.chatgpt-26.429.30905-linux-x64/bin/linux-x86_64'), ('SESSION_MANAGER', 'local/C:@/tmp/.ICE-unix/1438,unix/C:/tmp/.ICE-unix/1438'), ('INVOCATION_ID', '6f150e595d324e2ea86c5c0e7bcaf5a7'), ('XDG_MENU_PREFIX', 'gnome-'), ('LC_ADDRESS', 'zh_CN.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1001'), ('GDK_BACKEND', 'x11'), ('DISPLAY', ':0'), ('LANG', 'zh_CN.UTF-8'), ('XDG_CURRENT_DESKTOP', 'ubuntu:GNOME'), ('LC_TELEPHONE', 'zh_CN.UTF-8'), ('XMODIFIERS', '@im=fcitx'), ('GH_PAGER', 'cat'), ('XDG_SESSION_DESKTOP', 'ubuntu'), ('XAUTHORITY', '/run/user/1001/gdm/Xauthority'), ('SSH_AGENT_LAUNCHER', 'gnome-keyring'), ('SSH_AUTH_SOCK', '/run/user/1001/keyring/ssh'), ('AMENT_PREFIX_PATH', '/opt/ros/humble'), ('SHELL', '/bin/bash'), ('LC_NAME', 'zh_CN.UTF-8'), ('QT_ACCESSIBILITY', '1'), ('ELECTRON_RUN_AS_NODE', '1'), ('GDMSESSION', 'ubuntu'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('CODEX_THREAD_ID', '019dee03-58c4-7cf2-aa5b-3eb2d41a6ac8'), ('LC_MEASUREMENT', 'zh_CN.UTF-8'), ('GPG_AGENT_INFO', '/run/user/1001/gnupg/S.gpg-agent:0:1'), ('GJS_DEBUG_OUTPUT', 'stderr'), ('LC_IDENTIFICATION', 'zh_CN.UTF-8'), ('GIT_PAGER', 'cat'), ('QT_IM_MODULE', 'fcitx'), ('PWD', '/home/zhr/robot_arm/build/arm_controller'), ('LC_ALL', 'en_US.UTF-8'), ('XDG_CONFIG_DIRS', '/etc/xdg/xdg-ubuntu:/etc/xdg'), ('VSCODE_CODE_CACHE_PATH', '/home/zhr/.config/Code/CachedData/034f571df509819cc10b0c8129f66ef77a542f0e'), ('CLUTTER_IM_MODULE', 'xim'), ('XDG_DATA_DIRS', '/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop'), ('PYTHONPATH', '/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages'), ('LC_NUMERIC', 'zh_CN.UTF-8'), ('LC_PAPER', 'zh_CN.UTF-8'), ('COLCON', '1'), ('VSCODE_PID', '37419'), ('CMAKE_PREFIX_PATH', '/opt/ros/humble')]), 'shell': False}
+[0.103413] (arm_controller) StdoutLine: {'line': b'[ 25%] Building CXX object CMakeFiles/arm_controller_node.dir/src/arm_controller_node.cpp.o\n'}
+[0.104332] (-) TimerEvent: {}
+[0.204657] (-) TimerEvent: {}
+[0.304883] (-) TimerEvent: {}
+[0.405321] (-) TimerEvent: {}
+[0.505631] (-) TimerEvent: {}
+[0.605801] (-) TimerEvent: {}
+[0.706072] (-) TimerEvent: {}
+[0.807028] (-) TimerEvent: {}
+[0.907515] (-) TimerEvent: {}
+[1.007754] (-) TimerEvent: {}
+[1.108649] (-) TimerEvent: {}
+[1.209508] (-) TimerEvent: {}
+[1.309689] (-) TimerEvent: {}
+[1.410398] (-) TimerEvent: {}
+[1.511340] (-) TimerEvent: {}
+[1.611782] (-) TimerEvent: {}
+[1.711948] (-) TimerEvent: {}
+[1.812656] (-) TimerEvent: {}
+[1.913185] (-) TimerEvent: {}
+[2.013375] (-) TimerEvent: {}
+[2.113579] (-) TimerEvent: {}
+[2.214227] (-) TimerEvent: {}
+[2.314596] (-) TimerEvent: {}
+[2.414883] (-) TimerEvent: {}
+[2.515847] (-) TimerEvent: {}
+[2.616738] (-) TimerEvent: {}
+[2.717267] (-) TimerEvent: {}
+[2.818483] (-) TimerEvent: {}
+[2.919451] (-) TimerEvent: {}
+[3.019895] (-) TimerEvent: {}
+[3.120235] (-) TimerEvent: {}
+[3.220961] (-) TimerEvent: {}
+[3.321503] (-) TimerEvent: {}
+[3.421678] (-) TimerEvent: {}
+[3.521994] (-) TimerEvent: {}
+[3.622666] (-) TimerEvent: {}
+[3.723033] (-) TimerEvent: {}
+[3.823215] (-) TimerEvent: {}
+[3.923865] (-) TimerEvent: {}
+[4.024659] (-) TimerEvent: {}
+[4.124855] (-) TimerEvent: {}
+[4.225254] (-) TimerEvent: {}
+[4.325625] (-) TimerEvent: {}
+[4.426108] (-) TimerEvent: {}
+[4.526265] (-) TimerEvent: {}
+[4.627227] (-) TimerEvent: {}
+[4.728359] (-) TimerEvent: {}
+[4.828701] (-) TimerEvent: {}
+[4.928955] (-) TimerEvent: {}
+[5.029285] (-) TimerEvent: {}
+[5.129783] (-) TimerEvent: {}
+[5.229959] (-) TimerEvent: {}
+[5.330554] (-) TimerEvent: {}
+[5.431475] (-) TimerEvent: {}
+[5.533559] (-) TimerEvent: {}
+[5.634113] (-) TimerEvent: {}
+[5.734584] (-) TimerEvent: {}
+[5.834842] (-) TimerEvent: {}
+[5.935028] (-) TimerEvent: {}
+[6.035805] (-) TimerEvent: {}
+[6.110189] (arm_controller) StderrLine: {'line': b'In file included from /opt/ros/humble/include/rclcpp/rclcpp/client.hpp:40,\n'}
+[6.110575] (arm_controller) StderrLine: {'line': b'                 from /opt/ros/humble/include/rclcpp/rclcpp/callback_group.hpp:24,\n'}
+[6.110666] (arm_controller) StderrLine: {'line': b'                 from /opt/ros/humble/include/rclcpp/rclcpp/any_executable.hpp:20,\n'}
+[6.110729] (arm_controller) StderrLine: {'line': b'                 from /opt/ros/humble/include/rclcpp/rclcpp/memory_strategy.hpp:25,\n'}
+[6.110790] (arm_controller) StderrLine: {'line': b'                 from /opt/ros/humble/include/rclcpp/rclcpp/memory_strategies.hpp:18,\n'}
+[6.110849] (arm_controller) StderrLine: {'line': b'                 from /opt/ros/humble/include/rclcpp/rclcpp/executor_options.hpp:20,\n'}
+[6.110912] (arm_controller) StderrLine: {'line': b'                 from /opt/ros/humble/include/rclcpp/rclcpp/executor.hpp:37,\n'}
+[6.110968] (arm_controller) StderrLine: {'line': b'                 from /opt/ros/humble/include/rclcpp/rclcpp/executors/multi_threaded_executor.hpp:25,\n'}
+[6.111030] (arm_controller) StderrLine: {'line': b'                 from /opt/ros/humble/include/rclcpp/rclcpp/executors.hpp:21,\n'}
+[6.111088] (arm_controller) StderrLine: {'line': b'                 from /opt/ros/humble/include/rclcpp/rclcpp/rclcpp.hpp:155,\n'}
+[6.111149] (arm_controller) StderrLine: {'line': b'                 from /home/zhr/robot_arm/src/arm_controller/src/arm_controller_node.cpp:13:\n'}
+[6.111208] (arm_controller) StderrLine: {'line': b'/home/zhr/robot_arm/src/arm_controller/src/arm_controller_node.cpp: In member function \xe2\x80\x98void arm_controller::ArmControllerNode::handle_target_point(const PointStamped&)\xe2\x80\x99:\n'}
+[6.111267] (arm_controller) StderrLine: {'line': b'/home/zhr/robot_arm/src/arm_controller/src/arm_controller_node.cpp:367:22: error: \xe2\x80\x98a\xe2\x80\x99 was not declared in this scope\n'}
+[6.111339] (arm_controller) StderrLine: {'line': b'  367 |         get_logger(),a\n'}
+[6.111446] (arm_controller) StderrLine: {'line': b'      |                      ^\n'}
+[6.124534] (arm_controller) StderrLine: {'line': b'/home/zhr/robot_arm/src/arm_controller/src/arm_controller_node.cpp: In lambda function:\n'}
+[6.124726] (arm_controller) StderrLine: {'line': b'/home/zhr/robot_arm/src/arm_controller/src/arm_controller_node.cpp:366:7: error: \xe2\x80\x98c\xe2\x80\x99 was not declared in this scope\n'}
+[6.124816] (arm_controller) StderrLine: {'line': b'  366 |       RCLCPP_WARN_THROTTLE(\n'}
+[6.124888] (arm_controller) StderrLine: {'line': b'      |       ^~~~~~~~~~~~~~~~~~~~\n'}
+[6.135953] (-) TimerEvent: {}
+[6.236428] (-) TimerEvent: {}
+[6.336739] (-) TimerEvent: {}
+[6.437574] (-) TimerEvent: {}
+[6.538391] (-) TimerEvent: {}
+[6.638624] (-) TimerEvent: {}
+[6.739270] (-) TimerEvent: {}
+[6.840496] (-) TimerEvent: {}
+[6.940932] (-) TimerEvent: {}
+[7.044947] (-) TimerEvent: {}
+[7.146950] (-) TimerEvent: {}
+[7.247144] (-) TimerEvent: {}
+[7.347813] (-) TimerEvent: {}
+[7.448697] (-) TimerEvent: {}
+[7.548902] (-) TimerEvent: {}
+[7.649145] (-) TimerEvent: {}
+[7.749540] (-) TimerEvent: {}
+[7.849907] (-) TimerEvent: {}
+[7.950095] (-) TimerEvent: {}
+[8.050600] (-) TimerEvent: {}
+[8.151488] (-) TimerEvent: {}
+[8.251746] (-) TimerEvent: {}
+[8.351984] (-) TimerEvent: {}
+[8.452279] (-) TimerEvent: {}
+[8.552642] (-) TimerEvent: {}
+[8.652841] (-) TimerEvent: {}
+[8.753017] (-) TimerEvent: {}
+[8.853326] (-) TimerEvent: {}
+[8.953566] (-) TimerEvent: {}
+[9.053752] (-) TimerEvent: {}
+[9.153969] (-) TimerEvent: {}
+[9.254257] (-) TimerEvent: {}
+[9.354626] (-) TimerEvent: {}
+[9.454798] (-) TimerEvent: {}
+[9.555527] (-) TimerEvent: {}
+[9.656384] (-) TimerEvent: {}
+[9.756784] (-) TimerEvent: {}
+[9.857668] (-) TimerEvent: {}
+[9.958901] (-) TimerEvent: {}
+[10.059189] (-) TimerEvent: {}
+[10.159366] (-) TimerEvent: {}
+[10.260285] (-) TimerEvent: {}
+[10.361051] (-) TimerEvent: {}
+[10.461272] (-) TimerEvent: {}
+[10.561496] (-) TimerEvent: {}
+[10.661882] (-) TimerEvent: {}
+[10.762185] (-) TimerEvent: {}
+[10.862360] (-) TimerEvent: {}
+[10.963047] (-) TimerEvent: {}
+[11.064262] (-) TimerEvent: {}
+[11.164488] (-) TimerEvent: {}
+[11.264691] (-) TimerEvent: {}
+[11.365090] (-) TimerEvent: {}
+[11.465718] (-) TimerEvent: {}
+[11.565911] (-) TimerEvent: {}
+[11.666107] (-) TimerEvent: {}
+[11.766412] (-) TimerEvent: {}
+[11.866760] (-) TimerEvent: {}
+[11.967014] (-) TimerEvent: {}
+[12.067713] (-) TimerEvent: {}
+[12.168633] (-) TimerEvent: {}
+[12.268817] (-) TimerEvent: {}
+[12.369066] (-) TimerEvent: {}
+[12.469488] (-) TimerEvent: {}
+[12.569816] (-) TimerEvent: {}
+[12.669977] (-) TimerEvent: {}
+[12.770696] (-) TimerEvent: {}
+[12.871722] (-) TimerEvent: {}
+[12.972039] (-) TimerEvent: {}
+[13.072226] (-) TimerEvent: {}
+[13.172939] (-) TimerEvent: {}
+[13.273622] (-) TimerEvent: {}
+[13.373828] (-) TimerEvent: {}
+[13.474132] (-) TimerEvent: {}
+[13.575040] (-) TimerEvent: {}
+[13.675261] (-) TimerEvent: {}
+[13.775437] (-) TimerEvent: {}
+[13.832726] (arm_controller) StderrLine: {'line': b'gmake[2]: *** [CMakeFiles/arm_controller_node.dir/build.make:76\xef\xbc\x9aCMakeFiles/arm_controller_node.dir/src/arm_controller_node.cpp.o] \xe9\x94\x99\xe8\xaf\xaf 1\n'}
+[13.833031] (arm_controller) StderrLine: {'line': b'gmake[1]: *** [CMakeFiles/Makefile2:137\xef\xbc\x9aCMakeFiles/arm_controller_node.dir/all] \xe9\x94\x99\xe8\xaf\xaf 2\n'}
+[13.833158] (arm_controller) StderrLine: {'line': b'gmake: *** [Makefile:146\xef\xbc\x9aall] \xe9\x94\x99\xe8\xaf\xaf 2\n'}
+[13.834174] (arm_controller) CommandEnded: {'returncode': 2}
+[13.849878] (arm_controller) JobEnded: {'identifier': 'arm_controller', 'rc': 2}
+[13.862650] (-) EventReactorShutdown: {}

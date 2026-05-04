@@ -1,0 +1,12 @@
+Metadata-Version: 2.1
+Name: real-motor-controller
+Version: 0.1.0
+Summary: ROS 2 tools for DM-J4340-2EC motors over the Damiao USB-to-CAN serial adapter.
+Home-page: UNKNOWN
+Maintainer: zhr
+Maintainer-email: zhr@example.com
+License: MIT
+Platform: UNKNOWN
+
+UNKNOWN
+

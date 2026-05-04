@@ -1,0 +1,27 @@
+sim_motor_controller_node:
+  ros__parameters:
+    # Motor mapping: 1=base yaw, 2=shoulder pitch, 3=elbow/arm pitch, 4=wrist pitch.
+    motor_ids: [1, 2, 3, 4]
+    joint_names: [base_yaw_joint, shoulder_pitch_joint, elbow_pitch_joint, wrist_pitch_joint]
+
+    mit_command_topic: /dm_j4340/mit_commands
+    joint_states_topic: /joint_states
+    dm_joint_states_topic: /dm_j4340/joint_states
+    command_output_mode: position
+    position_command_topic: /arm_position_controller/commands
+    effort_command_topic: /arm_effort_controller/commands
+    status_topic: /dm_j4340/status
+
+    auto_enable_on_start: true
+    mit_command_timeout_s: 0.2
+    state_timeout_s: 0.5
+    command_rate_hz: 200.0
+    state_rate_hz: 50.0
+    status_rate_hz: 5.0
+
+    p_min: -12.5
+    p_max: 12.5
+    v_min: -30.0
+    v_max: 30.0
+    t_min: -10.0
+    t_max: 10.0

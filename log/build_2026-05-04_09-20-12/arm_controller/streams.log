@@ -1,0 +1,28 @@
+[0.035s] Invoking command in '/home/zhr/robot_arm/build/arm_controller': CMAKE_PREFIX_PATH=/opt/ros/humble /opt/st/stm32cubeclt_1.17.0/CMake/bin/cmake --build /home/zhr/robot_arm/build/arm_controller -- -j8 -l8
+[1.138s] [ 25%] Building CXX object CMakeFiles/arm_controller_node.dir/src/arm_controller_node.cpp.o
+[1.138s] [ 50%] Building CXX object CMakeFiles/arm_controller_node.dir/src/forward_kinematics.cpp.o
+[1.138s] [ 75%] Building CXX object CMakeFiles/arm_controller_node.dir/src/inverse_kinematics.cpp.o
+[16.584s] [100%] Linking CXX executable arm_controller_node
+[17.558s] [100%] Built target arm_controller_node
+[17.566s] Invoked command in '/home/zhr/robot_arm/build/arm_controller' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /opt/st/stm32cubeclt_1.17.0/CMake/bin/cmake --build /home/zhr/robot_arm/build/arm_controller -- -j8 -l8
+[17.572s] Invoking command in '/home/zhr/robot_arm/build/arm_controller': CMAKE_PREFIX_PATH=/opt/ros/humble /opt/st/stm32cubeclt_1.17.0/CMake/bin/cmake --install /home/zhr/robot_arm/build/arm_controller
+[17.575s] -- Install configuration: ""
+[17.576s] -- Execute custom install script
+[17.576s] -- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/lib/arm_controller/arm_controller_node
+[17.577s] -- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/config/arm_controller.yaml
+[17.577s] -- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/ament_index/resource_index/package_run_dependencies/arm_controller
+[17.577s] -- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/ament_index/resource_index/parent_prefix_path/arm_controller
+[17.578s] -- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/environment/ament_prefix_path.sh
+[17.578s] -- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/environment/ament_prefix_path.dsv
+[17.578s] -- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/environment/path.sh
+[17.578s] -- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/environment/path.dsv
+[17.578s] -- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/local_setup.bash
+[17.578s] -- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/local_setup.sh
+[17.578s] -- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/local_setup.zsh
+[17.578s] -- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/local_setup.dsv
+[17.578s] -- Symlinking: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/package.dsv
+[17.581s] -- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/ament_index/resource_index/packages/arm_controller
+[17.581s] -- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/cmake/arm_controllerConfig.cmake
+[17.581s] -- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/cmake/arm_controllerConfig-version.cmake
+[17.581s] -- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/package.xml
+[17.583s] Invoked command in '/home/zhr/robot_arm/build/arm_controller' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /opt/st/stm32cubeclt_1.17.0/CMake/bin/cmake --install /home/zhr/robot_arm/build/arm_controller

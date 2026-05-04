@@ -1,0 +1,45 @@
+[0.990s] Invoking command in '/home/zhr/robot_arm/src/real_motor_controller': PYTHONPATH=/home/zhr/robot_arm/build/real_motor_controller/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/real_motor_controller build --build-base /home/zhr/robot_arm/build/real_motor_controller/build install --record /home/zhr/robot_arm/build/real_motor_controller/install.log --single-version-externally-managed install_data
+[1.216s] running egg_info
+[1.217s] creating ../../build/real_motor_controller/real_motor_controller.egg-info
+[1.217s] writing ../../build/real_motor_controller/real_motor_controller.egg-info/PKG-INFO
+[1.217s] writing dependency_links to ../../build/real_motor_controller/real_motor_controller.egg-info/dependency_links.txt
+[1.218s] writing entry points to ../../build/real_motor_controller/real_motor_controller.egg-info/entry_points.txt
+[1.218s] writing requirements to ../../build/real_motor_controller/real_motor_controller.egg-info/requires.txt
+[1.218s] writing top-level names to ../../build/real_motor_controller/real_motor_controller.egg-info/top_level.txt
+[1.227s] writing manifest file '../../build/real_motor_controller/real_motor_controller.egg-info/SOURCES.txt'
+[1.228s] reading manifest file '../../build/real_motor_controller/real_motor_controller.egg-info/SOURCES.txt'
+[1.229s] writing manifest file '../../build/real_motor_controller/real_motor_controller.egg-info/SOURCES.txt'
+[1.229s] running build
+[1.229s] running build_py
+[1.230s] creating /home/zhr/robot_arm/build/real_motor_controller/build
+[1.230s] creating /home/zhr/robot_arm/build/real_motor_controller/build/lib
+[1.230s] creating /home/zhr/robot_arm/build/real_motor_controller/build/lib/real_motor_controller
+[1.230s] copying src/real_motor_controller/start_motor_node.py -> /home/zhr/robot_arm/build/real_motor_controller/build/lib/real_motor_controller
+[1.231s] copying src/real_motor_controller/ros_params.py -> /home/zhr/robot_arm/build/real_motor_controller/build/lib/real_motor_controller
+[1.231s] copying src/real_motor_controller/query_motor_node.py -> /home/zhr/robot_arm/build/real_motor_controller/build/lib/real_motor_controller
+[1.231s] copying src/real_motor_controller/__init__.py -> /home/zhr/robot_arm/build/real_motor_controller/build/lib/real_motor_controller
+[1.231s] copying src/real_motor_controller/dm_protocol.py -> /home/zhr/robot_arm/build/real_motor_controller/build/lib/real_motor_controller
+[1.231s] copying src/real_motor_controller/usbcan_serial.py -> /home/zhr/robot_arm/build/real_motor_controller/build/lib/real_motor_controller
+[1.232s] running install
+[1.232s] running install_lib
+[1.232s] creating /home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages/real_motor_controller
+[1.232s] copying /home/zhr/robot_arm/build/real_motor_controller/build/lib/real_motor_controller/start_motor_node.py -> /home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages/real_motor_controller
+[1.232s] copying /home/zhr/robot_arm/build/real_motor_controller/build/lib/real_motor_controller/ros_params.py -> /home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages/real_motor_controller
+[1.232s] copying /home/zhr/robot_arm/build/real_motor_controller/build/lib/real_motor_controller/query_motor_node.py -> /home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages/real_motor_controller
+[1.233s] copying /home/zhr/robot_arm/build/real_motor_controller/build/lib/real_motor_controller/__init__.py -> /home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages/real_motor_controller
+[1.233s] copying /home/zhr/robot_arm/build/real_motor_controller/build/lib/real_motor_controller/dm_protocol.py -> /home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages/real_motor_controller
+[1.233s] copying /home/zhr/robot_arm/build/real_motor_controller/build/lib/real_motor_controller/usbcan_serial.py -> /home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages/real_motor_controller
+[1.233s] byte-compiling /home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages/real_motor_controller/start_motor_node.py to start_motor_node.cpython-310.pyc
+[1.236s] byte-compiling /home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages/real_motor_controller/ros_params.py to ros_params.cpython-310.pyc
+[1.237s] byte-compiling /home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages/real_motor_controller/query_motor_node.py to query_motor_node.cpython-310.pyc
+[1.238s] byte-compiling /home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages/real_motor_controller/__init__.py to __init__.cpython-310.pyc
+[1.238s] byte-compiling /home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages/real_motor_controller/dm_protocol.py to dm_protocol.cpython-310.pyc
+[1.239s] byte-compiling /home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages/real_motor_controller/usbcan_serial.py to usbcan_serial.cpython-310.pyc
+[1.240s] running install_data
+[1.240s] running install_egg_info
+[1.242s] Copying ../../build/real_motor_controller/real_motor_controller.egg-info to /home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages/real_motor_controller-0.1.0-py3.10.egg-info
+[1.243s] running install_scripts
+[1.261s] Installing real_motor_controller_node script to /home/zhr/robot_arm/install/real_motor_controller/lib/real_motor_controller
+[1.261s] Installing real_query_motor_node script to /home/zhr/robot_arm/install/real_motor_controller/lib/real_motor_controller
+[1.261s] writing list of installed files to '/home/zhr/robot_arm/build/real_motor_controller/install.log'
+[1.287s] Invoked command in '/home/zhr/robot_arm/src/real_motor_controller' returned '0': PYTHONPATH=/home/zhr/robot_arm/build/real_motor_controller/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/real_motor_controller build --build-base /home/zhr/robot_arm/build/real_motor_controller/build install --record /home/zhr/robot_arm/build/real_motor_controller/install.log --single-version-externally-managed install_data

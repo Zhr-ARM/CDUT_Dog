@@ -1,0 +1,1 @@
+/home/zhr/robot_arm/build/arm_controller/ament_cmake_environment_hooks/local_setup.zsh

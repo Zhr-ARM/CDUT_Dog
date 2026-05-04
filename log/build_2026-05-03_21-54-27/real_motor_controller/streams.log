@@ -1,0 +1,22 @@
+[0.910s] Invoking command in '/home/zhr/robot_arm/src/real_motor_controller': PYTHONPATH=/home/zhr/robot_arm/build/real_motor_controller/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/real_motor_controller build --build-base /home/zhr/robot_arm/build/real_motor_controller/build install --record /home/zhr/robot_arm/build/real_motor_controller/install.log --single-version-externally-managed install_data
+[1.137s] running egg_info
+[1.137s] writing ../../build/real_motor_controller/real_motor_controller.egg-info/PKG-INFO
+[1.137s] writing dependency_links to ../../build/real_motor_controller/real_motor_controller.egg-info/dependency_links.txt
+[1.137s] writing entry points to ../../build/real_motor_controller/real_motor_controller.egg-info/entry_points.txt
+[1.138s] writing requirements to ../../build/real_motor_controller/real_motor_controller.egg-info/requires.txt
+[1.138s] writing top-level names to ../../build/real_motor_controller/real_motor_controller.egg-info/top_level.txt
+[1.140s] reading manifest file '../../build/real_motor_controller/real_motor_controller.egg-info/SOURCES.txt'
+[1.141s] writing manifest file '../../build/real_motor_controller/real_motor_controller.egg-info/SOURCES.txt'
+[1.141s] running build
+[1.141s] running build_py
+[1.142s] running install
+[1.142s] running install_lib
+[1.143s] running install_data
+[1.143s] running install_egg_info
+[1.145s] removing '/home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages/real_motor_controller-0.1.0-py3.10.egg-info' (and everything under it)
+[1.145s] Copying ../../build/real_motor_controller/real_motor_controller.egg-info to /home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages/real_motor_controller-0.1.0-py3.10.egg-info
+[1.146s] running install_scripts
+[1.164s] Installing real_motor_controller_node script to /home/zhr/robot_arm/install/real_motor_controller/lib/real_motor_controller
+[1.164s] Installing real_query_motor_node script to /home/zhr/robot_arm/install/real_motor_controller/lib/real_motor_controller
+[1.164s] writing list of installed files to '/home/zhr/robot_arm/build/real_motor_controller/install.log'
+[1.186s] Invoked command in '/home/zhr/robot_arm/src/real_motor_controller' returned '0': PYTHONPATH=/home/zhr/robot_arm/build/real_motor_controller/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/real_motor_controller build --build-base /home/zhr/robot_arm/build/real_motor_controller/build install --record /home/zhr/robot_arm/build/real_motor_controller/install.log --single-version-externally-managed install_data

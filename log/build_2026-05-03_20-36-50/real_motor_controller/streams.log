@@ -1,0 +1,18 @@
+[6.315s] Invoking command in '/home/zhr/robot_arm/build/real_motor_controller': PYTHONPATH=/home/zhr/robot_arm/build/real_motor_controller/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /home/zhr/robot_arm/build/real_motor_controller/build --no-deps symlink_data
+[8.163s] running develop
+[9.455s] running egg_info
+[9.455s] writing src/real_motor_controller.egg-info/PKG-INFO
+[9.459s] writing dependency_links to src/real_motor_controller.egg-info/dependency_links.txt
+[9.459s] writing entry points to src/real_motor_controller.egg-info/entry_points.txt
+[9.464s] writing requirements to src/real_motor_controller.egg-info/requires.txt
+[9.464s] writing top-level names to src/real_motor_controller.egg-info/top_level.txt
+[9.483s] reading manifest file 'src/real_motor_controller.egg-info/SOURCES.txt'
+[9.485s] writing manifest file 'src/real_motor_controller.egg-info/SOURCES.txt'
+[9.494s] running build_ext
+[9.495s] Creating /home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages/real-motor-controller.egg-link (link to src)
+[9.509s] Installing real_motor_controller_node script to /home/zhr/robot_arm/install/real_motor_controller/lib/real_motor_controller
+[9.510s] Installing real_query_motor_node script to /home/zhr/robot_arm/install/real_motor_controller/lib/real_motor_controller
+[9.511s] 
+[9.511s] Installed /home/zhr/robot_arm/build/real_motor_controller/src
+[9.511s] running symlink_data
+[9.757s] Invoked command in '/home/zhr/robot_arm/build/real_motor_controller' returned '0': PYTHONPATH=/home/zhr/robot_arm/build/real_motor_controller/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /home/zhr/robot_arm/build/real_motor_controller/build --no-deps symlink_data

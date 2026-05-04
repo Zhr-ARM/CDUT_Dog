@@ -1,0 +1,228 @@
+[0.000000] (-) TimerEvent: {}
+[0.000056] (-) JobUnselected: {'identifier': 'real_motor_controller'}
+[0.000133] (-) JobUnselected: {'identifier': 'sim_motor_controller'}
+[0.000232] (arm_controller) JobQueued: {'identifier': 'arm_controller', 'dependencies': OrderedDict()}
+[0.000403] (arm_bringup) JobQueued: {'identifier': 'arm_bringup', 'dependencies': OrderedDict([('arm_controller', '/home/zhr/robot_arm/install/arm_controller'), ('real_motor_controller', '/home/zhr/robot_arm/install/real_motor_controller'), ('sim_motor_controller', '/home/zhr/robot_arm/install/sim_motor_controller')])}
+[0.000591] (arm_controller) JobStarted: {'identifier': 'arm_controller'}
+[0.006750] (arm_controller) JobProgress: {'identifier': 'arm_controller', 'progress': 'cmake'}
+[0.007236] (arm_controller) JobProgress: {'identifier': 'arm_controller', 'progress': 'build'}
+[0.007799] (arm_controller) Command: {'cmd': ['/opt/st/stm32cubeclt_1.17.0/CMake/bin/cmake', '--build', '/home/zhr/robot_arm/build/arm_controller', '--', '-j8', '-l8'], 'cwd': '/home/zhr/robot_arm/build/arm_controller', 'env': OrderedDict([('GJS_DEBUG_TOPICS', 'JS ERROR;JS LOG'), ('LESSOPEN', '| /usr/bin/lesspipe %s'), ('VSCODE_CWD', '/home/zhr'), ('VSCODE_ESM_ENTRYPOINT', 'vs/workbench/api/node/extensionHostProcess'), ('CODEX_CI', '1'), ('LANGUAGE', 'zh_CN:en'), ('USER', 'zhr'), ('LC_TIME', 'zh_CN.UTF-8'), ('CODEX_INTERNAL_ORIGINATOR_OVERRIDE', 'codex_vscode'), ('VSCODE_NLS_CONFIG', '{"userLocale":"zh-cn","osLocale":"zh-cn","resolvedLanguage":"zh-cn","defaultMessagesFile":"/usr/share/code/resources/app/out/nls.messages.json","languagePack":{"translationsConfigFile":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/tcf.json","messagesFile":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/034f571df509819cc10b0c8129f66ef77a542f0e/nls.messages.json","corruptMarkerFile":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/corrupted.info"},"locale":"zh-cn","availableLanguages":{"*":"zh-cn"},"_languagePackId":"b912e1cc94c8380c6bb426bdce2c540f.zh-cn","_languagePackSupport":true,"_translationsConfigFile":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/tcf.json","_cacheRoot":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn","_resolvedLanguagePackCoreLocation":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/034f571df509819cc10b0c8129f66ef77a542f0e","_corruptedFile":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/corrupted.info"}'), ('VSCODE_HANDLES_UNCAUGHT_ERRORS', 'true'), ('XDG_SESSION_TYPE', 'x11'), ('DEBUG', 'release'), ('SHLVL', '0'), ('LD_LIBRARY_PATH', '/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib'), ('HOME', '/home/zhr'), ('CHROME_DESKTOP', 'code.desktop'), ('DESKTOP_SESSION', 'ubuntu'), ('VSCODE_IPC_HOOK', '/run/user/1001/vscode-9b34bd8d-1.11-main.sock'), ('GIO_LAUNCHED_DESKTOP_FILE', '/usr/share/applications/code.desktop'), ('ROS_PYTHON_VERSION', '3'), ('GNOME_SHELL_SESSION_MODE', 'ubuntu'), ('GTK_MODULES', 'gail:atk-bridge'), ('PAGER', 'cat'), ('LC_MONETARY', 'zh_CN.UTF-8'), ('MANAGERPID', '996'), ('LC_CTYPE', 'C.UTF-8'), ('SYSTEMD_EXEC_PID', '1462'), ('NO_COLOR', '1'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1001/bus'), ('COLORTERM', ''), ('GIO_LAUNCHED_DESKTOP_FILE_PID', '37419'), ('VSCODE_CRASH_REPORTER_PROCESS_TYPE', 'extensionHost'), ('IM_CONFIG_PHASE', '1'), ('ROS_DISTRO', 'humble'), ('GTK_IM_MODULE', 'fcitx'), ('LOGNAME', 'zhr'), ('JOURNAL_STREAM', '8:14589'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('RUST_LOG', 'warn'), ('USERNAME', 'zhr'), ('TERM', 'dumb'), ('GNOME_DESKTOP_SESSION_ID', 'this-is-deprecated'), ('FC_FONTATIONS', '1'), ('ROS_LOCALHOST_ONLY', '0'), ('WINDOWPATH', '2'), ('PATH', '/home/zhr/.npm-global/bin:/home/zhr/.local/bin:/opt/st/stm32cubeclt_1.17.0:/opt/st/stm32cubeclt_1.17.0/STM32CubeProgrammer/bin:/opt/st/stm32cubeclt_1.17.0/STLink-gdb-server/bin:/opt/st/stm32cubeclt_1.17.0/CMake/bin:/opt/st/stm32cubeclt_1.17.0/Ninja/bin:/opt/st/stm32cubeclt_1.17.0/GNU-tools-for-STM32/bin:/home/zhr/.codex/tmp/arg0/codex-arg0I47Dy8:/home/zhr/.npm-global/bin:/home/zhr/.local/bin:/home/zhr/.npm-global/bin:/opt/ros/humble/bin:/opt/st/stm32cubeclt_1.17.0:/opt/st/stm32cubeclt_1.17.0/STM32CubeProgrammer/bin:/opt/st/stm32cubeclt_1.17.0/STLink-gdb-server/bin:/opt/st/stm32cubeclt_1.17.0/CMake/bin:/opt/st/stm32cubeclt_1.17.0/Ninja/bin:/opt/st/stm32cubeclt_1.17.0/GNU-tools-for-STM32/bin:/home/zhr/.npm-global/bin:/home/zhr/.local/bin:/opt/st/stm32cubeclt_1.17.0:/opt/st/stm32cubeclt_1.17.0/STM32CubeProgrammer/bin:/opt/st/stm32cubeclt_1.17.0/STLink-gdb-server/bin:/opt/st/stm32cubeclt_1.17.0/CMake/bin:/opt/st/stm32cubeclt_1.17.0/Ninja/bin:/opt/st/stm32cubeclt_1.17.0/GNU-tools-for-STM32/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin:/home/zhr/.vscode/extensions/openai.chatgpt-26.429.30905-linux-x64/bin/linux-x86_64'), ('SESSION_MANAGER', 'local/C:@/tmp/.ICE-unix/1438,unix/C:/tmp/.ICE-unix/1438'), ('INVOCATION_ID', '6f150e595d324e2ea86c5c0e7bcaf5a7'), ('XDG_MENU_PREFIX', 'gnome-'), ('LC_ADDRESS', 'zh_CN.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1001'), ('GDK_BACKEND', 'x11'), ('DISPLAY', ':0'), ('LANG', 'zh_CN.UTF-8'), ('XDG_CURRENT_DESKTOP', 'ubuntu:GNOME'), ('LC_TELEPHONE', 'zh_CN.UTF-8'), ('XMODIFIERS', '@im=fcitx'), ('GH_PAGER', 'cat'), ('XDG_SESSION_DESKTOP', 'ubuntu'), ('XAUTHORITY', '/run/user/1001/gdm/Xauthority'), ('SSH_AGENT_LAUNCHER', 'gnome-keyring'), ('SSH_AUTH_SOCK', '/run/user/1001/keyring/ssh'), ('AMENT_PREFIX_PATH', '/opt/ros/humble'), ('SHELL', '/bin/bash'), ('LC_NAME', 'zh_CN.UTF-8'), ('QT_ACCESSIBILITY', '1'), ('ELECTRON_RUN_AS_NODE', '1'), ('GDMSESSION', 'ubuntu'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('CODEX_THREAD_ID', '019dee03-58c4-7cf2-aa5b-3eb2d41a6ac8'), ('LC_MEASUREMENT', 'zh_CN.UTF-8'), ('GPG_AGENT_INFO', '/run/user/1001/gnupg/S.gpg-agent:0:1'), ('GJS_DEBUG_OUTPUT', 'stderr'), ('LC_IDENTIFICATION', 'zh_CN.UTF-8'), ('GIT_PAGER', 'cat'), ('QT_IM_MODULE', 'fcitx'), ('PWD', '/home/zhr/robot_arm/build/arm_controller'), ('LC_ALL', 'en_US.UTF-8'), ('XDG_CONFIG_DIRS', '/etc/xdg/xdg-ubuntu:/etc/xdg'), ('VSCODE_CODE_CACHE_PATH', '/home/zhr/.config/Code/CachedData/034f571df509819cc10b0c8129f66ef77a542f0e'), ('CLUTTER_IM_MODULE', 'xim'), ('XDG_DATA_DIRS', '/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop'), ('PYTHONPATH', '/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages'), ('LC_NUMERIC', 'zh_CN.UTF-8'), ('LC_PAPER', 'zh_CN.UTF-8'), ('COLCON', '1'), ('VSCODE_PID', '37419'), ('CMAKE_PREFIX_PATH', '/opt/ros/humble')]), 'shell': False}
+[0.031860] (arm_controller) StdoutLine: {'line': b'[ 25%] Building CXX object CMakeFiles/arm_controller_node.dir/src/arm_controller_node.cpp.o\n'}
+[0.099905] (-) TimerEvent: {}
+[0.200164] (-) TimerEvent: {}
+[0.300427] (-) TimerEvent: {}
+[0.400761] (-) TimerEvent: {}
+[0.500941] (-) TimerEvent: {}
+[0.601339] (-) TimerEvent: {}
+[0.701853] (-) TimerEvent: {}
+[0.802135] (-) TimerEvent: {}
+[0.902315] (-) TimerEvent: {}
+[1.002540] (-) TimerEvent: {}
+[1.102760] (-) TimerEvent: {}
+[1.203016] (-) TimerEvent: {}
+[1.303232] (-) TimerEvent: {}
+[1.403414] (-) TimerEvent: {}
+[1.503632] (-) TimerEvent: {}
+[1.603845] (-) TimerEvent: {}
+[1.704047] (-) TimerEvent: {}
+[1.804225] (-) TimerEvent: {}
+[1.904395] (-) TimerEvent: {}
+[2.004570] (-) TimerEvent: {}
+[2.104750] (-) TimerEvent: {}
+[2.204970] (-) TimerEvent: {}
+[2.305215] (-) TimerEvent: {}
+[2.405458] (-) TimerEvent: {}
+[2.505676] (-) TimerEvent: {}
+[2.605897] (-) TimerEvent: {}
+[2.706105] (-) TimerEvent: {}
+[2.806274] (-) TimerEvent: {}
+[2.906473] (-) TimerEvent: {}
+[3.006676] (-) TimerEvent: {}
+[3.106867] (-) TimerEvent: {}
+[3.207125] (-) TimerEvent: {}
+[3.307305] (-) TimerEvent: {}
+[3.407496] (-) TimerEvent: {}
+[3.507669] (-) TimerEvent: {}
+[3.607898] (-) TimerEvent: {}
+[3.708131] (-) TimerEvent: {}
+[3.808313] (-) TimerEvent: {}
+[3.908523] (-) TimerEvent: {}
+[4.008722] (-) TimerEvent: {}
+[4.108920] (-) TimerEvent: {}
+[4.209093] (-) TimerEvent: {}
+[4.309272] (-) TimerEvent: {}
+[4.409481] (-) TimerEvent: {}
+[4.509677] (-) TimerEvent: {}
+[4.609867] (-) TimerEvent: {}
+[4.710105] (-) TimerEvent: {}
+[4.810296] (-) TimerEvent: {}
+[4.910513] (-) TimerEvent: {}
+[5.010715] (-) TimerEvent: {}
+[5.110888] (-) TimerEvent: {}
+[5.211152] (-) TimerEvent: {}
+[5.311370] (-) TimerEvent: {}
+[5.411613] (-) TimerEvent: {}
+[5.511832] (-) TimerEvent: {}
+[5.611999] (-) TimerEvent: {}
+[5.712184] (-) TimerEvent: {}
+[5.812362] (-) TimerEvent: {}
+[5.912533] (-) TimerEvent: {}
+[6.012750] (-) TimerEvent: {}
+[6.112921] (-) TimerEvent: {}
+[6.213176] (-) TimerEvent: {}
+[6.313362] (-) TimerEvent: {}
+[6.413602] (-) TimerEvent: {}
+[6.513857] (-) TimerEvent: {}
+[6.614089] (-) TimerEvent: {}
+[6.714252] (-) TimerEvent: {}
+[6.814419] (-) TimerEvent: {}
+[6.914647] (-) TimerEvent: {}
+[7.014850] (-) TimerEvent: {}
+[7.115086] (-) TimerEvent: {}
+[7.215273] (-) TimerEvent: {}
+[7.315454] (-) TimerEvent: {}
+[7.415657] (-) TimerEvent: {}
+[7.515890] (-) TimerEvent: {}
+[7.616117] (-) TimerEvent: {}
+[7.716296] (-) TimerEvent: {}
+[7.816499] (-) TimerEvent: {}
+[7.916672] (-) TimerEvent: {}
+[8.016858] (-) TimerEvent: {}
+[8.117027] (-) TimerEvent: {}
+[8.217208] (-) TimerEvent: {}
+[8.317373] (-) TimerEvent: {}
+[8.417599] (-) TimerEvent: {}
+[8.517764] (-) TimerEvent: {}
+[8.617939] (-) TimerEvent: {}
+[8.718174] (-) TimerEvent: {}
+[8.818351] (-) TimerEvent: {}
+[8.918510] (-) TimerEvent: {}
+[9.018724] (-) TimerEvent: {}
+[9.118920] (-) TimerEvent: {}
+[9.219107] (-) TimerEvent: {}
+[9.319339] (-) TimerEvent: {}
+[9.419730] (-) TimerEvent: {}
+[9.520065] (-) TimerEvent: {}
+[9.620243] (-) TimerEvent: {}
+[9.720468] (-) TimerEvent: {}
+[9.820692] (-) TimerEvent: {}
+[9.920939] (-) TimerEvent: {}
+[10.021150] (-) TimerEvent: {}
+[10.121394] (-) TimerEvent: {}
+[10.221600] (-) TimerEvent: {}
+[10.321814] (-) TimerEvent: {}
+[10.422012] (-) TimerEvent: {}
+[10.522284] (-) TimerEvent: {}
+[10.622479] (-) TimerEvent: {}
+[10.722677] (-) TimerEvent: {}
+[10.822854] (-) TimerEvent: {}
+[10.923053] (-) TimerEvent: {}
+[11.023267] (-) TimerEvent: {}
+[11.123465] (-) TimerEvent: {}
+[11.223706] (-) TimerEvent: {}
+[11.323957] (-) TimerEvent: {}
+[11.424152] (-) TimerEvent: {}
+[11.524324] (-) TimerEvent: {}
+[11.624547] (-) TimerEvent: {}
+[11.724719] (-) TimerEvent: {}
+[11.824896] (-) TimerEvent: {}
+[11.925126] (-) TimerEvent: {}
+[12.025331] (-) TimerEvent: {}
+[12.125531] (-) TimerEvent: {}
+[12.225716] (-) TimerEvent: {}
+[12.326004] (-) TimerEvent: {}
+[12.426280] (-) TimerEvent: {}
+[12.526523] (-) TimerEvent: {}
+[12.626771] (-) TimerEvent: {}
+[12.727032] (-) TimerEvent: {}
+[12.827276] (-) TimerEvent: {}
+[12.927476] (-) TimerEvent: {}
+[13.027148] (arm_controller) StdoutLine: {'line': b'[ 50%] Linking CXX executable arm_controller_node\n'}
+[13.027534] (-) TimerEvent: {}
+[13.127721] (-) TimerEvent: {}
+[13.228116] (-) TimerEvent: {}
+[13.328471] (-) TimerEvent: {}
+[13.428682] (-) TimerEvent: {}
+[13.528953] (-) TimerEvent: {}
+[13.629141] (-) TimerEvent: {}
+[13.729340] (-) TimerEvent: {}
+[13.829551] (-) TimerEvent: {}
+[13.917923] (arm_controller) StdoutLine: {'line': b'[100%] Built target arm_controller_node\n'}
+[13.926633] (arm_controller) CommandEnded: {'returncode': 0}
+[13.927198] (arm_controller) JobProgress: {'identifier': 'arm_controller', 'progress': 'install'}
+[13.929319] (arm_controller) Command: {'cmd': ['/opt/st/stm32cubeclt_1.17.0/CMake/bin/cmake', '--install', '/home/zhr/robot_arm/build/arm_controller'], 'cwd': '/home/zhr/robot_arm/build/arm_controller', 'env': OrderedDict([('GJS_DEBUG_TOPICS', 'JS ERROR;JS LOG'), ('LESSOPEN', '| /usr/bin/lesspipe %s'), ('VSCODE_CWD', '/home/zhr'), ('VSCODE_ESM_ENTRYPOINT', 'vs/workbench/api/node/extensionHostProcess'), ('CODEX_CI', '1'), ('LANGUAGE', 'zh_CN:en'), ('USER', 'zhr'), ('LC_TIME', 'zh_CN.UTF-8'), ('CODEX_INTERNAL_ORIGINATOR_OVERRIDE', 'codex_vscode'), ('VSCODE_NLS_CONFIG', '{"userLocale":"zh-cn","osLocale":"zh-cn","resolvedLanguage":"zh-cn","defaultMessagesFile":"/usr/share/code/resources/app/out/nls.messages.json","languagePack":{"translationsConfigFile":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/tcf.json","messagesFile":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/034f571df509819cc10b0c8129f66ef77a542f0e/nls.messages.json","corruptMarkerFile":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/corrupted.info"},"locale":"zh-cn","availableLanguages":{"*":"zh-cn"},"_languagePackId":"b912e1cc94c8380c6bb426bdce2c540f.zh-cn","_languagePackSupport":true,"_translationsConfigFile":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/tcf.json","_cacheRoot":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn","_resolvedLanguagePackCoreLocation":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/034f571df509819cc10b0c8129f66ef77a542f0e","_corruptedFile":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/corrupted.info"}'), ('VSCODE_HANDLES_UNCAUGHT_ERRORS', 'true'), ('XDG_SESSION_TYPE', 'x11'), ('DEBUG', 'release'), ('SHLVL', '0'), ('LD_LIBRARY_PATH', '/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib'), ('HOME', '/home/zhr'), ('CHROME_DESKTOP', 'code.desktop'), ('DESKTOP_SESSION', 'ubuntu'), ('VSCODE_IPC_HOOK', '/run/user/1001/vscode-9b34bd8d-1.11-main.sock'), ('GIO_LAUNCHED_DESKTOP_FILE', '/usr/share/applications/code.desktop'), ('ROS_PYTHON_VERSION', '3'), ('GNOME_SHELL_SESSION_MODE', 'ubuntu'), ('GTK_MODULES', 'gail:atk-bridge'), ('PAGER', 'cat'), ('LC_MONETARY', 'zh_CN.UTF-8'), ('MANAGERPID', '996'), ('LC_CTYPE', 'C.UTF-8'), ('SYSTEMD_EXEC_PID', '1462'), ('NO_COLOR', '1'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1001/bus'), ('COLORTERM', ''), ('GIO_LAUNCHED_DESKTOP_FILE_PID', '37419'), ('VSCODE_CRASH_REPORTER_PROCESS_TYPE', 'extensionHost'), ('IM_CONFIG_PHASE', '1'), ('ROS_DISTRO', 'humble'), ('GTK_IM_MODULE', 'fcitx'), ('LOGNAME', 'zhr'), ('JOURNAL_STREAM', '8:14589'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('RUST_LOG', 'warn'), ('USERNAME', 'zhr'), ('TERM', 'dumb'), ('GNOME_DESKTOP_SESSION_ID', 'this-is-deprecated'), ('FC_FONTATIONS', '1'), ('ROS_LOCALHOST_ONLY', '0'), ('WINDOWPATH', '2'), ('PATH', '/home/zhr/.npm-global/bin:/home/zhr/.local/bin:/opt/st/stm32cubeclt_1.17.0:/opt/st/stm32cubeclt_1.17.0/STM32CubeProgrammer/bin:/opt/st/stm32cubeclt_1.17.0/STLink-gdb-server/bin:/opt/st/stm32cubeclt_1.17.0/CMake/bin:/opt/st/stm32cubeclt_1.17.0/Ninja/bin:/opt/st/stm32cubeclt_1.17.0/GNU-tools-for-STM32/bin:/home/zhr/.codex/tmp/arg0/codex-arg0I47Dy8:/home/zhr/.npm-global/bin:/home/zhr/.local/bin:/home/zhr/.npm-global/bin:/opt/ros/humble/bin:/opt/st/stm32cubeclt_1.17.0:/opt/st/stm32cubeclt_1.17.0/STM32CubeProgrammer/bin:/opt/st/stm32cubeclt_1.17.0/STLink-gdb-server/bin:/opt/st/stm32cubeclt_1.17.0/CMake/bin:/opt/st/stm32cubeclt_1.17.0/Ninja/bin:/opt/st/stm32cubeclt_1.17.0/GNU-tools-for-STM32/bin:/home/zhr/.npm-global/bin:/home/zhr/.local/bin:/opt/st/stm32cubeclt_1.17.0:/opt/st/stm32cubeclt_1.17.0/STM32CubeProgrammer/bin:/opt/st/stm32cubeclt_1.17.0/STLink-gdb-server/bin:/opt/st/stm32cubeclt_1.17.0/CMake/bin:/opt/st/stm32cubeclt_1.17.0/Ninja/bin:/opt/st/stm32cubeclt_1.17.0/GNU-tools-for-STM32/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin:/home/zhr/.vscode/extensions/openai.chatgpt-26.429.30905-linux-x64/bin/linux-x86_64'), ('SESSION_MANAGER', 'local/C:@/tmp/.ICE-unix/1438,unix/C:/tmp/.ICE-unix/1438'), ('INVOCATION_ID', '6f150e595d324e2ea86c5c0e7bcaf5a7'), ('XDG_MENU_PREFIX', 'gnome-'), ('LC_ADDRESS', 'zh_CN.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1001'), ('GDK_BACKEND', 'x11'), ('DISPLAY', ':0'), ('LANG', 'zh_CN.UTF-8'), ('XDG_CURRENT_DESKTOP', 'ubuntu:GNOME'), ('LC_TELEPHONE', 'zh_CN.UTF-8'), ('XMODIFIERS', '@im=fcitx'), ('GH_PAGER', 'cat'), ('XDG_SESSION_DESKTOP', 'ubuntu'), ('XAUTHORITY', '/run/user/1001/gdm/Xauthority'), ('SSH_AGENT_LAUNCHER', 'gnome-keyring'), ('SSH_AUTH_SOCK', '/run/user/1001/keyring/ssh'), ('AMENT_PREFIX_PATH', '/opt/ros/humble'), ('SHELL', '/bin/bash'), ('LC_NAME', 'zh_CN.UTF-8'), ('QT_ACCESSIBILITY', '1'), ('ELECTRON_RUN_AS_NODE', '1'), ('GDMSESSION', 'ubuntu'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('CODEX_THREAD_ID', '019dee03-58c4-7cf2-aa5b-3eb2d41a6ac8'), ('LC_MEASUREMENT', 'zh_CN.UTF-8'), ('GPG_AGENT_INFO', '/run/user/1001/gnupg/S.gpg-agent:0:1'), ('GJS_DEBUG_OUTPUT', 'stderr'), ('LC_IDENTIFICATION', 'zh_CN.UTF-8'), ('GIT_PAGER', 'cat'), ('QT_IM_MODULE', 'fcitx'), ('PWD', '/home/zhr/robot_arm/build/arm_controller'), ('LC_ALL', 'en_US.UTF-8'), ('XDG_CONFIG_DIRS', '/etc/xdg/xdg-ubuntu:/etc/xdg'), ('VSCODE_CODE_CACHE_PATH', '/home/zhr/.config/Code/CachedData/034f571df509819cc10b0c8129f66ef77a542f0e'), ('CLUTTER_IM_MODULE', 'xim'), ('XDG_DATA_DIRS', '/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop'), ('PYTHONPATH', '/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages'), ('LC_NUMERIC', 'zh_CN.UTF-8'), ('LC_PAPER', 'zh_CN.UTF-8'), ('COLCON', '1'), ('VSCODE_PID', '37419'), ('CMAKE_PREFIX_PATH', '/opt/ros/humble')]), 'shell': False}
+[13.930348] (-) TimerEvent: {}
+[13.931173] (arm_controller) StdoutLine: {'line': b'-- Install configuration: ""\n'}
+[13.931586] (arm_controller) StdoutLine: {'line': b'-- Execute custom install script\n'}
+[13.931806] (arm_controller) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/lib/arm_controller/arm_controller_node\n'}
+[13.932074] (arm_controller) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/config/arm_controller.yaml\n'}
+[13.932216] (arm_controller) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/ament_index/resource_index/package_run_dependencies/arm_controller\n'}
+[13.932339] (arm_controller) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/ament_index/resource_index/parent_prefix_path/arm_controller\n'}
+[13.932462] (arm_controller) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/environment/ament_prefix_path.sh\n'}
+[13.932577] (arm_controller) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/environment/ament_prefix_path.dsv\n'}
+[13.932691] (arm_controller) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/environment/path.sh\n'}
+[13.932812] (arm_controller) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/environment/path.dsv\n'}
+[13.932929] (arm_controller) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/local_setup.bash\n'}
+[13.933045] (arm_controller) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/local_setup.sh\n'}
+[13.933167] (arm_controller) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/local_setup.zsh\n'}
+[13.933275] (arm_controller) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/local_setup.dsv\n'}
+[13.933381] (arm_controller) StdoutLine: {'line': b'-- Symlinking: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/package.dsv\n'}
+[13.935447] (arm_controller) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/ament_index/resource_index/packages/arm_controller\n'}
+[13.935622] (arm_controller) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/cmake/arm_controllerConfig.cmake\n'}
+[13.935735] (arm_controller) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/cmake/arm_controllerConfig-version.cmake\n'}
+[13.935806] (arm_controller) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_controller/share/arm_controller/package.xml\n'}
+[13.936388] (arm_controller) CommandEnded: {'returncode': 0}
+[13.949281] (arm_controller) JobEnded: {'identifier': 'arm_controller', 'rc': 0}
+[13.950153] (arm_bringup) JobStarted: {'identifier': 'arm_bringup'}
+[13.955947] (arm_bringup) JobProgress: {'identifier': 'arm_bringup', 'progress': 'cmake'}
+[13.956369] (arm_bringup) JobProgress: {'identifier': 'arm_bringup', 'progress': 'build'}
+[13.956567] (arm_bringup) Command: {'cmd': ['/opt/st/stm32cubeclt_1.17.0/CMake/bin/cmake', '--build', '/home/zhr/robot_arm/build/arm_bringup', '--', '-j8', '-l8'], 'cwd': '/home/zhr/robot_arm/build/arm_bringup', 'env': OrderedDict([('GJS_DEBUG_TOPICS', 'JS ERROR;JS LOG'), ('LESSOPEN', '| /usr/bin/lesspipe %s'), ('VSCODE_CWD', '/home/zhr'), ('VSCODE_ESM_ENTRYPOINT', 'vs/workbench/api/node/extensionHostProcess'), ('CODEX_CI', '1'), ('LANGUAGE', 'zh_CN:en'), ('USER', 'zhr'), ('LC_TIME', 'zh_CN.UTF-8'), ('CODEX_INTERNAL_ORIGINATOR_OVERRIDE', 'codex_vscode'), ('VSCODE_NLS_CONFIG', '{"userLocale":"zh-cn","osLocale":"zh-cn","resolvedLanguage":"zh-cn","defaultMessagesFile":"/usr/share/code/resources/app/out/nls.messages.json","languagePack":{"translationsConfigFile":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/tcf.json","messagesFile":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/034f571df509819cc10b0c8129f66ef77a542f0e/nls.messages.json","corruptMarkerFile":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/corrupted.info"},"locale":"zh-cn","availableLanguages":{"*":"zh-cn"},"_languagePackId":"b912e1cc94c8380c6bb426bdce2c540f.zh-cn","_languagePackSupport":true,"_translationsConfigFile":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/tcf.json","_cacheRoot":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn","_resolvedLanguagePackCoreLocation":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/034f571df509819cc10b0c8129f66ef77a542f0e","_corruptedFile":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/corrupted.info"}'), ('VSCODE_HANDLES_UNCAUGHT_ERRORS', 'true'), ('XDG_SESSION_TYPE', 'x11'), ('DEBUG', 'release'), ('SHLVL', '0'), ('LD_LIBRARY_PATH', '/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib'), ('HOME', '/home/zhr'), ('CHROME_DESKTOP', 'code.desktop'), ('DESKTOP_SESSION', 'ubuntu'), ('VSCODE_IPC_HOOK', '/run/user/1001/vscode-9b34bd8d-1.11-main.sock'), ('GIO_LAUNCHED_DESKTOP_FILE', '/usr/share/applications/code.desktop'), ('ROS_PYTHON_VERSION', '3'), ('GNOME_SHELL_SESSION_MODE', 'ubuntu'), ('GTK_MODULES', 'gail:atk-bridge'), ('PAGER', 'cat'), ('LC_MONETARY', 'zh_CN.UTF-8'), ('MANAGERPID', '996'), ('LC_CTYPE', 'C.UTF-8'), ('SYSTEMD_EXEC_PID', '1462'), ('NO_COLOR', '1'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1001/bus'), ('COLORTERM', ''), ('GIO_LAUNCHED_DESKTOP_FILE_PID', '37419'), ('VSCODE_CRASH_REPORTER_PROCESS_TYPE', 'extensionHost'), ('IM_CONFIG_PHASE', '1'), ('ROS_DISTRO', 'humble'), ('GTK_IM_MODULE', 'fcitx'), ('LOGNAME', 'zhr'), ('JOURNAL_STREAM', '8:14589'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('RUST_LOG', 'warn'), ('USERNAME', 'zhr'), ('TERM', 'dumb'), ('GNOME_DESKTOP_SESSION_ID', 'this-is-deprecated'), ('FC_FONTATIONS', '1'), ('ROS_LOCALHOST_ONLY', '0'), ('WINDOWPATH', '2'), ('PATH', '/home/zhr/.npm-global/bin:/home/zhr/.local/bin:/opt/st/stm32cubeclt_1.17.0:/opt/st/stm32cubeclt_1.17.0/STM32CubeProgrammer/bin:/opt/st/stm32cubeclt_1.17.0/STLink-gdb-server/bin:/opt/st/stm32cubeclt_1.17.0/CMake/bin:/opt/st/stm32cubeclt_1.17.0/Ninja/bin:/opt/st/stm32cubeclt_1.17.0/GNU-tools-for-STM32/bin:/home/zhr/.codex/tmp/arg0/codex-arg0I47Dy8:/home/zhr/.npm-global/bin:/home/zhr/.local/bin:/home/zhr/.npm-global/bin:/opt/ros/humble/bin:/opt/st/stm32cubeclt_1.17.0:/opt/st/stm32cubeclt_1.17.0/STM32CubeProgrammer/bin:/opt/st/stm32cubeclt_1.17.0/STLink-gdb-server/bin:/opt/st/stm32cubeclt_1.17.0/CMake/bin:/opt/st/stm32cubeclt_1.17.0/Ninja/bin:/opt/st/stm32cubeclt_1.17.0/GNU-tools-for-STM32/bin:/home/zhr/.npm-global/bin:/home/zhr/.local/bin:/opt/st/stm32cubeclt_1.17.0:/opt/st/stm32cubeclt_1.17.0/STM32CubeProgrammer/bin:/opt/st/stm32cubeclt_1.17.0/STLink-gdb-server/bin:/opt/st/stm32cubeclt_1.17.0/CMake/bin:/opt/st/stm32cubeclt_1.17.0/Ninja/bin:/opt/st/stm32cubeclt_1.17.0/GNU-tools-for-STM32/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin:/home/zhr/.vscode/extensions/openai.chatgpt-26.429.30905-linux-x64/bin/linux-x86_64'), ('SESSION_MANAGER', 'local/C:@/tmp/.ICE-unix/1438,unix/C:/tmp/.ICE-unix/1438'), ('INVOCATION_ID', '6f150e595d324e2ea86c5c0e7bcaf5a7'), ('XDG_MENU_PREFIX', 'gnome-'), ('LC_ADDRESS', 'zh_CN.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1001'), ('GDK_BACKEND', 'x11'), ('DISPLAY', ':0'), ('LANG', 'zh_CN.UTF-8'), ('XDG_CURRENT_DESKTOP', 'ubuntu:GNOME'), ('LC_TELEPHONE', 'zh_CN.UTF-8'), ('XMODIFIERS', '@im=fcitx'), ('GH_PAGER', 'cat'), ('XDG_SESSION_DESKTOP', 'ubuntu'), ('XAUTHORITY', '/run/user/1001/gdm/Xauthority'), ('SSH_AGENT_LAUNCHER', 'gnome-keyring'), ('SSH_AUTH_SOCK', '/run/user/1001/keyring/ssh'), ('AMENT_PREFIX_PATH', '/home/zhr/robot_arm/install/sim_motor_controller:/home/zhr/robot_arm/install/real_motor_controller:/home/zhr/robot_arm/install/arm_controller:/opt/ros/humble'), ('SHELL', '/bin/bash'), ('LC_NAME', 'zh_CN.UTF-8'), ('QT_ACCESSIBILITY', '1'), ('ELECTRON_RUN_AS_NODE', '1'), ('GDMSESSION', 'ubuntu'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('CODEX_THREAD_ID', '019dee03-58c4-7cf2-aa5b-3eb2d41a6ac8'), ('LC_MEASUREMENT', 'zh_CN.UTF-8'), ('GPG_AGENT_INFO', '/run/user/1001/gnupg/S.gpg-agent:0:1'), ('GJS_DEBUG_OUTPUT', 'stderr'), ('LC_IDENTIFICATION', 'zh_CN.UTF-8'), ('GIT_PAGER', 'cat'), ('QT_IM_MODULE', 'fcitx'), ('PWD', '/home/zhr/robot_arm/build/arm_bringup'), ('LC_ALL', 'en_US.UTF-8'), ('XDG_CONFIG_DIRS', '/etc/xdg/xdg-ubuntu:/etc/xdg'), ('VSCODE_CODE_CACHE_PATH', '/home/zhr/.config/Code/CachedData/034f571df509819cc10b0c8129f66ef77a542f0e'), ('CLUTTER_IM_MODULE', 'xim'), ('XDG_DATA_DIRS', '/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop'), ('PYTHONPATH', '/home/zhr/robot_arm/install/sim_motor_controller/lib/python3.10/site-packages:/home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages'), ('LC_NUMERIC', 'zh_CN.UTF-8'), ('LC_PAPER', 'zh_CN.UTF-8'), ('COLCON', '1'), ('VSCODE_PID', '37419'), ('CMAKE_PREFIX_PATH', '/home/zhr/robot_arm/install/arm_controller:/opt/ros/humble')]), 'shell': False}
+[13.966821] (arm_bringup) CommandEnded: {'returncode': 0}
+[13.967420] (arm_bringup) JobProgress: {'identifier': 'arm_bringup', 'progress': 'install'}
+[13.967615] (arm_bringup) Command: {'cmd': ['/opt/st/stm32cubeclt_1.17.0/CMake/bin/cmake', '--install', '/home/zhr/robot_arm/build/arm_bringup'], 'cwd': '/home/zhr/robot_arm/build/arm_bringup', 'env': OrderedDict([('GJS_DEBUG_TOPICS', 'JS ERROR;JS LOG'), ('LESSOPEN', '| /usr/bin/lesspipe %s'), ('VSCODE_CWD', '/home/zhr'), ('VSCODE_ESM_ENTRYPOINT', 'vs/workbench/api/node/extensionHostProcess'), ('CODEX_CI', '1'), ('LANGUAGE', 'zh_CN:en'), ('USER', 'zhr'), ('LC_TIME', 'zh_CN.UTF-8'), ('CODEX_INTERNAL_ORIGINATOR_OVERRIDE', 'codex_vscode'), ('VSCODE_NLS_CONFIG', '{"userLocale":"zh-cn","osLocale":"zh-cn","resolvedLanguage":"zh-cn","defaultMessagesFile":"/usr/share/code/resources/app/out/nls.messages.json","languagePack":{"translationsConfigFile":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/tcf.json","messagesFile":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/034f571df509819cc10b0c8129f66ef77a542f0e/nls.messages.json","corruptMarkerFile":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/corrupted.info"},"locale":"zh-cn","availableLanguages":{"*":"zh-cn"},"_languagePackId":"b912e1cc94c8380c6bb426bdce2c540f.zh-cn","_languagePackSupport":true,"_translationsConfigFile":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/tcf.json","_cacheRoot":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn","_resolvedLanguagePackCoreLocation":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/034f571df509819cc10b0c8129f66ef77a542f0e","_corruptedFile":"/home/zhr/.config/Code/clp/b912e1cc94c8380c6bb426bdce2c540f.zh-cn/corrupted.info"}'), ('VSCODE_HANDLES_UNCAUGHT_ERRORS', 'true'), ('XDG_SESSION_TYPE', 'x11'), ('DEBUG', 'release'), ('SHLVL', '0'), ('LD_LIBRARY_PATH', '/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib'), ('HOME', '/home/zhr'), ('CHROME_DESKTOP', 'code.desktop'), ('DESKTOP_SESSION', 'ubuntu'), ('VSCODE_IPC_HOOK', '/run/user/1001/vscode-9b34bd8d-1.11-main.sock'), ('GIO_LAUNCHED_DESKTOP_FILE', '/usr/share/applications/code.desktop'), ('ROS_PYTHON_VERSION', '3'), ('GNOME_SHELL_SESSION_MODE', 'ubuntu'), ('GTK_MODULES', 'gail:atk-bridge'), ('PAGER', 'cat'), ('LC_MONETARY', 'zh_CN.UTF-8'), ('MANAGERPID', '996'), ('LC_CTYPE', 'C.UTF-8'), ('SYSTEMD_EXEC_PID', '1462'), ('NO_COLOR', '1'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1001/bus'), ('COLORTERM', ''), ('GIO_LAUNCHED_DESKTOP_FILE_PID', '37419'), ('VSCODE_CRASH_REPORTER_PROCESS_TYPE', 'extensionHost'), ('IM_CONFIG_PHASE', '1'), ('ROS_DISTRO', 'humble'), ('GTK_IM_MODULE', 'fcitx'), ('LOGNAME', 'zhr'), ('JOURNAL_STREAM', '8:14589'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('RUST_LOG', 'warn'), ('USERNAME', 'zhr'), ('TERM', 'dumb'), ('GNOME_DESKTOP_SESSION_ID', 'this-is-deprecated'), ('FC_FONTATIONS', '1'), ('ROS_LOCALHOST_ONLY', '0'), ('WINDOWPATH', '2'), ('PATH', '/home/zhr/.npm-global/bin:/home/zhr/.local/bin:/opt/st/stm32cubeclt_1.17.0:/opt/st/stm32cubeclt_1.17.0/STM32CubeProgrammer/bin:/opt/st/stm32cubeclt_1.17.0/STLink-gdb-server/bin:/opt/st/stm32cubeclt_1.17.0/CMake/bin:/opt/st/stm32cubeclt_1.17.0/Ninja/bin:/opt/st/stm32cubeclt_1.17.0/GNU-tools-for-STM32/bin:/home/zhr/.codex/tmp/arg0/codex-arg0I47Dy8:/home/zhr/.npm-global/bin:/home/zhr/.local/bin:/home/zhr/.npm-global/bin:/opt/ros/humble/bin:/opt/st/stm32cubeclt_1.17.0:/opt/st/stm32cubeclt_1.17.0/STM32CubeProgrammer/bin:/opt/st/stm32cubeclt_1.17.0/STLink-gdb-server/bin:/opt/st/stm32cubeclt_1.17.0/CMake/bin:/opt/st/stm32cubeclt_1.17.0/Ninja/bin:/opt/st/stm32cubeclt_1.17.0/GNU-tools-for-STM32/bin:/home/zhr/.npm-global/bin:/home/zhr/.local/bin:/opt/st/stm32cubeclt_1.17.0:/opt/st/stm32cubeclt_1.17.0/STM32CubeProgrammer/bin:/opt/st/stm32cubeclt_1.17.0/STLink-gdb-server/bin:/opt/st/stm32cubeclt_1.17.0/CMake/bin:/opt/st/stm32cubeclt_1.17.0/Ninja/bin:/opt/st/stm32cubeclt_1.17.0/GNU-tools-for-STM32/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin:/home/zhr/.vscode/extensions/openai.chatgpt-26.429.30905-linux-x64/bin/linux-x86_64'), ('SESSION_MANAGER', 'local/C:@/tmp/.ICE-unix/1438,unix/C:/tmp/.ICE-unix/1438'), ('INVOCATION_ID', '6f150e595d324e2ea86c5c0e7bcaf5a7'), ('XDG_MENU_PREFIX', 'gnome-'), ('LC_ADDRESS', 'zh_CN.UTF-8'), ('XDG_RUNTIME_DIR', '/run/user/1001'), ('GDK_BACKEND', 'x11'), ('DISPLAY', ':0'), ('LANG', 'zh_CN.UTF-8'), ('XDG_CURRENT_DESKTOP', 'ubuntu:GNOME'), ('LC_TELEPHONE', 'zh_CN.UTF-8'), ('XMODIFIERS', '@im=fcitx'), ('GH_PAGER', 'cat'), ('XDG_SESSION_DESKTOP', 'ubuntu'), ('XAUTHORITY', '/run/user/1001/gdm/Xauthority'), ('SSH_AGENT_LAUNCHER', 'gnome-keyring'), ('SSH_AUTH_SOCK', '/run/user/1001/keyring/ssh'), ('AMENT_PREFIX_PATH', '/home/zhr/robot_arm/install/sim_motor_controller:/home/zhr/robot_arm/install/real_motor_controller:/home/zhr/robot_arm/install/arm_controller:/opt/ros/humble'), ('SHELL', '/bin/bash'), ('LC_NAME', 'zh_CN.UTF-8'), ('QT_ACCESSIBILITY', '1'), ('ELECTRON_RUN_AS_NODE', '1'), ('GDMSESSION', 'ubuntu'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('CODEX_THREAD_ID', '019dee03-58c4-7cf2-aa5b-3eb2d41a6ac8'), ('LC_MEASUREMENT', 'zh_CN.UTF-8'), ('GPG_AGENT_INFO', '/run/user/1001/gnupg/S.gpg-agent:0:1'), ('GJS_DEBUG_OUTPUT', 'stderr'), ('LC_IDENTIFICATION', 'zh_CN.UTF-8'), ('GIT_PAGER', 'cat'), ('QT_IM_MODULE', 'fcitx'), ('PWD', '/home/zhr/robot_arm/build/arm_bringup'), ('LC_ALL', 'en_US.UTF-8'), ('XDG_CONFIG_DIRS', '/etc/xdg/xdg-ubuntu:/etc/xdg'), ('VSCODE_CODE_CACHE_PATH', '/home/zhr/.config/Code/CachedData/034f571df509819cc10b0c8129f66ef77a542f0e'), ('CLUTTER_IM_MODULE', 'xim'), ('XDG_DATA_DIRS', '/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop'), ('PYTHONPATH', '/home/zhr/robot_arm/install/sim_motor_controller/lib/python3.10/site-packages:/home/zhr/robot_arm/install/real_motor_controller/lib/python3.10/site-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages'), ('LC_NUMERIC', 'zh_CN.UTF-8'), ('LC_PAPER', 'zh_CN.UTF-8'), ('COLCON', '1'), ('VSCODE_PID', '37419'), ('CMAKE_PREFIX_PATH', '/home/zhr/robot_arm/install/arm_controller:/opt/ros/humble')]), 'shell': False}
+[13.969607] (arm_bringup) StdoutLine: {'line': b'-- Install configuration: ""\n'}
+[13.970010] (arm_bringup) StdoutLine: {'line': b'-- Execute custom install script\n'}
+[13.970326] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/config/joint_names_robot_arm.yaml\n'}
+[13.970566] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/launch/__pycache__/control.launch.cpython-310.pyc\n'}
+[13.970675] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/launch/__pycache__/display.launch.cpython-310.pyc\n'}
+[13.970810] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/launch/__pycache__/gazebo.launch.cpython-310.pyc\n'}
+[13.970855] (arm_bringup) StdoutLine: {'line': b'-- Symlinking: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/launch/__pycache__/sim.launch.cpython-310.pyc\n'}
+[13.972741] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/launch/control.launch.py\n'}
+[13.972969] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/launch/display.launch.py\n'}
+[13.973016] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/launch/gazebo.launch.py\n'}
+[13.973065] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/launch/sim.launch.py\n'}
+[13.973166] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/meshes/base_link.STL\n'}
+[13.973268] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/meshes/base_yaw_Link.STL\n'}
+[13.973366] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/meshes/end_effector_fixed_joint.STL\n'}
+[13.973475] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/meshes/forearm_link.STL\n'}
+[13.973571] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/meshes/upper_arm_link.STL\n'}
+[13.973615] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/meshes/wrist_link.STL\n'}
+[13.973718] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/models/arm_bringup/model.config\n'}
+[13.973817] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/models/arm_bringup/model.sdf\n'}
+[13.973951] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/rviz/robot_arm.rviz\n'}
+[13.974124] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/urdf/robot_arm.csv\n'}
+[13.974237] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/urdf/robot_arm.urdf\n'}
+[13.974457] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/models/arm_bringup/meshes/base_link.STL\n'}
+[13.974558] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/models/arm_bringup/meshes/base_yaw_Link.STL\n'}
+[13.974686] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/models/arm_bringup/meshes/end_effector_fixed_joint.STL\n'}
+[13.974740] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/models/arm_bringup/meshes/forearm_link.STL\n'}
+[13.974866] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/models/arm_bringup/meshes/upper_arm_link.STL\n'}
+[13.974910] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/models/arm_bringup/meshes/wrist_link.STL\n'}
+[13.974997] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/ament_index/resource_index/package_run_dependencies/arm_bringup\n'}
+[13.975108] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/ament_index/resource_index/parent_prefix_path/arm_bringup\n'}
+[13.975235] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/environment/ament_prefix_path.sh\n'}
+[13.975345] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/environment/ament_prefix_path.dsv\n'}
+[13.975464] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/environment/path.sh\n'}
+[13.975571] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/environment/path.dsv\n'}
+[13.975677] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/local_setup.bash\n'}
+[13.975782] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/local_setup.sh\n'}
+[13.975889] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/local_setup.zsh\n'}
+[13.975993] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/local_setup.dsv\n'}
+[13.976126] (arm_bringup) StdoutLine: {'line': b'-- Symlinking: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/package.dsv\n'}
+[13.978076] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/ament_index/resource_index/packages/arm_bringup\n'}
+[13.978215] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/cmake/arm_bringupConfig.cmake\n'}
+[13.978310] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/cmake/arm_bringupConfig-version.cmake\n'}
+[13.978413] (arm_bringup) StdoutLine: {'line': b'-- Up-to-date symlink: /home/zhr/robot_arm/install/arm_bringup/share/arm_bringup/package.xml\n'}
+[13.979120] (arm_bringup) CommandEnded: {'returncode': 0}
+[13.989555] (arm_bringup) JobEnded: {'identifier': 'arm_bringup', 'rc': 0}
+[13.989964] (-) EventReactorShutdown: {}
