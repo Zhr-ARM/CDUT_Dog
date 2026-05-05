@@ -8,89 +8,65 @@
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 
+#include "arm_controller/kinematics_types.hpp"
+
 namespace arm_controller
 {
-
-// 本文件固定处理 4 自由度机械臂，因此把 4x1 的 Eigen 向量起一个更有语义的别名。
-// 向量下标与 joint_origins / joint_axes / lower_limits / upper_limits 中的关节顺序一一对应。
-using JointVector = Eigen::Matrix<double, 4, 1>;
-
-// 正运动学函数在 forward_kinematics.cpp 中实现，这里只声明，供 IK 数值迭代调用。
-// compute_end_effector_position 只返回末端位置，用于纯位置 IK。
-Eigen::Vector3d compute_end_effector_position(
-  const std::array<Eigen::Vector3d, 4> & joint_origins,
-  const std::array<Eigen::Vector3d, 4> & joint_axes,
-  const JointVector & joint_positions,
-  const Eigen::Vector3d & tool_offset);
-
-// compute_forward_kinematics 返回完整位姿，用于同时约束末端位置和工具 X 轴方向的 IK。
-Eigen::Isometry3d compute_forward_kinematics(
-  const std::array<Eigen::Vector3d, 4> & joint_origins,
-  const std::array<Eigen::Vector3d, 4> & joint_axes,
-  const JointVector & joint_positions,
-  const Eigen::Vector3d & tool_offset);
 
 namespace
 {
 
-// IK 通常在控制回调中运行，不能长时间阻塞控制循环。
-// 这里给所有种子点的总求解过程设置 50ms 软时间预算；循环中每 10 次迭代检查一次。
-constexpr auto kSolverTimeBudget = std::chrono::milliseconds(50);
+// =========================================================================
+// Damped Least-Squares update step (shared by both IK solvers).
+// =========================================================================
 
-/**
- * @brief 将关节角度值钳位到指定的上下限范围内
- *
- * 对每个关节角度逐一应用钳位操作，确保其值不低于下限且不高于上限。
- * 使用 std::clamp 实现，保证输出值在 [lower_limits[i], upper_limits[i]] 区间内。
- *
- * @param joints 输入的关节角度向量（4维）
- * @param lower_limits 各关节的角度下限数组（弧度）
- * @param upper_limits 各关节的角度上限数组（弧度）
- *
- * @return JointVector 钳位后的关节角度向量
- */
-JointVector clamp_to_limits(
+/// Perform one DLS iteration: compute delta_q from Jacobian and error,
+/// then clamp, step-limit, and apply limits.  Returns the new joint vector
+/// and sets `stalled` to true when the update is negligible.
+///
+/// @tparam JacobianType  Eigen matrix type (3×4 or 6×4).
+/// @tparam ErrorType     Eigen vector type (3×1 or 6×1).
+template<typename JacobianType, typename ErrorType>
+JointVector dls_update_step(
+  const JacobianType & jacobian,
+  const ErrorType & error,
   const JointVector & joints,
-  const std::array<double, 4> & lower_limits,
-  const std::array<double, 4> & upper_limits)
+  const std::array<double, kJointCount> & lower_limits,
+  const std::array<double, kJointCount> & upper_limits,
+  double damping_squared,
+  double max_step,
+  bool & stalled)
 {
-  // 先复制一份输入，避免修改调用者传入的 seed / 当前关节向量。
-  JointVector clamped = joints;
-  for (int index = 0; index < clamped.size(); ++index) {
-    // Eigen 向量使用 int 下标，std::array 使用 size_t 下标，因此这里显式转换。
-    clamped(index) = std::clamp(
-      clamped(index),
-      lower_limits[static_cast<std::size_t>(index)],
-      upper_limits[static_cast<std::size_t>(index)]);
+  stalled = false;
+
+  // Damped system:  J·Jᵀ + λ²·I  (force evaluation to get a writable matrix)
+  auto damped = (jacobian * jacobian.transpose()).eval();
+  damped.diagonal().array() += damping_squared;
+
+  JointVector delta = jacobian.transpose() * damped.ldlt().solve(error);
+
+  if (!vector_is_finite(delta)) {
+    stalled = true;
+    return joints;
   }
-  return clamped;
+
+  const double delta_norm = delta.norm();
+  if (delta_norm > max_step) {
+    delta *= max_step / delta_norm;
+  }
+
+  const JointVector next = clamp_to_limits(joints + delta, lower_limits, upper_limits);
+  if ((next - joints).norm() < 1.0e-10) {
+    stalled = true;
+  }
+  return next;
 }
 
-/**
- * @brief 计算各关节角度上下限的中间值
- *
- * 对每个关节计算 (lower + upper) / 2，生成一个位于关节行程中点的关节向量。
- * 该函数常用于为逆运动学求解器生成初始种子点，提供一个安全的初始猜测值。
- *
- * @param lower_limits 各关节的角度下限数组（弧度）
- * @param upper_limits 各关节的角度上限数组（弧度）
- *
- * @return JointVector 各关节角度上下限的中间值向量
- */
-JointVector mid_limits(
-  const std::array<double, 4> & lower_limits,
-  const std::array<double, 4> & upper_limits)
-{
-  JointVector joints;
-  for (int index = 0; index < joints.size(); ++index) {
-    // 取行程中点作为中性姿态，通常比直接使用 0 更安全：
-    // 有些关节的有效范围并不以 0 为中心。
-    joints(index) =
-      0.5 * (lower_limits[static_cast<std::size_t>(index)] +
-      upper_limits[static_cast<std::size_t>(index)]);
-  }
-  return joints;
-}
+}  // namespace
+
+// =========================================================================
+// Helper implementations (declared in kinematics_types.hpp)
+// =========================================================================
 
 /**
  * @brief 生成逆运动学求解的初始种子点集合
@@ -372,53 +348,10 @@ Eigen::Matrix<double, 6, 4> numerical_pose_direction_jacobian(
   return jacobian;
 }
 
-/**
- * @brief 检查关节增量向量是否全部为有限值
- *
- * DLS 线性系统在极端数值情况下可能返回 NaN 或 inf。
- * 一旦关节增量不是有限值，继续迭代会污染后续正运动学计算，因此需要提前终止当前种子。
- *
- * @param vector 待检查的 4 维关节增量向量
- * @return true 所有元素都是有限值
- * @return false 至少一个元素为 NaN 或 inf
- */
-bool vector_is_finite(const JointVector & vector)
-{
-  for (int index = 0; index < vector.size(); ++index) {
-    if (!std::isfinite(vector(index))) {
-      return false;
-    }
-  }
-  return true;
-}
+// =========================================================================
+// Position-only IK solver
+// =========================================================================
 
-}  // namespace
-
-/**
- * @brief 求解仅匹配目标位置的逆运动学 (Inverse Kinematics)
- *
- * 基于阻尼最小二乘法 (DLS, Levenberg-Marquardt)，通过数值迭代求解末端执行器达到目标空间位置的关节构型。
- * 不考虑末端姿态（只有位置要求）。
- * 算法内置了超时处理（50ms），并使用多种子点策略（通过 make_seed_set 生成）依次尝试，防止陷入局部极小值。
- *
- * @param joint_origins 各关节原点
- * @param joint_axes 各关节旋转轴
- * @param lower_limits 关节角度下限
- * @param upper_limits 关节角度上限
- * @param tool_offset 工具中心点偏移
- * @param target_position 期望的 3D 目标坐标
- * @param seed 初始角度猜测点（有助于寻找接近当前构型的解）
- * @param tolerance 可接受的位置欧式距离误差下限
- * @param max_iterations 最大迭代次数上限（避免死循环）
- * @param damping 阻尼因子，用于平滑雅可比求逆时矩阵接近奇异构型导致的发散
- * @param max_step 单次迭代允许的关节角度最大更新步长（弧度）
- * @param solution [输出] 求解成功的关节角度配置。若失败，则返回误差最小的一个构型。
- * @param final_error [输出] 算法结束时的最终误差距离。
- * @param iterations [输出] 算法实际执行的迭代次数。
- *
- * @return true 找到误差 < tolerance 的有效解
- * @return false 未能找到满足精度要求的解
- */
 bool solve_inverse_kinematics(
   const std::array<Eigen::Vector3d, 4> & joint_origins,
   const std::array<Eigen::Vector3d, 4> & joint_axes,
@@ -508,43 +441,17 @@ bool solve_inverse_kinematics(
         break;
       }
 
-      // 数值雅可比 J: 3x4。
-      // 它把关节空间小位移 dq 映射到任务空间位置小位移 dx：dx ~= J * dq。
+      // Numerical Jacobian (3×4) and DLS update.
       const Eigen::Matrix<double, 3, 4> jacobian =
         numerical_jacobian(joint_origins, joint_axes, lower_limits, upper_limits, tool_offset, joints);
 
-      // 阻尼最小二乘使用右伪逆形式：
-      // dq = J^T * (J * J^T + lambda^2 * I)^-1 * error
-      // 这里 damped_system 就是括号内的 3x3 矩阵。
-      Eigen::Matrix3d damped_system = jacobian * jacobian.transpose();
-      damped_system.diagonal().array() += damping_squared;
-
-      // ldlt() 适合求解对称正定/半正定加阻尼后的线性系统，比显式求逆更稳定。
-      JointVector delta =
-        jacobian.transpose() * damped_system.ldlt().solve(error);
-
-      if (!vector_is_finite(delta)) {
-        // 数值发散时放弃当前种子，避免 NaN 继续传播。
+      bool stalled = false;
+      joints = dls_update_step(jacobian, error, joints,
+                               lower_limits, upper_limits,
+                               damping_squared, accepted_max_step, stalled);
+      if (stalled) {
         break;
       }
-
-      const double delta_norm = delta.norm();
-      if (delta_norm > accepted_max_step) {
-        // 限制单次关节更新幅度，使迭代更平滑，避免跨过可行解或撞到关节限位。
-        delta *= accepted_max_step / delta_norm;
-      }
-
-      // 更新后再次钳位，确保整个迭代过程始终满足关节物理限制。
-      const JointVector next_joints =
-        clamp_to_limits(joints + delta, lower_limits, upper_limits);
-
-      if ((next_joints - joints).norm() < 1.0e-10) {
-        // 更新量几乎为 0，说明已经被限位卡住或雅可比无法继续产生有效改进。
-        break;
-      }
-
-      // 接受本轮更新，进入下一次线性化迭代。
-      joints = next_joints;
     }
   }
 
@@ -719,37 +626,13 @@ bool solve_inverse_kinematics_with_tool_direction(
         accepted_direction_weight,
         joints);
 
-      // 增强 IK 的 DLS 形式仍为：
-      // dq = J^T * (J * J^T + lambda^2 * I)^-1 * error
-      // 此时 J 为 6x4，所以括号内矩阵为 6x6。
-      Eigen::Matrix<double, 6, 6> damped_system = jacobian * jacobian.transpose();
-      damped_system.diagonal().array() += damping_squared;
-
-      // 计算关节空间更新量 delta。
-      JointVector delta =
-        jacobian.transpose() * damped_system.ldlt().solve(error);
-
-      if (!vector_is_finite(delta)) {
-        // 当前线性化结果不可用，切换到下一个初始种子。
+      bool stalled = false;
+      joints = dls_update_step(jacobian, error, joints,
+                               lower_limits, upper_limits,
+                               damping_squared, accepted_max_step, stalled);
+      if (stalled) {
         break;
       }
-
-      const double delta_norm = delta.norm();
-      if (delta_norm > accepted_max_step) {
-        // 限步能够让“位置”和“方向”两个目标之间的折中更稳定。
-        delta *= accepted_max_step / delta_norm;
-      }
-
-      // 应用关节增量，并保持结果在上下限内。
-      const JointVector next_joints =
-        clamp_to_limits(joints + delta, lower_limits, upper_limits);
-
-      if ((next_joints - joints).norm() < 1.0e-10) {
-        // 已经没有实际可执行更新，停止当前种子。
-        break;
-      }
-
-      joints = next_joints;
     }
   }
 

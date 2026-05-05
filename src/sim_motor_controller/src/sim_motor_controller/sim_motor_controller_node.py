@@ -6,7 +6,6 @@ joint position commands, while an effort-output mode is kept for experiments.
 """
 
 import time
-from dataclasses import dataclass
 from typing import List, Optional
 
 import rclpy
@@ -15,15 +14,9 @@ from sensor_msgs.msg import JointState
 from std_msgs.msg import Float32MultiArray, Float64MultiArray, String
 from std_srvs.srv import Trigger
 
-
-@dataclass(frozen=True)
-class MITCommand:
-    position: float
-    velocity: float
-    kp: float
-    kd: float
-    torque: float
-
+# Reuse the canonical MIT types from the real-motor protocol package.
+from real_motor_controller.dm_protocol import MITCommand, mit_command_expired  # noqa: E402
+from real_motor_controller.ros_params import declare_parameters, load_parameters  # noqa: E402
 
 ZERO_MIT_COMMAND = MITCommand(0.0, 0.0, 0.0, 0.0, 0.0)
 
@@ -126,21 +119,10 @@ class SimMotorControllerNode(Node):
         )
 
     def _declare_parameters(self) -> None:
-        for name, default in PARAM_DEFAULTS.items():
-            self.declare_parameter(name, default)
+        declare_parameters(self, PARAM_DEFAULTS)
 
     def _load_parameters(self) -> None:
-        for name, default in PARAM_DEFAULTS.items():
-            value = self.get_parameter(name).value
-            setattr(self, name, self._cast_like(value, default))
-
-    @staticmethod
-    def _cast_like(value, default):
-        if isinstance(default, list):
-            if not default:
-                return list(value)
-            return [type(default[0])(item) for item in value]
-        return type(default)(value)
+        self.__dict__.update(load_parameters(self, PARAM_DEFAULTS))
 
     def _validate_config(self) -> None:
         self.command_output_mode = str(self.command_output_mode).strip().lower()
@@ -198,19 +180,12 @@ class SimMotorControllerNode(Node):
     def _current_commands(self) -> List[MITCommand]:
         if not self.enabled:
             return [ZERO_MIT_COMMAND for _ in self.motor_ids]
-        if not self._has_recent_mit_command():
+        if mit_command_expired(self.last_command_time, self.mit_command_timeout_s):
             return [ZERO_MIT_COMMAND for _ in self.motor_ids]
         return list(self.commands)
 
     def _has_recent_mit_command(self) -> bool:
-        if self.last_command_time is None:
-            return False
-        if (
-            self.mit_command_timeout_s > 0.0
-            and time.monotonic() - self.last_command_time > self.mit_command_timeout_s
-        ):
-            return False
-        return True
+        return not mit_command_expired(self.last_command_time, self.mit_command_timeout_s)
 
     def _has_fresh_joint_state(self) -> bool:
         if self.last_joint_state_time is None:

@@ -103,24 +103,37 @@ def make_special_command(suffix: int) -> bytes:
     return bytes([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, suffix & 0xFF])
 
 
+# Special command suffixes.
+_SPECIAL_DISABLE = 0xFD
+_SPECIAL_ENABLE = 0xFC
+_SPECIAL_SET_ZERO = 0xFE
+_SPECIAL_CLEAR_FAULT = 0xFB
+
+# Pre-built special command payloads (frozen bytes).
+DISABLE_PAYLOAD = make_special_command(_SPECIAL_DISABLE)
+ENABLE_PAYLOAD = make_special_command(_SPECIAL_ENABLE)
+SET_ZERO_PAYLOAD = make_special_command(_SPECIAL_SET_ZERO)
+CLEAR_FAULT_PAYLOAD = make_special_command(_SPECIAL_CLEAR_FAULT)
+
+
 def make_disable_command() -> bytes:
     """生成电机失能命令帧。"""
-    return make_special_command(0xFD)
+    return DISABLE_PAYLOAD
 
 
 def make_enable_command() -> bytes:
     """生成电机使能命令帧。"""
-    return make_special_command(0xFC)
+    return ENABLE_PAYLOAD
 
 
 def make_set_zero_command() -> bytes:
     """生成当前位置清零命令帧。"""
-    return make_special_command(0xFE)
+    return SET_ZERO_PAYLOAD
 
 
 def make_clear_fault_command() -> bytes:
     """生成清除故障状态命令帧。"""
-    return make_special_command(0xFB)
+    return CLEAR_FAULT_PAYLOAD
 
 
 def make_read_register_command(motor_id: int, register_id: int) -> bytes:
@@ -291,3 +304,29 @@ def uint_to_float(value: int, min_value: float, max_value: float, bits: int) -> 
     scale = (1 << bits) - 1
     span = max_value - min_value
     return float(value) * span / scale + min_value
+
+
+# ---------------------------------------------------------------------------
+# Shared utility: MIT command timeout helper.
+# Both real and sim controllers share the same timeout semantics.
+# ---------------------------------------------------------------------------
+
+import time as _time  # noqa: E402
+
+
+def mit_command_expired(
+    last_command_time: float | None,
+    timeout_s: float,
+) -> bool:
+    """Return True when the cached MIT command is too old or was never set.
+
+    Args:
+        last_command_time: ``time.monotonic()`` value of the last received
+            MIT command, or None if nothing was ever received.
+        timeout_s: Maximum age in seconds; values <= 0 mean *never expire*.
+    """
+    if last_command_time is None:
+        return True
+    if timeout_s <= 0.0:
+        return False
+    return _time.monotonic() - last_command_time > timeout_s

@@ -4,10 +4,10 @@
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 
+#include "arm_controller/kinematics_types.hpp"
+
 namespace arm_controller
 {
-
-using JointVector = Eigen::Matrix<double, 4, 1>;
 
 /**
  * @brief 计算机器人正运动学，计算末端执行器的位姿变换矩阵

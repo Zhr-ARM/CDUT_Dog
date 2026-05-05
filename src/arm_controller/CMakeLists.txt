@@ -18,6 +18,11 @@ add_executable(arm_controller_node
   src/inverse_kinematics.cpp
 )
 
+target_include_directories(arm_controller_node PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+
 target_compile_features(arm_controller_node PUBLIC cxx_std_17)
 target_link_libraries(arm_controller_node Eigen3::Eigen)
 ament_target_dependencies(arm_controller_node
@@ -29,6 +34,10 @@ ament_target_dependencies(arm_controller_node
 
 install(TARGETS arm_controller_node
   DESTINATION lib/${PROJECT_NAME}
+)
+
+install(DIRECTORY include/
+  DESTINATION include
 )
 
 install(DIRECTORY config

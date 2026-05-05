@@ -16,124 +16,18 @@
 #include <std_msgs/msg/empty.hpp>
 #include <std_msgs/msg/float32_multi_array.hpp>
 
+#include "arm_controller/kinematics_types.hpp"
+
 namespace arm_controller
 {
-
-/**
- * @brief 4 自由度机械臂的关节向量类型
- *
- * 顺序固定为：
- * 1. base_yaw_joint
- * 2. shoulder_pitch_joint
- * 3. elbow_pitch_joint
- * 4. wrist_pitch_joint
- *
- * 该顺序必须和参数 joint_names、电机 MIT 指令数组以及关节状态话题中的目标顺序保持一致。
- */
-using JointVector = Eigen::Matrix<double, 4, 1>;
-
-/**
- * @brief 正运动学位置计算函数声明
- *
- * 函数实现在 forward_kinematics.cpp 中。这里仅声明末端位置接口，供控制节点在需要时
- * 根据当前关节角、关节几何参数和工具偏移计算末端执行器位置。
- */
-Eigen::Vector3d compute_end_effector_position(
-  const std::array<Eigen::Vector3d, 4> & joint_origins,
-  const std::array<Eigen::Vector3d, 4> & joint_axes,
-  const JointVector & joint_positions,
-  const Eigen::Vector3d & tool_offset);
-
-/**
- * @brief 仅约束末端位置的逆运动学求解函数声明
- *
- * 函数实现在 inverse_kinematics.cpp 中。该版本只要求末端执行器到达目标三维坐标，
- * 通常用于 /arm_target_point 手动目标点控制。
- */
-bool solve_inverse_kinematics(
-  const std::array<Eigen::Vector3d, 4> & joint_origins,
-  const std::array<Eigen::Vector3d, 4> & joint_axes,
-  const std::array<double, 4> & lower_limits,
-  const std::array<double, 4> & upper_limits,
-  const Eigen::Vector3d & tool_offset,
-  const Eigen::Vector3d & target_position,
-  const JointVector & seed,
-  double tolerance,
-  int max_iterations,
-  double damping,
-  double max_step,
-  JointVector & solution,
-  double & final_error,
-  int & iterations);
-
-/**
- * @brief 同时约束末端位置和工具朝向的逆运动学求解函数声明
- *
- * 函数实现在 inverse_kinematics.cpp 中。该版本在位置误差之外，还会约束工具坐标系
- * 局部 x 轴尽量朝向目标方向，主要用于吸盘接触箱子时保持末端朝向合理。
- */
-bool solve_inverse_kinematics_with_tool_direction(
-  const std::array<Eigen::Vector3d, 4> & joint_origins,
-  const std::array<Eigen::Vector3d, 4> & joint_axes,
-  const std::array<double, 4> & lower_limits,
-  const std::array<double, 4> & upper_limits,
-  const Eigen::Vector3d & tool_offset,
-  const Eigen::Vector3d & target_position,
-  const Eigen::Vector3d & target_tool_x_direction,
-  const JointVector & seed,
-  double position_tolerance,
-  double direction_tolerance,
-  double direction_weight,
-  int max_iterations,
-  double damping,
-  double max_step,
-  JointVector & solution,
-  double & final_position_error,
-  double & final_direction_error,
-  int & iterations);
 
 namespace
 {
 
-/**
- * @brief 当前控制器管理的关节数量
- *
- * 该节点专门面向 4 自由度机械臂，因此所有关节名、限位、增益和命令数组都必须包含
- * kJointCount 个元素。
- */
-constexpr std::size_t kJointCount = 4;
-
-/**
- * @brief 将任意可比较数值限制在给定闭区间内
- *
- * 该工具函数用于参数读取、关节限位、比例参数归一化等位置，避免目标值越过软件允许范围。
- *
- * @tparam T 数值类型，例如 double 或 int
- * @param value 输入值
- * @param lower 区间下限
- * @param upper 区间上限
- *
- * @return T 被钳位到 [lower, upper] 后的值
- */
-template<typename T>
-T clamp_value(const T value, const T lower, const T upper)
-{
-  return std::max(lower, std::min(value, upper));
-}
-
-/**
- * @brief 三次 smoothstep 插值函数
- *
- * 将输入 t 先限制到 [0, 1]，再计算 t^2 * (3 - 2t)。该曲线在起点和终点处一阶导数为 0，
- * 因此用于关节空间插值时，相比线性插值能减少启动和停止瞬间的速度突变。
- *
- * @param t 归一化轨迹进度，通常为 elapsed_time / trajectory_duration
- *
- * @return double 平滑后的插值比例
- */
+/// Cubic smoothstep: t²(3-2t) for t in [0,1], with zero derivative at endpoints.
 double smoothstep(const double t)
 {
-  const double clamped = clamp_value(t, 0.0, 1.0);
+  const double clamped = std::max(0.0, std::min(t, 1.0));
   return clamped * clamped * (3.0 - 2.0 * clamped);
 }
 
@@ -382,11 +276,11 @@ private:
     box_height_m_ = positive_parameter("box_height_m", 0.01);
     box_mass_kg_ = positive_parameter("box_mass_kg", 0.0);
     box_motion_y_m_ = get_parameter("box_motion_y_m").as_double();
-    box_motion_base_yaw_limit_rad_ = clamp_value(
+    box_motion_base_yaw_limit_rad_ = std::clamp(
       positive_parameter("box_motion_base_yaw_limit_rad", 0.01),
       0.01,
       3.14);
-    box_motion_tool_direction_tolerance_ = clamp_value(
+    box_motion_tool_direction_tolerance_ = std::clamp(
       positive_parameter("box_motion_tool_direction_tolerance", 0.01),
       0.01,
       2.0);
@@ -396,7 +290,7 @@ private:
     box_min_approach_x_m_ = positive_parameter("box_min_approach_x_m", 0.01);
     box_touch_push_m_ = std::max(0.0, get_parameter("box_touch_push_m").as_double());
     box_touch_height_ratio_ =
-      clamp_value(get_parameter("box_touch_height_ratio").as_double(), 0.05, 0.95);
+      std::clamp(get_parameter("box_touch_height_ratio").as_double(), 0.05, 0.95);
     box_min_touch_z_m_ = get_parameter("box_min_touch_z_m").as_double();
     const double configured_suction_target_x =
       get_parameter("box_suction_target_x_m").as_double();
@@ -415,17 +309,17 @@ private:
     box_motion_position_tolerance_m_ =
       positive_parameter("box_motion_position_tolerance_m", position_tolerance_m_);
     box_motion_shoulder_bias_rad_ =
-      clamp_value(
+      std::clamp(
       get_parameter("box_motion_shoulder_bias_rad").as_double(),
       lower_limits_[1],
       upper_limits_[1]);
     box_motion_elbow_bias_rad_ =
-      clamp_value(
+      std::clamp(
       get_parameter("box_motion_elbow_bias_rad").as_double(),
       lower_limits_[2],
       upper_limits_[2]);
     box_motion_wrist_bias_rad_ =
-      clamp_value(
+      std::clamp(
       get_parameter("box_motion_wrist_bias_rad").as_double(),
       lower_limits_[3],
       upper_limits_[3]);
@@ -437,7 +331,7 @@ private:
       current_joints_(static_cast<int>(index)) =
         0.5 * (lower_limits_[index] + upper_limits_[index]);
       home_joints_(static_cast<int>(index)) =
-        clamp_value(home_joint_positions[index], lower_limits_[index], upper_limits_[index]);
+        std::clamp(home_joint_positions[index], lower_limits_[index], upper_limits_[index]);
     }
   }
 
@@ -553,7 +447,7 @@ private:
         }
 
         current_joints_(static_cast<int>(target_index)) =
-          clamp_value(msg.position[source_index], lower_limits_[target_index], upper_limits_[target_index]);
+          std::clamp(msg.position[source_index], lower_limits_[target_index], upper_limits_[target_index]);
         joint_state_seen_[target_index] = true;
       }
     }
@@ -820,7 +714,7 @@ private:
     seed(1) = box_motion_shoulder_bias_rad_;
     seed(2) = box_motion_elbow_bias_rad_;
     seed(3) = box_motion_wrist_bias_rad_;
-    return clamp_joint_vector(seed);
+    return clamp_to_limits(seed, lower_limits_, upper_limits_);
   }
 
   /**
@@ -1005,7 +899,7 @@ private:
   void start_trajectory(const JointVector & goal)
   {
     active_start_joints_ = have_joint_state_ ? current_joints_ : active_goal_joints_;
-    active_goal_joints_ = clamp_joint_vector(goal);
+    active_goal_joints_ = clamp_to_limits(goal, lower_limits_, upper_limits_);
     command_joints_ = active_start_joints_;
 
     double max_delta = 0.0;
@@ -1019,26 +913,6 @@ private:
     trajectory_start_time_ = now();
     active_trajectory_ = true;
     have_command_ = true;
-  }
-
-  /**
-   * @brief 将 4 维关节向量限制到软件关节限位内
-   *
-   * 该函数用于 IK 初始种子、IK 输出结果和箱子任务偏置种子的安全处理，保证最终下发到电机控制器
-   * 的目标位置不会越过配置的 joint_lower_limits/joint_upper_limits。
-   *
-   * @param joints 输入关节角，单位为弧度
-   *
-   * @return JointVector 被限位后的关节角
-   */
-  JointVector clamp_joint_vector(const JointVector & joints) const
-  {
-    JointVector clamped = joints;
-    for (std::size_t index = 0; index < kJointCount; ++index) {
-      clamped(static_cast<int>(index)) =
-        clamp_value(clamped(static_cast<int>(index)), lower_limits_[index], upper_limits_[index]);
-    }
-    return clamped;
   }
 
   /**

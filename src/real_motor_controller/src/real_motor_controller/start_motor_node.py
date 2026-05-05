@@ -29,6 +29,7 @@ from real_motor_controller.dm_protocol import (
     make_enable_command,
     make_set_zero_command,
     make_write_register_uint32_command,
+    mit_command_expired,
     pack_mit_command,
     parse_feedback,
     parse_register_reply,
@@ -495,12 +496,8 @@ class StartMotorNode(Node):
     def _current_mit_commands(self) -> List[MITCommand]:
         """读取当前有效 MIT 指令，未收到或超时时返回零指令。"""
         with self._command_lock:
-            if self._last_mit_command_time is None:
-                return [ZERO_MIT_COMMAND] * len(self.motor_ids)
-            if (
-                self.mit_command_timeout_s > 0.0
-                and time.monotonic() - self._last_mit_command_time
-                > self.mit_command_timeout_s
+            if mit_command_expired(
+                self._last_mit_command_time, self.mit_command_timeout_s
             ):
                 return [ZERO_MIT_COMMAND] * len(self.motor_ids)
             return list(self._mit_commands)
@@ -565,13 +562,8 @@ class StartMotorNode(Node):
     def _has_fresh_mit_command(self) -> bool:
         """检查当前缓存的上层 MIT 指令是否仍在有效期内。"""
         with self._command_lock:
-            if self._last_mit_command_time is None:
-                return False
-            if self.mit_command_timeout_s <= 0.0:
-                return True
-            return (
-                time.monotonic() - self._last_mit_command_time
-                <= self.mit_command_timeout_s
+            return not mit_command_expired(
+                self._last_mit_command_time, self.mit_command_timeout_s
             )
 
     def _handle_usbcan_frame(self, frame: UsbCanFrame) -> None:
@@ -638,42 +630,35 @@ class StartMotorNode(Node):
             self._mit_commands = commands
             self._last_mit_command_time = time.monotonic()
 
-    def _handle_special_all(
-        self, response, payload: bytes, message: str, enabled: Optional[bool] = None
-    ):
-        """通用服务处理：向全部电机发送特殊命令并回填服务响应。"""
-        self._send_special_to_all(payload)
-        if enabled is not None:
-            self.enabled = enabled
-        response.success = True
-        response.message = message
-        return response
-
     def _handle_enable_all(self, _request, response):
         """服务回调：使能全部电机。"""
-        return self._handle_special_all(
-            response, make_enable_command(), "Enable command sent to all motors.", True
-        )
+        self._send_special_to_all(make_enable_command())
+        self.enabled = True
+        response.success = True
+        response.message = "Enable command sent to all motors."
+        return response
 
     def _handle_disable_all(self, _request, response):
         """服务回调：失能全部电机。"""
-        return self._handle_special_all(
-            response, make_disable_command(), "Disable command sent to all motors.", False
-        )
+        self._send_special_to_all(make_disable_command())
+        self.enabled = False
+        response.success = True
+        response.message = "Disable command sent to all motors."
+        return response
 
     def _handle_set_zero_all(self, _request, response):
         """服务回调：对全部电机执行当前位置清零。"""
-        return self._handle_special_all(
-            response, make_set_zero_command(), "Set-zero command sent to all motors."
-        )
+        self._send_special_to_all(make_set_zero_command())
+        response.success = True
+        response.message = "Set-zero command sent to all motors."
+        return response
 
     def _handle_clear_faults_all(self, _request, response):
         """服务回调：清除全部电机故障。"""
-        return self._handle_special_all(
-            response,
-            make_clear_fault_command(),
-            "Clear-fault command sent to all motors.",
-        )
+        self._send_special_to_all(make_clear_fault_command())
+        response.success = True
+        response.message = "Clear-fault command sent to all motors."
+        return response
 
 
 def main(args=None) -> None:
