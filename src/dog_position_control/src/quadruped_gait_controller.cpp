@@ -115,6 +115,13 @@ public:
     kBackward,
     kTurnRight,
     kTurnLeft,
+    kLateralLeft,
+    kLateralRight,
+    kForwardLeft,
+    kForwardRight,
+    kBackwardLeft,
+    kBackwardRight,
+    kCrouch,
     kFinalStand,
   };
 
@@ -238,6 +245,11 @@ public:
       declare_parameter<double>("auto_sequence_backward_hfe_amplitude", 0.02);
     auto_sequence_turn_hfe_amplitude_ =
       declare_parameter<double>("auto_sequence_turn_hfe_amplitude", 0.018);
+    auto_sequence_diagonal_haa_amplitude_ =
+      declare_parameter<double>("auto_sequence_diagonal_haa_amplitude", 0.0);
+    auto_sequence_lateral_haa_amplitude_ =
+      declare_parameter<double>(
+        "auto_sequence_lateral_haa_amplitude", auto_sequence_diagonal_haa_amplitude_);
     stand_haa_slew_rate_ = declare_parameter<double>("stand_haa_slew_rate", 0.15);
     stand_hfe_slew_rate_ = declare_parameter<double>("stand_hfe_slew_rate", 0.20);
     stand_kfe_slew_rate_ = declare_parameter<double>("stand_kfe_slew_rate", 0.25);
@@ -251,6 +263,7 @@ public:
       declare_parameter<std::string>("cmd_vel_topic", "/cmd_vel");
     cmd_vel_timeout_ = declare_parameter<double>("cmd_vel_timeout", 0.5);
     max_linear_vel_ = declare_parameter<double>("max_linear_vel", 0.5);
+    max_lateral_vel_ = declare_parameter<double>("max_lateral_vel", max_linear_vel_);
     max_angular_vel_ = declare_parameter<double>("max_angular_vel", 1.0);
     cmd_vel_deadzone_ = declare_parameter<double>("cmd_vel_deadzone", 0.05);
 
@@ -289,6 +302,18 @@ public:
     auto_sequence_turn_hfe_scales_ =
       declare_parameter<std::vector<double>>(
         "auto_sequence_turn_hfe_scales", {1.0, 1.0, 1.0, 1.0});
+    auto_sequence_diagonal_haa_signs_ =
+      declare_parameter<std::vector<double>>(
+        "auto_sequence_diagonal_haa_signs", {1.0, 1.0, 1.0, 1.0});
+    auto_sequence_diagonal_haa_scales_ =
+      declare_parameter<std::vector<double>>(
+        "auto_sequence_diagonal_haa_scales", {1.0, 1.0, 1.0, 1.0});
+    auto_sequence_lateral_haa_signs_ =
+      declare_parameter<std::vector<double>>(
+        "auto_sequence_lateral_haa_signs", auto_sequence_diagonal_haa_signs_);
+    auto_sequence_lateral_haa_scales_ =
+      declare_parameter<std::vector<double>>(
+        "auto_sequence_lateral_haa_scales", auto_sequence_diagonal_haa_scales_);
     stand_haa_targets_ =
       declare_parameter<std::vector<double>>("stand_haa_targets", {0.0, 0.0, 0.0, 0.0});
     stand_hfe_targets_ =
@@ -344,6 +369,10 @@ public:
       {"auto_sequence_forward_hfe_scales", &auto_sequence_forward_hfe_scales_},
       {"auto_sequence_backward_hfe_scales", &auto_sequence_backward_hfe_scales_},
       {"auto_sequence_turn_hfe_scales", &auto_sequence_turn_hfe_scales_},
+      {"auto_sequence_diagonal_haa_signs", &auto_sequence_diagonal_haa_signs_},
+      {"auto_sequence_diagonal_haa_scales", &auto_sequence_diagonal_haa_scales_},
+      {"auto_sequence_lateral_haa_signs", &auto_sequence_lateral_haa_signs_},
+      {"auto_sequence_lateral_haa_scales", &auto_sequence_lateral_haa_scales_},
       {"stand_haa_targets", &stand_haa_targets_},
       {"stand_hfe_targets", &stand_hfe_targets_},
       {"stand_kfe_targets", &stand_kfe_targets_},
@@ -452,6 +481,10 @@ public:
         std::clamp(auto_sequence_backward_hfe_amplitude_, 0.0, 0.12);
       auto_sequence_turn_hfe_amplitude_ =
         std::clamp(auto_sequence_turn_hfe_amplitude_, 0.0, 0.12);
+      auto_sequence_diagonal_haa_amplitude_ =
+        std::clamp(auto_sequence_diagonal_haa_amplitude_, 0.0, 0.12);
+      auto_sequence_lateral_haa_amplitude_ =
+        std::clamp(auto_sequence_lateral_haa_amplitude_, 0.0, 0.12);
       for (double & scale : auto_sequence_forward_hfe_scales_)
       {
         scale = std::clamp(scale, 0.0, 2.0);
@@ -461,6 +494,22 @@ public:
         scale = std::clamp(scale, 0.0, 2.0);
       }
       for (double & scale : auto_sequence_turn_hfe_scales_)
+      {
+        scale = std::clamp(scale, 0.0, 2.0);
+      }
+      for (double & sign : auto_sequence_diagonal_haa_signs_)
+      {
+        sign = sign >= 0.0 ? 1.0 : -1.0;
+      }
+      for (double & scale : auto_sequence_diagonal_haa_scales_)
+      {
+        scale = std::clamp(scale, 0.0, 2.0);
+      }
+      for (double & sign : auto_sequence_lateral_haa_signs_)
+      {
+        sign = sign >= 0.0 ? 1.0 : -1.0;
+      }
+      for (double & scale : auto_sequence_lateral_haa_scales_)
       {
         scale = std::clamp(scale, 0.0, 2.0);
       }
@@ -607,10 +656,13 @@ private:
       const double vel_age = (now - last_cmd_vel_time_).seconds();
       if (vel_age > cmd_vel_timeout_) {
         cmd_vel_linear_x_ = 0.0;
+        cmd_vel_linear_y_ = 0.0;
         cmd_vel_angular_z_ = 0.0;
       }
     }
-    const double cmd_speed = std::abs(cmd_vel_linear_x_) + std::abs(cmd_vel_angular_z_);
+    const double cmd_speed =
+      std::abs(cmd_vel_linear_x_) + std::abs(cmd_vel_linear_y_) +
+      std::abs(cmd_vel_angular_z_);
     teleop_walk_requested_ = cmd_vel_received_ && (cmd_speed > cmd_vel_deadzone_);
 
     // 如果还没捕获到完整的实际关节姿态，站立阶段的插值起点就无法确定，
@@ -740,6 +792,9 @@ private:
     const double cmd_linear_scale =
       use_cmd_vel_for_stride ?
       std::clamp(cmd_vel_linear_x_ / std::max(max_linear_vel_, 1e-6), -1.0, 1.0) : 1.0;
+    const double cmd_lateral_scale =
+      use_cmd_vel_for_stride ?
+      std::clamp(cmd_vel_linear_y_ / std::max(max_lateral_vel_, 1e-6), -1.0, 1.0) : 0.0;
     const double cmd_turn_scale =
       use_cmd_vel_for_stride ?
       std::clamp(cmd_vel_angular_z_ / std::max(max_angular_vel_, 1e-6), -1.0, 1.0) : 0.0;
@@ -755,7 +810,9 @@ private:
       const LegPhaseState phase_state = gait_schedule[leg_index];
       const bool leg_in_swing = phase_state.in_swing;
       const bool rear_leg = !is_front_leg(leg_index);
-      const bool hold_startup_crouch_target = use_startup_crouch_pose_ && !enable_startup_stand_;
+      const bool hold_startup_crouch_target =
+        (use_startup_crouch_pose_ && !enable_startup_stand_) ||
+        (action_command_active_ && action_command_stage_ == AutoSequenceStage::kCrouch);
       const bool use_direct_joint_step =
         use_direct_joint_in_place_step_ &&
         (!sequence_motion_active || auto_sequence_forward_use_direct_step_);
@@ -802,6 +859,7 @@ private:
       double gait_haa = stand_targets.haa;
       double gait_hfe = stand_targets.hfe;
       double gait_kfe = stand_targets.kfe;
+      double gait_haa_velocity = 0.0;
       double gait_hfe_velocity = 0.0;
       double gait_kfe_velocity = 0.0;
 
@@ -903,18 +961,15 @@ private:
       // 这样不会在进入 walk 态时从 direct stand target 切到另一套 IK 基准姿态。
       if (use_direct_joint_step)
       {
+        double direct_base_haa = stand_targets.haa;
         double direct_base_hfe = stand_targets.hfe;
         double direct_base_kfe = stand_targets.kfe;
+        double direct_base_haa_velocity = 0.0;
         double direct_base_hfe_velocity = 0.0;
         double direct_base_kfe_velocity = 0.0;
 
-        if (sequence_motion_active && auto_sequence_forward_use_direct_step_)
+        if ((sequence_motion_active || use_cmd_vel_for_stride) && auto_sequence_forward_use_direct_step_)
         {
-          const double foot_x_direction =
-            direct_step_forward_direction(
-              leg_index, leg, stand_targets.hfe, stand_targets.kfe) *
-            foot_x_signs_[leg_index] *
-            current_auto_sequence_stride_direction(leg_index);
           double stride_profile = 0.0;
           double stride_velocity = 0.0;
           if (leg_in_swing)
@@ -931,16 +986,66 @@ private:
             stride_velocity = stance_period_ > 1e-6 ? -2.0 / stance_period_ : 0.0;
           }
 
-          const double forward_hfe_amplitude =
-            current_auto_sequence_hfe_amplitude(leg_index) *
-            sequence_motion_alpha;
-          direct_base_hfe += foot_x_direction * forward_hfe_amplitude * stride_profile;
-          direct_base_hfe_velocity += foot_x_direction * forward_hfe_amplitude * stride_velocity;
+          if (use_cmd_vel_for_stride)
+          {
+            const bool left_leg = (leg_index == 0 || leg_index == 1);
+            const double direct_hfe_direction =
+              direct_step_forward_direction(
+                leg_index, leg, stand_targets.hfe, stand_targets.kfe) *
+              foot_x_signs_[leg_index];
+            const double forward_hfe_amplitude =
+              auto_sequence_forward_hfe_amplitude_ *
+              auto_sequence_forward_hfe_scales_[leg_index];
+            const double turn_hfe_amplitude =
+              auto_sequence_turn_hfe_amplitude_ *
+              auto_sequence_turn_hfe_scales_[leg_index];
+            const double split_forward_scale = left_leg ? -cmd_linear_scale : cmd_linear_scale;
+            const double hfe_command =
+              split_forward_scale * forward_hfe_amplitude +
+              cmd_turn_scale * turn_hfe_amplitude;
+
+            direct_base_hfe += direct_hfe_direction * hfe_command * stride_profile;
+            direct_base_hfe_velocity += direct_hfe_direction * hfe_command * stride_velocity;
+
+            const double lateral_haa_command =
+              cmd_lateral_scale *
+              auto_sequence_lateral_haa_amplitude_ *
+              auto_sequence_lateral_haa_scales_[leg_index] *
+              auto_sequence_lateral_haa_signs_[leg_index];
+            direct_base_haa += lateral_haa_command * stride_profile;
+            direct_base_haa_velocity += lateral_haa_command * stride_velocity;
+          }
+          else
+          {
+            const double foot_x_direction =
+              direct_step_forward_direction(
+                leg_index, leg, stand_targets.hfe, stand_targets.kfe) *
+              foot_x_signs_[leg_index] *
+              current_auto_sequence_stride_direction(leg_index);
+
+            const double forward_hfe_amplitude =
+              current_auto_sequence_hfe_amplitude(leg_index) *
+              sequence_motion_alpha;
+            direct_base_hfe += foot_x_direction * forward_hfe_amplitude * stride_profile;
+            direct_base_hfe_velocity += foot_x_direction * forward_hfe_amplitude * stride_velocity;
+
+            const double lateral_haa_direction = current_auto_sequence_lateral_direction(leg_index);
+            if (std::abs(lateral_haa_direction) > 1e-6)
+            {
+              const double lateral_haa_amplitude =
+                current_auto_sequence_lateral_haa_amplitude(leg_index) *
+                sequence_motion_alpha;
+              direct_base_haa += lateral_haa_direction * lateral_haa_amplitude * stride_profile;
+              direct_base_haa_velocity +=
+                lateral_haa_direction * lateral_haa_amplitude * stride_velocity;
+            }
+          }
         }
 
-        gait_haa = stand_targets.haa;
+        gait_haa = std::clamp(direct_base_haa, kHaaLower, kHaaUpper);
         gait_hfe = std::clamp(direct_base_hfe, kHfeLower, kHfeUpper);
         gait_kfe = std::clamp(direct_base_kfe, kKfeLower, kKfeUpper);
+        gait_haa_velocity = direct_base_haa_velocity;
         gait_hfe_velocity = direct_base_hfe_velocity;
         gait_kfe_velocity = direct_base_kfe_velocity;
 
@@ -1055,6 +1160,7 @@ private:
         apply_command_slew_limit(indices.hfe, kHfeJointIndex, raw_cmd_hfe, dt);
       const double cmd_kfe =
         apply_command_slew_limit(indices.kfe, kKfeJointIndex, raw_cmd_kfe, dt);
+      const double cmd_haa_velocity = gait_blend * gait_haa_velocity;
       const double cmd_hfe_velocity = gait_blend * gait_hfe_velocity;
       const double cmd_kfe_velocity = gait_blend * gait_kfe_velocity;
       const double thigh_ff = support_scale * interpolate(stand_thigh_ff, gait_thigh_ff, gait_blend);
@@ -1072,7 +1178,7 @@ private:
         leg_index,
         kHaaJointIndex,
         cmd_haa,
-        0.0,
+        cmd_haa_velocity,
         0.0,
         effective_gain_scale * haa_kp_,
         effective_gain_scale * haa_kd_);
@@ -1133,9 +1239,18 @@ private:
   void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg)
   {
     cmd_vel_linear_x_ = msg->linear.x;
+    cmd_vel_linear_y_ = msg->linear.y;
     cmd_vel_angular_z_ = msg->angular.z;
     last_cmd_vel_time_ = this->now();
     cmd_vel_received_ = true;
+    const double cmd_speed =
+      std::abs(cmd_vel_linear_x_) + std::abs(cmd_vel_linear_y_) +
+      std::abs(cmd_vel_angular_z_);
+    if (cmd_speed > cmd_vel_deadzone_)
+    {
+      action_command_active_ = false;
+    }
+    enable_auto_sequence_ = false;
   }
 
   void gait_action_callback(const std_msgs::msg::String::SharedPtr msg)
@@ -1155,7 +1270,7 @@ private:
     {
       RCLCPP_WARN(
         get_logger(),
-        "Unknown gait action '%s'. Use one of: stand, step, forward, backward, turn_left, turn_right, auto.",
+        "Unknown gait action '%s'. Use one of: stand, crouch, step, forward, backward, lateral_left, lateral_right, turn_left, turn_right, forward_left, forward_right, backward_left, backward_right, auto.",
         msg->data.c_str());
       return;
     }
@@ -1227,15 +1342,14 @@ private:
         break;
       case MotionState::kStandHold:
         startup_complete_ = true;
-        if (!stand_only_)
+        if (cmd_vel_received_ && teleop_walk_requested_)
+        {
+          transition_to(MotionState::kWalk);
+        }
+        else if (!stand_only_)
         {
           // 未接入手柄: 按原逻辑在 hold_duration 后进入行走
           if (!cmd_vel_received_ && state_elapsed_ >= stand_hold_duration_)
-          {
-            transition_to(MotionState::kWalk);
-          }
-          // 已接入手柄: 只要有非零速度指令就立即开始行走
-          else if (cmd_vel_received_ && teleop_walk_requested_)
           {
             transition_to(MotionState::kWalk);
           }
@@ -1349,6 +1463,25 @@ private:
         }
         return true;
 
+      case AutoSequenceStage::kLateralLeft:
+      case AutoSequenceStage::kLateralRight:
+      case AutoSequenceStage::kForwardLeft:
+      case AutoSequenceStage::kForwardRight:
+      case AutoSequenceStage::kBackwardLeft:
+      case AutoSequenceStage::kBackwardRight:
+        if (motion_state_ != MotionState::kWalk)
+        {
+          transition_to(MotionState::kWalk);
+        }
+        return true;
+
+      case AutoSequenceStage::kCrouch:
+        if (motion_state_ != MotionState::kStandHold)
+        {
+          transition_to(MotionState::kStandHold);
+        }
+        return true;
+
       case AutoSequenceStage::kFinalStand:
         if (motion_state_ != MotionState::kStandHold)
         {
@@ -1432,7 +1565,13 @@ private:
       stage == AutoSequenceStage::kForward ||
       stage == AutoSequenceStage::kBackward ||
       stage == AutoSequenceStage::kTurnRight ||
-      stage == AutoSequenceStage::kTurnLeft;
+      stage == AutoSequenceStage::kTurnLeft ||
+      stage == AutoSequenceStage::kLateralLeft ||
+      stage == AutoSequenceStage::kLateralRight ||
+      stage == AutoSequenceStage::kForwardLeft ||
+      stage == AutoSequenceStage::kForwardRight ||
+      stage == AutoSequenceStage::kBackwardLeft ||
+      stage == AutoSequenceStage::kBackwardRight;
   }
 
   static std::string normalize_action_name(std::string action)
@@ -1461,6 +1600,12 @@ private:
       stage = AutoSequenceStage::kFinalStand;
       return true;
     }
+    if (action == "crouch" || action == "squat" || action == "down" ||
+      action == "lie_down" || action == "lower")
+    {
+      stage = AutoSequenceStage::kCrouch;
+      return true;
+    }
     if (action == "step" || action == "in_place" || action == "in_place_step" ||
       action == "march")
     {
@@ -1485,6 +1630,42 @@ private:
     if (action == "turn_left" || action == "left")
     {
       stage = AutoSequenceStage::kTurnLeft;
+      return true;
+    }
+    if (action == "lateral_left" || action == "strafe_left" ||
+      action == "move_left" || action == "side_left")
+    {
+      stage = AutoSequenceStage::kLateralLeft;
+      return true;
+    }
+    if (action == "lateral_right" || action == "strafe_right" ||
+      action == "move_right" || action == "side_right")
+    {
+      stage = AutoSequenceStage::kLateralRight;
+      return true;
+    }
+    if (action == "forward_left" || action == "left_forward" ||
+      action == "diagonal_left" || action == "diag_left")
+    {
+      stage = AutoSequenceStage::kForwardLeft;
+      return true;
+    }
+    if (action == "forward_right" || action == "right_forward" ||
+      action == "diagonal_right" || action == "diag_right")
+    {
+      stage = AutoSequenceStage::kForwardRight;
+      return true;
+    }
+    if (action == "backward_left" || action == "left_backward" ||
+      action == "back_left" || action == "reverse_left")
+    {
+      stage = AutoSequenceStage::kBackwardLeft;
+      return true;
+    }
+    if (action == "backward_right" || action == "right_backward" ||
+      action == "back_right" || action == "reverse_right")
+    {
+      stage = AutoSequenceStage::kBackwardRight;
       return true;
     }
     return false;
@@ -1525,7 +1706,13 @@ private:
       (stage == AutoSequenceStage::kForward ||
       stage == AutoSequenceStage::kBackward ||
       stage == AutoSequenceStage::kTurnRight ||
-      stage == AutoSequenceStage::kTurnLeft);
+      stage == AutoSequenceStage::kTurnLeft ||
+      stage == AutoSequenceStage::kLateralLeft ||
+      stage == AutoSequenceStage::kLateralRight ||
+      stage == AutoSequenceStage::kForwardLeft ||
+      stage == AutoSequenceStage::kForwardRight ||
+      stage == AutoSequenceStage::kBackwardLeft ||
+      stage == AutoSequenceStage::kBackwardRight);
   }
 
   double current_auto_sequence_motion_alpha() const
@@ -1548,8 +1735,12 @@ private:
     switch (active_gait_stage())
     {
       case AutoSequenceStage::kForward:
+      case AutoSequenceStage::kForwardLeft:
+      case AutoSequenceStage::kForwardRight:
         return auto_sequence_forward_step_length_;
       case AutoSequenceStage::kBackward:
+      case AutoSequenceStage::kBackwardLeft:
+      case AutoSequenceStage::kBackwardRight:
         return auto_sequence_backward_step_length_;
       case AutoSequenceStage::kTurnRight:
         return auto_sequence_turn_step_length_;
@@ -1558,6 +1749,9 @@ private:
       case AutoSequenceStage::kInactive:
       case AutoSequenceStage::kInitialStand:
       case AutoSequenceStage::kInPlaceStep:
+      case AutoSequenceStage::kLateralLeft:
+      case AutoSequenceStage::kLateralRight:
+      case AutoSequenceStage::kCrouch:
       case AutoSequenceStage::kFinalStand:
         return step_length_;
     }
@@ -1577,6 +1771,10 @@ private:
       // Keep stage names semantic, but swap the command shape here.
       case AutoSequenceStage::kForward:
       case AutoSequenceStage::kBackward:
+      case AutoSequenceStage::kForwardLeft:
+      case AutoSequenceStage::kForwardRight:
+      case AutoSequenceStage::kBackwardLeft:
+      case AutoSequenceStage::kBackwardRight:
         return left_side_leg ? -command_sign : command_sign;
       case AutoSequenceStage::kTurnRight:
       case AutoSequenceStage::kTurnLeft:
@@ -1584,6 +1782,9 @@ private:
       case AutoSequenceStage::kInactive:
       case AutoSequenceStage::kInitialStand:
       case AutoSequenceStage::kInPlaceStep:
+      case AutoSequenceStage::kLateralLeft:
+      case AutoSequenceStage::kLateralRight:
+      case AutoSequenceStage::kCrouch:
       case AutoSequenceStage::kFinalStand:
         return 1.0;
     }
@@ -1596,9 +1797,13 @@ private:
     switch (active_gait_stage())
     {
       case AutoSequenceStage::kForward:
+      case AutoSequenceStage::kForwardLeft:
+      case AutoSequenceStage::kForwardRight:
         return auto_sequence_forward_hfe_amplitude_ *
           auto_sequence_forward_hfe_scales_[leg_index];
       case AutoSequenceStage::kBackward:
+      case AutoSequenceStage::kBackwardLeft:
+      case AutoSequenceStage::kBackwardRight:
         return auto_sequence_backward_hfe_amplitude_ *
           auto_sequence_backward_hfe_scales_[leg_index];
       case AutoSequenceStage::kTurnRight:
@@ -1608,6 +1813,83 @@ private:
       case AutoSequenceStage::kInactive:
       case AutoSequenceStage::kInitialStand:
       case AutoSequenceStage::kInPlaceStep:
+      case AutoSequenceStage::kLateralLeft:
+      case AutoSequenceStage::kLateralRight:
+      case AutoSequenceStage::kCrouch:
+      case AutoSequenceStage::kFinalStand:
+        return 0.0;
+    }
+
+    return 0.0;
+  }
+
+  double current_auto_sequence_lateral_direction(size_t leg_index) const
+  {
+    double command_sign = 0.0;
+    bool lateral_only = false;
+    switch (active_gait_stage())
+    {
+      case AutoSequenceStage::kForwardLeft:
+        command_sign = -1.0;
+        break;
+      case AutoSequenceStage::kForwardRight:
+        command_sign = 1.0;
+        break;
+      case AutoSequenceStage::kBackwardLeft:
+        command_sign = 1.0;
+        break;
+      case AutoSequenceStage::kBackwardRight:
+        command_sign = -1.0;
+        break;
+      case AutoSequenceStage::kLateralLeft:
+        command_sign = 1.0;
+        lateral_only = true;
+        break;
+      case AutoSequenceStage::kLateralRight:
+        command_sign = -1.0;
+        lateral_only = true;
+        break;
+      case AutoSequenceStage::kInactive:
+      case AutoSequenceStage::kInitialStand:
+      case AutoSequenceStage::kInPlaceStep:
+      case AutoSequenceStage::kForward:
+      case AutoSequenceStage::kBackward:
+      case AutoSequenceStage::kTurnRight:
+      case AutoSequenceStage::kTurnLeft:
+      case AutoSequenceStage::kCrouch:
+      case AutoSequenceStage::kFinalStand:
+        return 0.0;
+    }
+
+    if (lateral_only)
+    {
+      return command_sign * auto_sequence_lateral_haa_signs_[leg_index];
+    }
+    return command_sign * auto_sequence_diagonal_haa_signs_[leg_index];
+  }
+
+  double current_auto_sequence_lateral_haa_amplitude(size_t leg_index) const
+  {
+    switch (active_gait_stage())
+    {
+      case AutoSequenceStage::kLateralLeft:
+      case AutoSequenceStage::kLateralRight:
+        return auto_sequence_lateral_haa_amplitude_ *
+          auto_sequence_lateral_haa_scales_[leg_index];
+      case AutoSequenceStage::kForwardLeft:
+      case AutoSequenceStage::kForwardRight:
+      case AutoSequenceStage::kBackwardLeft:
+      case AutoSequenceStage::kBackwardRight:
+        return auto_sequence_diagonal_haa_amplitude_ *
+          auto_sequence_diagonal_haa_scales_[leg_index];
+      case AutoSequenceStage::kInactive:
+      case AutoSequenceStage::kInitialStand:
+      case AutoSequenceStage::kInPlaceStep:
+      case AutoSequenceStage::kForward:
+      case AutoSequenceStage::kBackward:
+      case AutoSequenceStage::kTurnRight:
+      case AutoSequenceStage::kTurnLeft:
+      case AutoSequenceStage::kCrouch:
       case AutoSequenceStage::kFinalStand:
         return 0.0;
     }
@@ -2110,6 +2392,20 @@ private:
         return "turn_right";
       case AutoSequenceStage::kTurnLeft:
         return "turn_left";
+      case AutoSequenceStage::kLateralLeft:
+        return "lateral_left";
+      case AutoSequenceStage::kLateralRight:
+        return "lateral_right";
+      case AutoSequenceStage::kForwardLeft:
+        return "forward_left";
+      case AutoSequenceStage::kForwardRight:
+        return "forward_right";
+      case AutoSequenceStage::kBackwardLeft:
+        return "backward_left";
+      case AutoSequenceStage::kBackwardRight:
+        return "backward_right";
+      case AutoSequenceStage::kCrouch:
+        return "crouch";
       case AutoSequenceStage::kFinalStand:
         return "final_stand";
     }
@@ -2131,6 +2427,20 @@ private:
         return "turn_right";
       case AutoSequenceStage::kTurnLeft:
         return "turn_left";
+      case AutoSequenceStage::kLateralLeft:
+        return "lateral_left";
+      case AutoSequenceStage::kLateralRight:
+        return "lateral_right";
+      case AutoSequenceStage::kForwardLeft:
+        return "forward_left";
+      case AutoSequenceStage::kForwardRight:
+        return "forward_right";
+      case AutoSequenceStage::kBackwardLeft:
+        return "backward_left";
+      case AutoSequenceStage::kBackwardRight:
+        return "backward_right";
+      case AutoSequenceStage::kCrouch:
+        return "crouch";
       case AutoSequenceStage::kInactive:
       case AutoSequenceStage::kInitialStand:
       case AutoSequenceStage::kFinalStand:
@@ -2213,6 +2523,8 @@ private:
   double auto_sequence_forward_hfe_amplitude_{0.02};
   double auto_sequence_backward_hfe_amplitude_{0.02};
   double auto_sequence_turn_hfe_amplitude_{0.018};
+  double auto_sequence_diagonal_haa_amplitude_{0.0};
+  double auto_sequence_lateral_haa_amplitude_{0.0};
   double stand_haa_slew_rate_{0.15};
   double stand_hfe_slew_rate_{0.20};
   double stand_kfe_slew_rate_{0.25};
@@ -2252,6 +2564,10 @@ private:
   std::vector<double> auto_sequence_forward_hfe_scales_;
   std::vector<double> auto_sequence_backward_hfe_scales_;
   std::vector<double> auto_sequence_turn_hfe_scales_;
+  std::vector<double> auto_sequence_diagonal_haa_signs_;
+  std::vector<double> auto_sequence_diagonal_haa_scales_;
+  std::vector<double> auto_sequence_lateral_haa_signs_;
+  std::vector<double> auto_sequence_lateral_haa_scales_;
   std::vector<double> stand_haa_targets_;
   std::vector<double> stand_hfe_targets_;
   std::vector<double> stand_kfe_targets_;
@@ -2292,9 +2608,11 @@ private:
 
   // cmd_vel 遥控状态
   double cmd_vel_linear_x_{0.0};
+  double cmd_vel_linear_y_{0.0};
   double cmd_vel_angular_z_{0.0};
   double cmd_vel_timeout_{0.5};
   double max_linear_vel_{0.5};
+  double max_lateral_vel_{0.5};
   double max_angular_vel_{1.0};
   double cmd_vel_deadzone_{0.05};
   bool cmd_vel_received_{false};

@@ -8,7 +8,13 @@ quadruped_gait_controller:
 
     use_sim_time: false             # 是否使用仿真时间；真机必须为 false
     command_topic: /motor_cmd       # 输出给电机驱动节点的 MIT 五元组命令话题
-    gait_action_topic: /gait_action # 外部节点只需向此话题发布一个动作字符串: stand/step/forward/backward/turn_left/turn_right
+    gait_action_topic: /gait_action # 外部节点只需向此话题发布一个动作字符串: stand/step/forward/backward/lateral_left/lateral_right/turn_left/turn_right
+    cmd_vel_topic: /cmd_vel         # 手柄连续全向控制: linear.x 前后，linear.y 左右，angular.z 原地转
+    cmd_vel_timeout: 0.5
+    max_linear_vel: 0.5
+    max_lateral_vel: 0.5
+    max_angular_vel: 1.0
+    cmd_vel_deadzone: 0.05
 
     # 步态基础参数；这里使用保守的对角线原地踏步。
     gait_profile: legacy_walk       # 使用 legacy_walk 避免 trot 对 swing_ratio 的限制；实际相位仍按对角线配置
@@ -93,9 +99,15 @@ quadruped_gait_controller:
     auto_sequence_forward_hfe_amplitude: 0.095    # 前进阶段 HFE 前后摆基础幅度，单位 rad
     auto_sequence_backward_hfe_amplitude: 0.095   # 后退阶段 HFE 前后摆基础幅度，单位 rad
     auto_sequence_turn_hfe_amplitude: 0.100       # 转向阶段 HFE 前后摆基础幅度，单位 rad
+    auto_sequence_diagonal_haa_amplitude: 0.045   # 横向/斜向平移时叠加的 HAA 横向摆幅，单位 rad
+    auto_sequence_lateral_haa_amplitude: 0.060    # 纯横移时单独使用的 HAA 横向摆幅，单位 rad；比斜向更明显
     auto_sequence_forward_hfe_scales: [1.55, 1.15, 1.55, 1.15] # LF,LH,RF,RH；保留现象但比大幅演示版更稳
     auto_sequence_backward_hfe_scales: [1.55, 1.15, 1.55, 1.15] # LF,LH,RF,RH；后退幅度与前进接近
     auto_sequence_turn_hfe_scales: [1.60, 1.20, 1.60, 1.20] # LF,LH,RF,RH；转向差速明显但不过猛
+    auto_sequence_diagonal_haa_signs: [1.0, 1.0, 1.0, 1.0] # LF,LH,RF,RH；正号表示 left 分量对应 HAA 正向，需要实测校准
+    auto_sequence_diagonal_haa_scales: [1.0, 1.0, 1.0, 1.0] # LF,LH,RF,RH；斜向平移横向摆幅逐腿倍率
+    auto_sequence_lateral_haa_signs: [-1.0, 1.0, -1.0, 1.0] # LF,LH,RF,RH；纯横移单独标定，已按真机 lateral_left/lateral_right 方向取反
+    auto_sequence_lateral_haa_scales: [1.0, 1.0, 1.0, 1.0] # LF,LH,RF,RH；纯横移横向摆幅逐腿倍率
 
     stand_haa_slew_rate: 0.45              # HAA 站立目标最大变化速度，单位 rad/s
     stand_hfe_slew_rate: 0.70              # HFE 站立目标最大变化速度，单位 rad/s
@@ -125,9 +137,9 @@ quadruped_gait_controller:
     stand_haa_targets: [0.4, -0.45, -0.4, 0.45]        # 站姿 HAA 外展/内收目标角
     stand_hfe_targets: [0.35, 0.39, -0.35, -0.39]      # 站姿 HFE 目标角
     stand_kfe_targets: [-1.0, -1.2, 1.0, 1.2]          # 站姿 KFE 目标角
-    startup_crouch_haa_targets: [0.2, -0.45, -0.2, 0.45] # 启动低趴姿态 HAA 目标角
-    startup_crouch_hfe_targets: [0.22, 0.25, -0.22, -0.25] # 启动低趴姿态 HFE 目标角
-    startup_crouch_kfe_targets: [-0.55, -0.66, 0.55, 0.65] # 启动低趴姿态 KFE 目标角
+    startup_crouch_haa_targets: [0.0, 0.0, 0.0, 0.0] # X 键下蹲目标: 收回到初始零位，尽量完全贴地
+    startup_crouch_hfe_targets: [0.0, 0.0, 0.0, 0.0] # X 键下蹲目标: 收回到初始零位，尽量完全贴地
+    startup_crouch_kfe_targets: [0.0, 0.0, 0.0, 0.0] # X 键下蹲目标: 收回到初始零位，尽量完全贴地
 
     # 腿部几何和重力补偿等效质量。
     thigh_lengths: [0.198825, 0.198825, 0.198825, 0.198825] # 四条腿大腿长度，单位 m

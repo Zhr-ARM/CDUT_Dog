@@ -11,21 +11,50 @@ dog_teleop:
 
     # High-level action topic consumed by quadruped_gait_controller.
     gait_action_topic: /gait_action
+    cmd_vel_topic: /cmd_vel
+    # cmd_vel publishes continuous x/y/yaw values for joystick-angle omni walking.
+    # Set to gait_action to restore the old 8-direction string commands.
+    output_mode: cmd_vel
 
-    # Left stick mapping:
-    # axis 1 > 0 -> forward, axis 1 < 0 -> backward
-    # axis 0 > 0 -> turn_left, axis 0 < 0 -> turn_right
+    # Two-stick mapping:
+    # left stick Y axis: forward/backward translation
+    # left stick X axis: lateral_left/lateral_right translation
+    # left stick diagonal: forward_left/forward_right/backward_left/backward_right
+    # right stick X axis: turn_left/turn_right in place
+    # Legacy names are kept so an accidentally launched old teleop still reads
+    # the right-stick turn axis instead of using left-stick X for turning.
     linear_axis: 1
-    angular_axis: 0
+    angular_axis: 3
     invert_linear: false
     invert_angular: false
+    forward_axis: 1
+    lateral_axis: 0
+    # If the right stick has no response, enable debug_joy_axes and change this
+    # to the axes[i] value that changes when you move the right stick left/right.
+    turn_axis: 3
+    invert_forward: false
+    invert_lateral: false
+    invert_turn: false
 
     # Deadzone - ignore input below this threshold.
     deadzone_linear: 0.25
     deadzone_angular: 0.25
+    max_linear_velocity: 0.5
+    max_lateral_velocity: 0.5
+    max_angular_velocity: 1.0
+    # Both left-stick axes must be this comparable before it is treated as diagonal.
+    # This keeps a mostly-left/right command from being misread as diagonal.
+    diagonal_min_ratio: 0.55
+
+    # Print a throttled axes dump and selected action. Useful for finding turn_axis.
+    debug_joy_axes: true
+    debug_log_period: 0.5
 
     # If no joystick signal is received for this duration, publish "stand".
     joy_timeout: 0.5
 
     # A button (buttons[0]) publishes "stand" immediately.
     emergency_stop_button: 0
+    # Xbox default: X=buttons[2] crouch, Y=buttons[3] stand up.
+    crouch_button: 2
+    stand_button: 3
