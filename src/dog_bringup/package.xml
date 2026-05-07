@@ -9,7 +9,9 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
+  <depend>geometry_msgs</depend>
   <depend>rclcpp</depend>
+  <depend>std_msgs</depend>
   <depend>urdf</depend>
   <depend>gazebo_ros</depend>
   <exec_depend>xacro</exec_depend>
