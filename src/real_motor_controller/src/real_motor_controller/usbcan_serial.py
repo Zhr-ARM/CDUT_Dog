@@ -6,6 +6,7 @@
 - 将解析结果以回调方式交给上层节点处理。
 """
 
+import os
 import threading
 import time
 from dataclasses import dataclass
@@ -58,8 +59,17 @@ class UsbCanSerial:
         """打开串口并启动后台接收线程。"""
         if serial is None:
             raise RuntimeError(
-                "pyserial is not installed. Install it with: sudo apt install python3-serial"
+                "pyserial is not installed. Install: sudo apt install python3-serial"
             ) from _SERIAL_IMPORT_ERROR
+        if not os.path.exists(self.port):
+            raise RuntimeError(
+                f"Port {self.port} not found. Check: ls /dev/ttyACM* or dmesg | tail"
+            )
+        if not os.access(self.port, os.R_OK | os.W_OK):
+            raise PermissionError(
+                f"No R/W access to {self.port}. "
+                "Fix: sudo usermod -a -G dialout $USER (re-login after)"
+            )
 
         self._serial = serial.Serial(
             port=self.port,
@@ -86,49 +96,29 @@ class UsbCanSerial:
         self._write(bytes([0x55, 0x05, index & 0xFF, 0xAA, 0x55]))
 
     def send_can_frame(
-        self,
-        can_id: int,
-        payload: bytes,
-        *,
-        command: int = 0x01,
-        send_times: int = 1,
-        send_interval_100us: int = 0,
-        is_extended: bool = False,
+        self, can_id: int, payload: bytes, *,
+        command: int = 0x01, send_times: int = 1,
+        send_interval_100us: int = 0, is_extended: bool = False,
         is_remote: bool = False,
     ) -> None:
-        """按 USB-CAN 设备协议封装并发送一帧 CAN 数据。"""
+        """按 USB-CAN 协议封装并发送一帧 CAN 数据（30 字节帧）。"""
         if len(payload) > 8:
-            raise ValueError("Classic CAN payload must be at most 8 bytes.")
+            raise ValueError("Classic CAN payload max 8 bytes.")
 
-        frame = bytearray(30)
-        # 发送帧格式（30 字节）:
-        # [0:2]   固定头 0x55 0xAA
-        # [2]     帧长（固定 0x1E）
-        # [3]     USB-CAN 命令字
-        # [4:8]   发送次数（小端）
-        # [8:12]  发送间隔（100us， 小端）
-        # [12]    扩展帧标志
-        # [13:17] CAN ID（小端）
-        # [17]    远程帧标志
-        # [18]    数据长度 DLC
-        # [19:20]保留
-        # [21:29]数据区（最多 8 字节）
-        # [29]    CRC8
-        frame[0] = 0x55
-        frame[1] = 0xAA
-        frame[2] = 0x1E
-        frame[3] = command & 0xFF
-        frame[4:8] = int(send_times).to_bytes(4, "little", signed=False)
-        frame[8:12] = int(send_interval_100us).to_bytes(4, "little", signed=False)
-        frame[12] = 0x01 if is_extended else 0x00
-        frame[13:17] = int(can_id).to_bytes(4, "little", signed=False)
-        frame[17] = 0x01 if is_remote else 0x00
-        frame[18] = len(payload)
-        frame[19] = 0x00
-        frame[20] = 0x00
-        frame[21 : 21 + len(payload)] = payload
-        frame[29] = self.crc8(frame[:29])
-        self._write(bytes(frame))
+        # 30 字节帧布局: [0:2]HDR [2]len [3]cmd [4:8]times [8:12]interval
+        # [12]ext [13:17]id [17]remote [18]dlc [19:20]resv [21:29]data [29]crc8
+        f = bytearray(30)
+        f[0], f[1], f[2] = 0x55, 0xAA, 0x1E
+        f[3] = command & 0xFF
+        f[4:8] = int(send_times).to_bytes(4, "little", signed=False)
+        f[8:12] = int(send_interval_100us).to_bytes(4, "little", signed=False)
+        f[12] = 0x01 if is_extended else 0x00
+        f[13:17] = int(can_id).to_bytes(4, "little", signed=False)
+        f[17] = 0x01 if is_remote else 0x00
+        f[18] = len(payload)
+        f[21 : 21 + len(payload)] = payload
+        f[29] = self.crc8(f[:29])
+        self._write(bytes(f))
 
     @staticmethod
     def crc8(data: bytes) -> int:

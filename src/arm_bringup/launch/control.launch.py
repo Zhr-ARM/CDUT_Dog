@@ -53,7 +53,8 @@ def generate_launch_description():
                 parameters=[
                     PathJoinSubstitution(
                         [FindPackageShare("arm_controller"), "config", "arm_controller.yaml"]
-                    )
+                    ),
+                    {"gravity_compensation.enabled": False},
                 ],
                 condition=IfCondition(launch_arm_controller),
             ),

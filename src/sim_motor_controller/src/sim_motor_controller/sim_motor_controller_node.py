@@ -52,6 +52,28 @@ PARAM_DEFAULTS = {
 
 
 class SimMotorControllerNode(Node):
+    motor_ids: list
+    joint_names: list
+    mit_command_topic: str
+    joint_states_topic: str
+    dm_joint_states_topic: str
+    command_output_mode: str
+    position_command_topic: str
+    effort_command_topic: str
+    status_topic: str
+    auto_enable_on_start: bool
+    mit_command_timeout_s: float
+    state_timeout_s: float
+    command_rate_hz: float
+    state_rate_hz: float
+    status_rate_hz: float
+    p_min: float
+    p_max: float
+    v_min: float
+    v_max: float
+    t_min: float
+    t_max: float
+
     def __init__(self) -> None:
         super().__init__("sim_motor_controller_node")
         self._declare_parameters()

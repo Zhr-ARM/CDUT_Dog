@@ -94,191 +94,86 @@ class RegisterReply:
     value: int  # 32 位寄存器值（小端）
 
 
-def make_special_command(suffix: int) -> bytes:
-    """生成 DM 特殊控制命令帧。
+# ── 特殊命令（前 7 字节 0xFF，末字节为命令后缀） ────────────
 
-    帧格式固定为 8 字节：前 7 字节均为 0xFF，
-    最后 1 字节为命令后缀（suffix）。
-    """
-    return bytes([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, suffix & 0xFF])
+def _special_cmd(suffix: int) -> bytes:
+    return bytes([0xFF]*7 + [suffix & 0xFF])
 
+_DISABLE_CMD    = _special_cmd(0xFD)
+_ENABLE_CMD     = _special_cmd(0xFC)
+_SET_ZERO_CMD   = _special_cmd(0xFE)
+_CLEAR_FAULT_CMD = _special_cmd(0xFB)
 
-# Special command suffixes.
-_SPECIAL_DISABLE = 0xFD
-_SPECIAL_ENABLE = 0xFC
-_SPECIAL_SET_ZERO = 0xFE
-_SPECIAL_CLEAR_FAULT = 0xFB
+def make_disable_command() -> bytes:      return _DISABLE_CMD
+def make_enable_command() -> bytes:       return _ENABLE_CMD
+def make_set_zero_command() -> bytes:     return _SET_ZERO_CMD
+def make_clear_fault_command() -> bytes:   return _CLEAR_FAULT_CMD
 
-# Pre-built special command payloads (frozen bytes).
-DISABLE_PAYLOAD = make_special_command(_SPECIAL_DISABLE)
-ENABLE_PAYLOAD = make_special_command(_SPECIAL_ENABLE)
-SET_ZERO_PAYLOAD = make_special_command(_SPECIAL_SET_ZERO)
-CLEAR_FAULT_PAYLOAD = make_special_command(_SPECIAL_CLEAR_FAULT)
+# ── 寄存器读写 ──────────────────────────────────────────────
 
-
-def make_disable_command() -> bytes:
-    """生成电机失能命令帧。"""
-    return DISABLE_PAYLOAD
+def make_write_register_uint32_command(motor_id: int, register_id: int, value: int) -> bytes:
+    """打包 uint32 寄存器写命令。"""
+    return _pack_register_cmd(motor_id, REGISTER_WRITE_COMMAND, register_id, value)
 
 
-def make_enable_command() -> bytes:
-    """生成电机使能命令帧。"""
-    return ENABLE_PAYLOAD
-
-
-def make_set_zero_command() -> bytes:
-    """生成当前位置清零命令帧。"""
-    return SET_ZERO_PAYLOAD
-
-
-def make_clear_fault_command() -> bytes:
-    """生成清除故障状态命令帧。"""
-    return CLEAR_FAULT_PAYLOAD
-
-
-def make_read_register_command(motor_id: int, register_id: int) -> bytes:
-    """生成寄存器读命令。
-
-    参数:
-    - motor_id: 目标电机 ID（16 位）。
-    - register_id: 目标寄存器地址（8 位）。
-
-    返回:
-    - 8 字节寄存器访问负载。
-    """
-    return _make_register_command(
-        motor_id,
-        REGISTER_READ_COMMAND,
-        register_id,
-        0,
-    )
-
-
-def make_write_register_uint32_command(
-    motor_id: int,
-    register_id: int,
-    value: int,
-) -> bytes:
-    """生成 uint32 寄存器写命令。
-
-    参数:
-    - motor_id: 目标电机 ID（16 位）。
-    - register_id: 目标寄存器地址（8 位）。
-    - value: 待写入的 32 位无符号值。
-    """
-    return _make_register_command(
-        motor_id,
-        REGISTER_WRITE_COMMAND,
-        register_id,
-        value,
-    )
-
-
-def _make_register_command(
+def _pack_register_cmd(
     motor_id: int, command: int, register_id: int, value: int
 ) -> bytes:
-    """按协议打包通用寄存器访问负载。
-
-    字节布局:
-    - [0:2]: motor_id（小端，低字节在前）
-    - [2]: command
-    - [3]: register_id
-    - [4:8]: value（uint32，小端）
-    """
-    value_bytes = int(value).to_bytes(4, "little", signed=False)
-    return (
-        bytes(
-            [
-                motor_id & 0xFF,
-                (motor_id >> 8) & 0xFF,
-                command & 0xFF,
-                register_id & 0xFF,
-            ]
-        )
-        + value_bytes
-    )
+    """打包寄存器访问负载：[0:2]motor_id [2]cmd [3]reg [4:8]value(LE)。"""
+    return bytes([
+        motor_id & 0xFF, (motor_id >> 8) & 0xFF,
+        command & 0xFF, register_id & 0xFF,
+    ]) + int(value).to_bytes(4, "little", signed=False)
 
 
 def pack_mit_command(command: MITCommand, limits: MITLimits) -> bytes:
-    """将 MIT 控制目标打包为 8 字节命令负载。
+    """将 MIT 指令量化为 8 字节 CAN 负载。
 
-    先按 limits 将浮点量量化到无符号整数，再按协议位宽拼接。
+    位布局: P[16] V[12] Kp[12] Kd[12] T[12] → 按协议交错拼接。
     """
-    p_int = float_to_uint(command.position, limits.p_min, limits.p_max, 16)
-    v_int = float_to_uint(command.velocity, limits.v_min, limits.v_max, 12)
-    kp_int = float_to_uint(command.kp, limits.kp_min, limits.kp_max, 12)
-    kd_int = float_to_uint(command.kd, limits.kd_min, limits.kd_max, 12)
-    t_int = float_to_uint(command.torque, limits.t_min, limits.t_max, 12)
-
-    # 字节布局（高位在前）：
-    # B0-B1: P[15:0]
-    # B2:    V[11:4]
-    # B3:    V[3:0] | Kp[11:8]
-    # B4:    Kp[7:0]
-    # B5:    Kd[11:4]
-    # B6:    Kd[3:0] | T[11:8]
-    # B7:    T[7:0]
-    return bytes(
-        [
-            (p_int >> 8) & 0xFF,
-            p_int & 0xFF,
-            (v_int >> 4) & 0xFF,
-            ((v_int & 0x0F) << 4) | ((kp_int >> 8) & 0x0F),
-            kp_int & 0xFF,
-            (kd_int >> 4) & 0xFF,
-            ((kd_int & 0x0F) << 4) | ((t_int >> 8) & 0x0F),
-            t_int & 0xFF,
-        ]
-    )
+    p  = _f2u(command.position, limits.p_min, limits.p_max, 16)
+    v  = _f2u(command.velocity, limits.v_min, limits.v_max, 12)
+    kp = _f2u(command.kp,       limits.kp_min, limits.kp_max, 12)
+    kd = _f2u(command.kd,       limits.kd_min, limits.kd_max, 12)
+    t  = _f2u(command.torque,   limits.t_min, limits.t_max, 12)
+    return bytes([
+        (p >> 8) & 0xFF,  p & 0xFF,
+        (v >> 4) & 0xFF,
+        ((v & 0x0F) << 4) | ((kp >> 8) & 0x0F),
+        kp & 0xFF,
+        (kd >> 4) & 0xFF,
+        ((kd & 0x0F) << 4) | ((t >> 8) & 0x0F),
+        t & 0xFF,
+    ])
 
 
 def parse_feedback(payload: bytes, limits: MITLimits = MITLimits()) -> MotorFeedback:
-    """解析电机 8 字节反馈帧并转换为物理量。
+    """解析 8 字节反馈帧 → MotorFeedback。
 
-    参数:
-    - payload: 原始反馈负载，必须为 8 字节。
-    - limits: 与打包一致的量化边界，用于反量化。
+    payload[0]: high-nibble=error_code, low-nibble=motor_id
+    payload[1:6]: 位拼接的位置/速度/力矩, [6]=MOS温度, [7]=转子温度
     """
     if len(payload) < 8:
-        raise ValueError("DM-J4340 feedback payload must be 8 bytes.")
-
-    # 状态字节 payload[0]: 高 4 位为 error_code，低 4 位为 motor_id。
-    error_code = (payload[0] >> 4) & 0x0F
-    motor_id = payload[0] & 0x0F
-
-    # 复原按位拼接的原始整数值。
-    pos_raw = (payload[1] << 8) | payload[2]
-    vel_raw = (payload[3] << 4) | (payload[4] >> 4)
-    torque_raw = ((payload[4] & 0x0F) << 8) | payload[5]
-
+        raise ValueError("Feedback payload must be 8 bytes.")
+    ec = (payload[0] >> 4) & 0x0F
     return MotorFeedback(
-        motor_id=motor_id,
-        error_code=error_code,
-        error_name=ERROR_CODE_MAP.get(error_code, f"unknown_0x{error_code:X}"),
-        position=uint_to_float(pos_raw, limits.p_min, limits.p_max, 16),
-        velocity=uint_to_float(vel_raw, limits.v_min, limits.v_max, 12),
-        torque=uint_to_float(torque_raw, limits.t_min, limits.t_max, 12),
+        motor_id=payload[0] & 0x0F,
+        error_code=ec,
+        error_name=ERROR_CODE_MAP.get(ec, f"unknown_0x{ec:X}"),
+        position=_u2f((payload[1] << 8) | payload[2], limits.p_min, limits.p_max, 16),
+        velocity=_u2f((payload[3] << 4) | (payload[4] >> 4), limits.v_min, limits.v_max, 12),
+        torque=_u2f(((payload[4] & 0x0F) << 8) | payload[5], limits.t_min, limits.t_max, 12),
         mos_temperature=int(payload[6]),
         rotor_temperature=int(payload[7]),
     )
 
 
 def parse_register_reply(payload: bytes) -> Optional[RegisterReply]:
-    """解析寄存器读写应答帧。
-
-    返回:
-    - RegisterReply: 当 payload 为合法寄存器应答时返回结构化结果。
-    - None: 长度不足或命令码不属于寄存器访问类型。
-    """
-    if len(payload) < 8:
-        return None
-    if payload[2] not in (
-        REGISTER_READ_COMMAND,
-        REGISTER_WRITE_COMMAND,
-        REGISTER_STORE_COMMAND,
+    """解析寄存器应答帧，非法时返回 None。"""
+    if len(payload) < 8 or payload[2] not in (
+        REGISTER_READ_COMMAND, REGISTER_WRITE_COMMAND, REGISTER_STORE_COMMAND,
     ):
         return None
-
     return RegisterReply(
         motor_id=payload[0] | (payload[1] << 8),
         command=payload[2],
@@ -287,46 +182,28 @@ def parse_register_reply(payload: bytes) -> Optional[RegisterReply]:
     )
 
 
-def float_to_uint(value: float, min_value: float, max_value: float, bits: int) -> int:
-    """将浮点物理量线性映射为无符号整数。
+# ── 量化 / 反量化 ──────────────────────────────────────────
 
-    映射前会先钳位到 [min_value, max_value]，
-    再映射到 [0, 2^bits - 1] 区间并四舍五入。
-    """
-    clamped = min(max(value, min_value), max_value)
-    span = max_value - min_value
-    scale = (1 << bits) - 1
-    return int(round((clamped - min_value) * scale / span))
+def _f2u(value: float, lo: float, hi: float, bits: int) -> int:
+    """浮点 → 无符号整数：钳位 → 线性映射 → 四舍五入。"""
+    v = min(max(value, lo), hi)
+    return int(round((v - lo) * ((1 << bits) - 1) / (hi - lo)))
 
 
-def uint_to_float(value: int, min_value: float, max_value: float, bits: int) -> float:
-    """将无符号整数按线性比例反映射为浮点物理量。"""
-    scale = (1 << bits) - 1
-    span = max_value - min_value
-    return float(value) * span / scale + min_value
+def _u2f(value: int, lo: float, hi: float, bits: int) -> float:
+    """无符号整数 → 浮点：线性反映射。"""
+    return float(value) * (hi - lo) / ((1 << bits) - 1) + lo
 
 
-# ---------------------------------------------------------------------------
-# Shared utility: MIT command timeout helper.
-# Both real and sim controllers share the same timeout semantics.
-# ---------------------------------------------------------------------------
+# ── 共享超时判断（实机 / 仿真共用） ──────────────────────────
 
 import time as _time  # noqa: E402
 
 
-def mit_command_expired(
-    last_command_time: float | None,
-    timeout_s: float,
-) -> bool:
-    """Return True when the cached MIT command is too old or was never set.
-
-    Args:
-        last_command_time: ``time.monotonic()`` value of the last received
-            MIT command, or None if nothing was ever received.
-        timeout_s: Maximum age in seconds; values <= 0 mean *never expire*.
-    """
-    if last_command_time is None:
+def mit_command_expired(last_time: float | None, timeout_s: float) -> bool:
+    """MIT 指令超时判定：从未收到或距上次超过 timeout_s 则返回 True。"""
+    if last_time is None:
         return True
     if timeout_s <= 0.0:
         return False
-    return _time.monotonic() - last_command_time > timeout_s
+    return _time.monotonic() - last_time > timeout_s

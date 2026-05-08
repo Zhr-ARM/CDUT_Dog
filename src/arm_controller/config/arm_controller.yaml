@@ -60,13 +60,18 @@ arm_controller_node:
       - 0.96402
       - 0.0
 
-    # 各关节最小角度限制，单位为弧度；逆解和最终命令都会限制在这个范围内。
-    # 为了验证“直接伸出去”动作，已将 shoulder/elbow/wrist 软件限位临时放到全范围；真机使用前必须确认不会撞机械限位。
-    joint_lower_limits: [-3.14, -3.14, -3.14, -3.14]
+    # =====================================================================
+    # ⚠️  实机安全警告：以下关节限位必须在真机运行前根据机械限位准确设定！
+    # 当前值 ±3.14 rad (±180°) 仅用于仿真验证，远超任何真实机械臂的物理行程。
+    # 请根据实际机械臂的物理限位（考虑安全余量 0.05~0.10 rad）修改为真值。
+    # 运行时会检测并告警超过 ±2.5 rad 的限位设置。
+    # 顺序：base_yaw, shoulder_pitch, elbow_pitch, wrist_pitch
+    # =====================================================================
+    joint_lower_limits: [-3.14, 0.0, 0.0, -3.14]
 
     # 各关节最大角度限制，单位为弧度；顺序必须和 joint_names 保持一致。
-    # base_yaw 总限位仍放开，但够箱子动作会额外用 box_motion_base_yaw_limit_rad 限制它不能大幅度转动。
-    joint_upper_limits: [3.14, 3.14, 3.14, 3.14]
+    # 够箱子动作会额外用 box_motion_base_yaw_limit_rad 限制 base_yaw 的搜索范围。
+    joint_upper_limits: [3.14, 3.14, 4.19, 3.14]
 
     # 末端执行器相对 wrist_link 的固定偏移，单位为米；用于计算真正的末端目标点。
     tool_offset: [0.16309, -0.080763, -0.016359]
@@ -90,10 +95,10 @@ arm_controller_node:
     command_rate_hz: 50.0
 
     # 轨迹插值时的最大关节速度，单位为弧度/秒；越小运动越慢越稳。
-    max_joint_speed_rad_s: 0.18
+    max_joint_speed_rad_s: 0.5
 
     # 每段轨迹的最短执行时间，单位为秒；避免很短距离也瞬间给出阶跃命令。
-    min_trajectory_duration_s: 1.2
+    min_trajectory_duration_s: 0.6
 
     # 到达目标后是否继续发布保持命令；真实电机和当前仿真控制器建议保持 true，否则命令超时后会卸力。
     hold_last_command: true

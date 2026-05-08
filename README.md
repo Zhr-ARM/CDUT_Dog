@@ -70,7 +70,10 @@ ros2 launch arm_bringup control.launch.py backend:=real serial_port:=/dev/ttyACM
 - **底层电机指令发布** (通常由 `arm_controller` 自动对它进行发布)：
   话题：`/dm_j4340/mit_commands` (类型：`std_msgs/msg/Float32MultiArray`)  
   数据格式：`[p, v, kp, kd, t_ff] * 4`（依次对应4个关节的数据）。
-
+- **电机角度查询**：
+  ```bash
+  ros2 topic echo /dm_j4340/joint_states --field position
+  ```
 ## 重要参数配置 (Parameters)
 
 运行节点前，可通过 ROS 2 参数 (比如在 launch 配置的 YAML 文件中) 微调 `arm_controller_node` 的底层执行逻辑。常用的高频参数说明如下：

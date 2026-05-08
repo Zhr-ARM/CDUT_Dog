@@ -32,7 +32,7 @@ real_motor_controller_node:
     robot_joint_states_topic: /joint_states
     status_topic: /dm_j4340/status
     publish_robot_joint_states: true
-    mit_command_timeout_s: 0.2
+    mit_command_timeout_s: 0.5
     command_rate_hz: 200.0
     state_rate_hz: 50.0
     status_rate_hz: 5.0

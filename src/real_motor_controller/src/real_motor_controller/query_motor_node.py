@@ -53,6 +53,19 @@ class ObservedFeedback:
 class QueryMotorNode(Node):
     """查询电机是否在线并发布扫描结果的 ROS2 节点。"""
 
+    serial_port: str
+    serial_baudrate: int
+    can_bitrate_index: int
+    set_can_bitrate_on_start: bool
+    motor_ids: list
+    master_id: int
+    accept_any_master_id: bool
+    log_rx_frames: bool
+    probe_attempts: int
+    probe_timeout_s: float
+    probe_gap_s: float
+    usbcan_send_cmd: int
+
     def __init__(self) -> None:
         """初始化节点并执行首轮电机在线扫描。
 
@@ -156,11 +169,11 @@ class QueryMotorNode(Node):
             motor_id, payload, command=self.usbcan_send_cmd, **SEND_ONCE
         )
 
-    def destroy_node(self) -> bool:
+    def destroy_node(self) -> None:
         """关闭通信资源并销毁节点。"""
         if hasattr(self, "bus"):
             self.bus.close()
-        return super().destroy_node()
+        super().destroy_node()
 
     def _handle_usbcan_frame(self, frame: UsbCanFrame) -> None:
         """处理回传帧，仅保留符合过滤条件的反馈数据。"""

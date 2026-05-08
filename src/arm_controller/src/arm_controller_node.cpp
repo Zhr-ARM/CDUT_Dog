@@ -333,6 +333,24 @@ private:
       home_joints_(static_cast<int>(index)) =
         std::clamp(home_joint_positions[index], lower_limits_[index], upper_limits_[index]);
     }
+
+    // 实机安全：关节软件限位超过 ±2.5 rad 时发出醒目告警。
+    // 仿真调试可以使用大范围，但真机必须按实际机械限位设定。
+    for (std::size_t index = 0; index < kJointCount; ++index) {
+      const double span = upper_limits_[index] - lower_limits_[index];
+      if (span > 5.0 || lower_limits_[index] < -2.5 || upper_limits_[index] > 2.5) {
+        RCLCPP_WARN(
+          get_logger(),
+          "⚠️  Joint '%s' limit range is [%.2f, %.2f] (span=%.2f rad). "
+          "This is intended for simulation only! "
+          "For real hardware, set limits matching the actual mechanical limits in arm_controller.yaml.",
+          joint_names_[index].c_str(),
+          lower_limits_[index],
+          upper_limits_[index],
+          span);
+        break;  // 只告警一次，避免刷屏
+      }
+    }
   }
 
   /**
