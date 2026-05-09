@@ -529,7 +529,7 @@ private:
 
     RCLCPP_INFO(
       get_logger(),
-      "Suction box motion started: arm_to_box=%.3f m, platform_height=%.3f m, center_distance=%.3f m, size=%.3f x %.3f x %.3f m, mass=%.3f kg, base_yaw_limit=%.3f rad, tool_direction_tolerance=%.3f.",
+      "Suction box motion started (level-constrained): arm_to_box=%.3f m, platform_height=%.3f m, center_distance=%.3f m, size=%.3f x %.3f x %.3f m, mass=%.3f kg, base_yaw_limit=%.3f rad.",
       arm_to_box_distance_m_,
       platform_height_m_,
       box_center_distance_m_,
@@ -537,8 +537,7 @@ private:
       box_depth_m_,
       box_height_m_,
       box_mass_kg_,
-      box_motion_base_yaw_limit_rad_,
-      box_motion_tool_direction_tolerance_);
+      box_motion_base_yaw_limit_rad_);
 
     start_next_box_motion_target();
   }
@@ -714,16 +713,13 @@ private:
   /**
    * @brief 为箱子任务构造带偏置的 IK 初始种子
    *
-   * 普通 IK 会从当前关节状态或上一目标关节角开始搜索。箱子任务对姿态和伸展方向更敏感，因此这里
-   * 显式设置：
-   * - base_yaw 指向目标点的水平角度。
-   * - shoulder/elbow/wrist 使用配置中的经验偏置，引导机械臂向前伸出并保持可吸附姿态。
-   *
-   * 最终种子会再次经过关节限位钳位。
+   * 为实现水平约束（wrist = elbow - shoulder），种子关节角需要满足此关系。
+   * base_yaw 设为指向目标点的水平角度，shoulder/elbow 使用配置的经验偏置，
+   * wrist 由 elbow - shoulder 直接算出并钳位到关节限位内。
    *
    * @param target_position 当前箱子关键点目标
    *
-   * @return JointVector 用于带朝向 IK 的初始关节角
+   * @return JointVector 用于水平约束 IK 的初始关节角
    */
   JointVector make_box_motion_seed(const Eigen::Vector3d & target_position) const
   {
@@ -731,7 +727,8 @@ private:
     seed(0) = std::atan2(target_position.y(), std::max(0.001, target_position.x()));
     seed(1) = box_motion_shoulder_bias_rad_;
     seed(2) = box_motion_elbow_bias_rad_;
-    seed(3) = box_motion_wrist_bias_rad_;
+    // Level constraint: wrist = elbow - shoulder
+    seed(3) = std::clamp(seed(2) - seed(1), lower_limits_[3], upper_limits_[3]);
     return clamp_to_limits(seed, lower_limits_, upper_limits_);
   }
 
@@ -779,13 +776,12 @@ private:
   }
 
   /**
-   * @brief 对箱子任务的单个关键点执行带工具朝向约束的 IK
+   * @brief 对箱子任务的单个关键点执行水平约束 IK
    *
-   * 箱子任务不仅要求末端到达接触点，还需要吸盘朝向箱子表面。该函数会：
-   * 1. 根据目标点计算期望工具 x 轴方向。
-   * 2. 调用 solve_inverse_kinematics_with_tool_direction 同时优化位置和方向误差。
-   * 3. 使用箱子任务专属的位置容差、方向容差和方向权重。
-   * 4. 成功后启动关节空间轨迹，失败后停止整个箱子任务。
+   * 箱子任务要求末端执行器始终保持水平（wrist = elbow - shoulder），
+   * 这样才能让吸盘在接近、接触、提升、搬运全过程中不倾斜。
+   * 该函数使用 solve_inverse_kinematics_level 在 3 自由度约化空间求解，
+   * 自动保证末端水平。成功后启动关节空间轨迹，失败后停止整个箱子任务。
    *
    * @param target_position 当前箱子关键点目标，单位为米
    * @param label 日志中使用的阶段标签
@@ -803,40 +799,33 @@ private:
     const std::array<double, kJointCount> & upper_limits)
   {
     JointVector solution;
-    double final_position_error = 0.0;
-    double final_direction_error = 0.0;
+    double final_error = 0.0;
     int iterations = 0;
-    const Eigen::Vector3d target_direction = box_motion_tool_direction(target_position);
-    const bool solved = solve_inverse_kinematics_with_tool_direction(
+    const bool solved = solve_inverse_kinematics_level(
       joint_origins_,
       joint_axes_,
       lower_limits,
       upper_limits,
       tool_offset_,
       target_position,
-      target_direction,
       seed,
       box_motion_position_tolerance_m_,
-      box_motion_tool_direction_tolerance_,
-      box_motion_tool_direction_weight_,
       max_iterations_,
       damping_,
       max_solver_step_rad_,
       solution,
-      final_position_error,
-      final_direction_error,
+      final_error,
       iterations);
 
     if (!solved) {
       RCLCPP_WARN(
         get_logger(),
-        "IK %s failed for target [%.3f, %.3f, %.3f], best position error %.4f m, direction error %.4f after %d iterations.",
+        "IK %s failed for target [%.3f, %.3f, %.3f], best error %.4f m after %d iterations.",
         label.c_str(),
         target_position.x(),
         target_position.y(),
         target_position.z(),
-        final_position_error,
-        final_direction_error,
+        final_error,
         iterations);
       box_motion_active_ = false;
       box_motion_waiting_ = false;
@@ -849,15 +838,15 @@ private:
 
     RCLCPP_INFO(
       get_logger(),
-      "IK %s accepted: q=[%.3f, %.3f, %.3f, %.3f], position_error=%.4f m, direction_error=%.4f, iterations=%d",
+      "IK %s accepted: q=[%.3f, %.3f, %.3f, %.3f], error=%.4f m, iterations=%d (level-constrained: wrist=elbow-shoulder=%.3f)",
       label.c_str(),
       solution(0),
       solution(1),
       solution(2),
       solution(3),
-      final_position_error,
-      final_direction_error,
-      iterations);
+      final_error,
+      iterations,
+      solution(2) - solution(1));
     return true;
   }
 

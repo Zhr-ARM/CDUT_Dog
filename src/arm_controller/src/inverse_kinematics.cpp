@@ -647,4 +647,198 @@ bool solve_inverse_kinematics_with_tool_direction(
   return false;
 }
 
+// =========================================================================
+// Level-constrained FK / Jacobian / IK
+// =========================================================================
+//
+// These functions enforce the hard constraint:  wrist = elbow - shoulder
+// which keeps the end-effector horizontal (tool X-axis in the XY plane).
+// The reduced system has 3 variables (q0:base_yaw, q1:shoulder, q2:elbow)
+// and wrist q3 is derived automatically.
+
+Eigen::Vector3d compute_end_effector_position_level(
+  const std::array<Eigen::Vector3d, kJointCount> & joint_origins,
+  const std::array<Eigen::Vector3d, kJointCount> & joint_axes,
+  const Eigen::Vector3d & tool_offset,
+  const Eigen::Vector3d & joints)
+{
+  // `joints` is a 3-element vector [q0, q1, q2].
+  // Build the full 4-DOF vector with q3 = q2 - q1.
+  JointVector full_joints = JointVector::Zero();
+  full_joints(0) = joints(0);
+  full_joints(1) = joints(1);
+  full_joints(2) = joints(2);
+  full_joints(3) = joints(2) - joints(1);
+  return compute_end_effector_position(joint_origins, joint_axes, full_joints, tool_offset);
+}
+
+Eigen::Matrix<double, 3, 3> numerical_jacobian_level(
+  const std::array<Eigen::Vector3d, kJointCount> & joint_origins,
+  const std::array<Eigen::Vector3d, kJointCount> & joint_axes,
+  const std::array<double, kJointCount> & lower_limits,
+  const std::array<double, kJointCount> & upper_limits,
+  const Eigen::Vector3d & tool_offset,
+  const Eigen::Vector3d & joints)
+{
+  // `joints` is a 3-element vector [q0, q1, q2].
+  // Build the full 4-DOF vector for computing the 3×4 full Jacobian,
+  // then reduce to 3×3 using the chain rule with q3 = q2 - q1.
+  JointVector full_joints = JointVector::Zero();
+  full_joints(0) = joints(0);
+  full_joints(1) = joints(1);
+  full_joints(2) = joints(2);
+  full_joints(3) = joints(2) - joints(1);
+
+  const Eigen::Matrix<double, 3, 4> jac_full =
+    numerical_jacobian(joint_origins, joint_axes, lower_limits, upper_limits, tool_offset, full_joints);
+
+  // Reduced Jacobian: dp/d[q0,q1,q2] where q3 = q2 - q1
+  //   dp/dq0 = J_full_col0
+  //   dp/dq1 = J_full_col1 + J_full_col3 * dq3/dq1 = J_full_col1 - J_full_col3
+  //   dp/dq2 = J_full_col2 + J_full_col3 * dq3/dq2 = J_full_col2 + J_full_col3
+  Eigen::Matrix<double, 3, 3> jac_reduced;
+  jac_reduced.col(0) = jac_full.col(0);
+  jac_reduced.col(1) = jac_full.col(1) - jac_full.col(3);
+  jac_reduced.col(2) = jac_full.col(2) + jac_full.col(3);
+  return jac_reduced;
+}
+
+bool solve_inverse_kinematics_level(
+  const std::array<Eigen::Vector3d, kJointCount> & joint_origins,
+  const std::array<Eigen::Vector3d, kJointCount> & joint_axes,
+  const std::array<double, kJointCount> & lower_limits,
+  const std::array<double, kJointCount> & upper_limits,
+  const Eigen::Vector3d & tool_offset,
+  const Eigen::Vector3d & target_position,
+  const JointVector & seed,
+  double tolerance,
+  int max_iterations,
+  double damping,
+  double max_step,
+  JointVector & solution,
+  double & final_error,
+  int & iterations)
+{
+  // The seed and solution are full 4-DOF vectors.
+  // Internally we solve in the reduced 3-DOF space [q0, q1, q2].
+  const double accepted_tolerance = std::max(1.0e-6, tolerance);
+  const double damping_squared = std::max(1.0e-8, damping * damping);
+  const double accepted_max_step = std::max(1.0e-4, max_step);
+  const int accepted_max_iterations = std::max(1, max_iterations);
+
+  // Default output: clamp the seed and enforce level constraint.
+  JointVector clamped_seed = clamp_to_limits(seed, lower_limits, upper_limits);
+  clamped_seed(3) = std::clamp(
+    clamped_seed(2) - clamped_seed(1), lower_limits[3], upper_limits[3]);
+  solution = clamped_seed;
+  final_error = std::numeric_limits<double>::infinity();
+  iterations = 0;
+
+  bool found_solution = false;
+  double best_solution_score = std::numeric_limits<double>::infinity();
+  JointVector best_failed_solution = solution;
+  double best_failed_error = final_error;
+  int best_failed_iterations = 0;
+
+  // Build a 3-DOF seed from the original 4-DOF seed.
+  JointVector seed_3dof = JointVector::Zero();
+  seed_3dof(0) = clamped_seed(0);
+  seed_3dof(1) = clamped_seed(1);
+  seed_3dof(2) = clamped_seed(2);
+
+  // Generate diverse 3-DOF seeds using the same seed-set strategy,
+  // but mapped to the reduced space.
+  auto time_start = std::chrono::steady_clock::now();
+
+  // Use the full 4-DOF seed set, then extract the first 3 components.
+  const auto full_seeds = make_seed_set(seed, lower_limits, upper_limits, target_position);
+  for (const JointVector & full_initial : full_seeds) {
+    // Work in the reduced 3-DOF space [q0, q1, q2].
+    Eigen::Vector3d joints_3dof;
+    joints_3dof(0) = full_initial(0);
+    joints_3dof(1) = full_initial(1);
+    joints_3dof(2) = full_initial(2);
+
+    for (int iteration = 0; iteration < accepted_max_iterations; ++iteration) {
+      if (iteration % 10 == 0) {
+        auto elapsed = std::chrono::steady_clock::now() - time_start;
+        if (elapsed > kSolverTimeBudget) {
+          break;
+        }
+      }
+
+      const Eigen::Vector3d current_position =
+        compute_end_effector_position_level(joint_origins, joint_axes, tool_offset, joints_3dof);
+      const Eigen::Vector3d error = target_position - current_position;
+      const double error_norm = error.norm();
+
+      // Build full 4-DOF for output.
+      JointVector full_joints = JointVector::Zero();
+      full_joints(0) = joints_3dof(0);
+      full_joints(1) = joints_3dof(1);
+      full_joints(2) = joints_3dof(2);
+      full_joints(3) = std::clamp(
+        joints_3dof(2) - joints_3dof(1), lower_limits[3], upper_limits[3]);
+
+      if (error_norm < best_failed_error) {
+        best_failed_solution = full_joints;
+        best_failed_error = error_norm;
+        best_failed_iterations = iteration + 1;
+      }
+
+      if (error_norm <= accepted_tolerance) {
+        const double score = error_norm + 0.02 * (full_joints - seed).norm();
+        if (score < best_solution_score) {
+          found_solution = true;
+          best_solution_score = score;
+          solution = full_joints;
+          final_error = error_norm;
+          iterations = iteration + 1;
+        }
+        break;
+      }
+
+      const Eigen::Matrix<double, 3, 3> jacobian =
+        numerical_jacobian_level(
+          joint_origins, joint_axes, lower_limits, upper_limits, tool_offset, joints_3dof);
+
+      // DLS update in 3-DOF space.
+      auto damped = (jacobian * jacobian.transpose()).eval();
+      damped.diagonal().array() += damping_squared;
+
+      Eigen::Vector3d delta = jacobian.transpose() * damped.ldlt().solve(error);
+
+      if (!std::isfinite(delta(0)) || !std::isfinite(delta(1)) || !std::isfinite(delta(2))) {
+        break;
+      }
+
+      const double delta_norm = delta.norm();
+      if (delta_norm > accepted_max_step) {
+        delta *= accepted_max_step / delta_norm;
+      }
+
+      Eigen::Vector3d next = joints_3dof + delta;
+      for (int i = 0; i < 3; ++i) {
+        next(i) = std::clamp(next(i), lower_limits[static_cast<std::size_t>(i)],
+                             upper_limits[static_cast<std::size_t>(i)]);
+      }
+
+      if ((next - joints_3dof).norm() < 1.0e-10) {
+        break;
+      }
+
+      joints_3dof = next;
+    }
+  }
+
+  if (found_solution) {
+    return true;
+  }
+
+  solution = best_failed_solution;
+  final_error = best_failed_error;
+  iterations = best_failed_iterations;
+  return false;
+}
+
 }  // namespace arm_controller
