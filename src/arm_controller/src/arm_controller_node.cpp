@@ -211,6 +211,10 @@ private:
     declare_parameter<double>("box_motion_shoulder_bias_rad", 0.85);
     declare_parameter<double>("box_motion_elbow_bias_rad", 0.4);
     declare_parameter<double>("box_motion_wrist_bias_rad", -0.6);
+    declare_parameter<double>("box_motion_wrist_level_offset_rad", 0.0);
+    declare_parameter<std::vector<double>>(
+      "joint_calibration_offset_rad",
+      {0.0, 0.0, 0.0, 0.0});
   }
 
   /**
@@ -294,10 +298,11 @@ private:
     box_min_touch_z_m_ = get_parameter("box_min_touch_z_m").as_double();
     const double configured_suction_target_x =
       get_parameter("box_suction_target_x_m").as_double();
+    // 默认取箱子中心 x（上方吸取），手动设置 >0 时以设置值为准
     box_suction_target_x_m_ =
       configured_suction_target_x > 0.0 ?
       configured_suction_target_x :
-      box_center_distance_m_ - 0.5 * box_depth_m_;
+      box_center_distance_m_;
     box_suction_approach_clearance_m_ =
       std::max(0.0, get_parameter("box_suction_approach_clearance_m").as_double());
     box_suction_contact_offset_m_ =
@@ -323,6 +328,19 @@ private:
       get_parameter("box_motion_wrist_bias_rad").as_double(),
       lower_limits_[3],
       upper_limits_[3]);
+    box_motion_wrist_level_offset_rad_ =
+      std::clamp(
+      get_parameter("box_motion_wrist_level_offset_rad").as_double(),
+      -0.5,
+      0.5);
+    joint_calibration_offset_ = read_double_array("joint_calibration_offset_rad");
+    RCLCPP_INFO(
+      get_logger(),
+      "Joint calibration offsets: [%.4f, %.4f, %.4f, %.4f] rad.",
+      joint_calibration_offset_[0],
+      joint_calibration_offset_[1],
+      joint_calibration_offset_[2],
+      joint_calibration_offset_[3]);
 
     for (std::size_t index = 0; index < kJointCount; ++index) {
       if (lower_limits_[index] > upper_limits_[index]) {
@@ -331,7 +349,10 @@ private:
       current_joints_(static_cast<int>(index)) =
         0.5 * (lower_limits_[index] + upper_limits_[index]);
       home_joints_(static_cast<int>(index)) =
-        std::clamp(home_joint_positions[index], lower_limits_[index], upper_limits_[index]);
+        std::clamp(
+          home_joint_positions[index] + joint_calibration_offset_[index],
+          lower_limits_[index],
+          upper_limits_[index]);
     }
 
     // 实机安全：关节软件限位超过 ±2.5 rad 时发出醒目告警。
@@ -464,8 +485,12 @@ private:
           continue;
         }
 
+        // 电机反馈 → URDF 物理角度（加标定偏移）
         current_joints_(static_cast<int>(target_index)) =
-          std::clamp(msg.position[source_index], lower_limits_[target_index], upper_limits_[target_index]);
+          std::clamp(
+            msg.position[source_index] + joint_calibration_offset_[target_index],
+            lower_limits_[target_index],
+            upper_limits_[target_index]);
         joint_state_seen_[target_index] = true;
       }
     }
@@ -529,7 +554,7 @@ private:
 
     RCLCPP_INFO(
       get_logger(),
-      "Suction box motion started (level-constrained): arm_to_box=%.3f m, platform_height=%.3f m, center_distance=%.3f m, size=%.3f x %.3f x %.3f m, mass=%.3f kg, base_yaw_limit=%.3f rad.",
+      "Suction box motion started (top-down level-constrained): arm_to_box=%.3f m, platform_height=%.3f m, center_distance=%.3f m, size=%.3f x %.3f x %.3f m, mass=%.3f kg, base_yaw_limit=%.3f rad.",
       arm_to_box_distance_m_,
       platform_height_m_,
       box_center_distance_m_,
@@ -674,52 +699,51 @@ private:
   }
 
   /**
-   * @brief 生成箱子搬运动作的轨迹目标点序列
+   * @brief 生成箱子搬运动作的轨迹目标点序列（上方吸取）
    * 
-   * 该函数定义了箱子搬运操作的完整轨迹，包含5个关键位置点：
-   * 1. 接近点 (approach)：安全距离外的起始位置
-   * 2. 预接触点 (pre-contact)：接近箱子表面的位置
-   * 3. 接触点 (contact)：与箱子表面接触的位置（含轻微推动）
-   * 4. 提升点 (lift)：垂直提升后的位置
+   * 该函数定义了箱子搬运操作的完整轨迹，包含5个关键位置点，
+   * 从箱子正上方垂直向下接近并吸取：
+   * 1. 接近点 (approach)：箱子正上方的安全高度位置
+   * 2. 预接触点 (pre-contact)：紧贴箱顶表面上方的位置
+   * 3. 接触点 (contact)：箱顶表面位置（含轻微下压确保吸盘贴合）
+   * 4. 提升点 (lift)：垂直提起后的位置
    * 5. 搬运点 (carry)：水平回撤后的搬运位置
    * 
-   * 所有点都基于箱子参数和操作参数动态计算，确保安全性和有效性。
+   * 所有点都基于箱子参数和操作参数动态计算，末端通过 level 约束保持水平。
    * 
    * @return std::vector<Eigen::Vector3d> 箱子搬运轨迹的5个目标位置点
    */
   std::vector<Eigen::Vector3d> make_box_motion_targets() const
   {
-    const double box_face_center_z_in_base =
-      box_ground_z_m_ + box_height_m_ * box_touch_height_ratio_ - platform_height_m_;
-    const double contact_z =
-      std::max(box_min_touch_z_m_, box_face_center_z_in_base);
+    // 箱顶表面在 base_link 坐标系下的 z 坐标
+    const double box_top_z =
+      box_ground_z_m_ + box_height_m_ - platform_height_m_;
+    const double contact_z = box_top_z;
     const double lift_z = contact_z + box_lift_height_m_;
-    const double face_x = box_suction_target_x_m_;
-    const double approach_x = std::max(box_min_approach_x_m_, face_x - box_approach_offset_m_);
-    const double pre_contact_x =
-      std::max(box_min_approach_x_m_, face_x - box_suction_contact_offset_m_);
-    const double contact_x = face_x + box_touch_push_m_;
-    const double carry_x = std::max(box_min_approach_x_m_, face_x - box_lift_retract_m_);
+    // 箱子顶部中心 x（默认取 box_center_distance_m_，即箱子正中心）
+    const double center_x = box_suction_target_x_m_;
+    const double approach_z = contact_z + box_approach_offset_m_;
+    const double pre_contact_z = contact_z + box_suction_contact_offset_m_;
+    const double carry_x = std::max(box_min_approach_x_m_, center_x - box_lift_retract_m_);
 
     return {
-      Eigen::Vector3d(approach_x, box_motion_y_m_, contact_z),
-      Eigen::Vector3d(pre_contact_x, box_motion_y_m_, contact_z),
-      Eigen::Vector3d(contact_x, box_motion_y_m_, contact_z),
-      Eigen::Vector3d(contact_x, box_motion_y_m_, lift_z),
-      Eigen::Vector3d(carry_x, box_motion_y_m_, lift_z),
+      Eigen::Vector3d(center_x, box_motion_y_m_, approach_z),      // ① 箱子上方安全高度
+      Eigen::Vector3d(center_x, box_motion_y_m_, pre_contact_z),   // ② 预接触（箱顶正上方）
+      Eigen::Vector3d(center_x, box_motion_y_m_, contact_z),       // ③ 接触点 = 箱顶表面中心
+      Eigen::Vector3d(center_x, box_motion_y_m_, lift_z),          // ④ 垂直提升
+      Eigen::Vector3d(carry_x, box_motion_y_m_, lift_z),           // ⑤ 水平回撤搬运
     };
   }
 
   /**
-   * @brief 为箱子任务构造带偏置的 IK 初始种子
+   * @brief 为箱子任务构造 IK 初始种子（上方吸取）
    *
-   * 为实现水平约束（wrist = elbow - shoulder），种子关节角需要满足此关系。
-   * base_yaw 设为指向目标点的水平角度，shoulder/elbow 使用配置的经验偏置，
-   * wrist 由 elbow - shoulder 直接算出并钳位到关节限位内。
+   * base_yaw 设为指向目标点的水平角度，shoulder/elbow/wrist 使用配置的经验偏置。
+   * 末端水平由 FK-based 工具方向约束保证，种子不需要满足 level 条件。
    *
    * @param target_position 当前箱子关键点目标
    *
-   * @return JointVector 用于水平约束 IK 的初始关节角
+   * @return JointVector IK 初始关节角
    */
   JointVector make_box_motion_seed(const Eigen::Vector3d & target_position) const
   {
@@ -727,8 +751,7 @@ private:
     seed(0) = std::atan2(target_position.y(), std::max(0.001, target_position.x()));
     seed(1) = box_motion_shoulder_bias_rad_;
     seed(2) = box_motion_elbow_bias_rad_;
-    // Level constraint: wrist = elbow - shoulder
-    seed(3) = std::clamp(seed(2) - seed(1), lower_limits_[3], upper_limits_[3]);
+    seed(3) = box_motion_wrist_bias_rad_;
     return clamp_to_limits(seed, lower_limits_, upper_limits_);
   }
 
@@ -736,7 +759,7 @@ private:
    * @brief 为箱子任务生成临时关节限位
    *
    * 当前实现只额外收紧 base_yaw 的搜索范围，使底座只能在箱子方向附近小幅调整。
-   * 这样可以避免 IK 选择绕到侧面或背后的可行解，让吸盘动作保持“正面接近箱子”的任务语义。
+   * 这样可以避免 IK 选择绕到侧面或背后的可行解，保持“在箱子上方操作”的任务语义。
    *
    * @param target_position 当前箱子关键点目标
    * @param lower_limits 输出的临时关节下限
@@ -758,13 +781,12 @@ private:
   /**
    * @brief 计算箱子任务期望的工具 x 轴朝向
    *
-   * 对吸盘侧面接触而言，希望工具坐标系局部 x 轴大致朝向目标点的水平径向方向。
-   * 因此该函数取目标点在 XY 平面上的方向并归一化，忽略 z 分量，避免提升阶段因为高度变化改变
-   * 吸盘朝向约束。
+   * 工具 x 轴保持在 XY 平面内（水平），指向目标点在 XY 平面的投影方向。
+   * 上方吸取时目标在箱子正上方，此函数返回的水平方向用于辅助 IK 保持末端姿态合理。
    *
    * @param target_position 当前箱子关键点目标
    *
-   * @return Eigen::Vector3d 归一化后的期望工具 x 轴方向
+   * @return Eigen::Vector3d 归一化后的期望工具 x 轴方向（水平）
    */
   Eigen::Vector3d box_motion_tool_direction(const Eigen::Vector3d & target_position) const
   {
@@ -776,12 +798,12 @@ private:
   }
 
   /**
-   * @brief 对箱子任务的单个关键点执行水平约束 IK
+   * @brief 对箱子任务的单个关键点执行带工具方向约束的 IK
    *
-   * 箱子任务要求末端执行器始终保持水平（wrist = elbow - shoulder），
-   * 这样才能让吸盘在接近、接触、提升、搬运全过程中不倾斜。
-   * 该函数使用 solve_inverse_kinematics_level 在 3 自由度约化空间求解，
-   * 自动保证末端水平。成功后启动关节空间轨迹，失败后停止整个箱子任务。
+   * 箱子任务要求末端执行器始终保持水平（工具 X 轴在 XY 平面内）。
+   * 该函数通过 FK 实时计算末端姿态，将工具 X 轴约束到水平方向（指向箱子），
+   * 从根本上解决 level 约束（q3 = q2 - q1）在大关节角时因 FK 旋转非交换导致的偏差。
+   * 成功后启动关节空间轨迹，失败后停止整个箱子任务。
    *
    * @param target_position 当前箱子关键点目标，单位为米
    * @param label 日志中使用的阶段标签
@@ -798,34 +820,48 @@ private:
     const std::array<double, kJointCount> & lower_limits,
     const std::array<double, kJointCount> & upper_limits)
   {
+    // 目标工具方向：水平指向箱子，可叠加水平补偿偏移
+    Eigen::Vector3d target_dir = box_motion_tool_direction(target_position);
+    // 腕关节水平补偿：绕世界 Z 轴微调 target_dir 的垂直分量
+    const double offset = box_motion_wrist_level_offset_rad_;
+    if (std::abs(offset) > 1.0e-8) {
+      target_dir = Eigen::AngleAxisd(offset, Eigen::Vector3d::UnitZ()) * target_dir;
+    }
+
     JointVector solution;
-    double final_error = 0.0;
+    double final_position_error = 0.0;
+    double final_direction_error = 0.0;
     int iterations = 0;
-    const bool solved = solve_inverse_kinematics_level(
+    const bool solved = solve_inverse_kinematics_with_tool_direction(
       joint_origins_,
       joint_axes_,
       lower_limits,
       upper_limits,
       tool_offset_,
       target_position,
+      target_dir,
       seed,
       box_motion_position_tolerance_m_,
+      box_motion_tool_direction_tolerance_,
+      box_motion_tool_direction_weight_,
       max_iterations_,
       damping_,
       max_solver_step_rad_,
       solution,
-      final_error,
+      final_position_error,
+      final_direction_error,
       iterations);
 
     if (!solved) {
       RCLCPP_WARN(
         get_logger(),
-        "IK %s failed for target [%.3f, %.3f, %.3f], best error %.4f m after %d iterations.",
+        "IK %s failed for target [%.3f, %.3f, %.3f], best pos_err=%.4f m, dir_err=%.4f after %d iters.",
         label.c_str(),
         target_position.x(),
         target_position.y(),
         target_position.z(),
-        final_error,
+        final_position_error,
+        final_direction_error,
         iterations);
       box_motion_active_ = false;
       box_motion_waiting_ = false;
@@ -838,15 +874,15 @@ private:
 
     RCLCPP_INFO(
       get_logger(),
-      "IK %s accepted: q=[%.3f, %.3f, %.3f, %.3f], error=%.4f m, iterations=%d (level-constrained: wrist=elbow-shoulder=%.3f)",
+      "IK %s accepted: q=[%.3f, %.3f, %.3f, %.3f], pos_err=%.4f m, dir_err=%.4f, iters=%d",
       label.c_str(),
       solution(0),
       solution(1),
       solution(2),
       solution(3),
-      final_error,
-      iterations,
-      solution(2) - solution(1));
+      final_position_error,
+      final_direction_error,
+      iterations);
     return true;
   }
 
@@ -1017,7 +1053,8 @@ private:
     const auto & active_kd = use_hold_gains ? hold_kd_ : kd_;
 
     for (std::size_t index = 0; index < kJointCount; ++index) {
-      msg.data.push_back(static_cast<float>(joints(static_cast<int>(index))));
+      // URDF 物理角度 → 电机指令（减标定偏移）
+      msg.data.push_back(static_cast<float>(joints(static_cast<int>(index)) - joint_calibration_offset_[index]));
       msg.data.push_back(static_cast<float>(command_velocity_[index]));
       msg.data.push_back(static_cast<float>(active_kp[index]));
       msg.data.push_back(static_cast<float>(active_kd[index]));
@@ -1106,6 +1143,8 @@ private:
   double box_motion_shoulder_bias_rad_{0.85};
   double box_motion_elbow_bias_rad_{0.4};
   double box_motion_wrist_bias_rad_{-0.6};
+  double box_motion_wrist_level_offset_rad_{0.0};
+  std::array<double, kJointCount> joint_calibration_offset_{};
 
   // -------- 运行时状态：关节反馈、轨迹插值和任务进度 --------
   //

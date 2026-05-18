@@ -174,19 +174,20 @@ Eigen::Matrix<double, 6, 4> numerical_pose_direction_jacobian(
   const JointVector & joints);
 
 // ---------------------------------------------------------------------------
-// Level-constrained IK (wrist = elbow - shoulder, keeps end-effector horizontal)
+// Level-constrained IK (wrist = elbow - shoulder + offset, keeps end-effector horizontal)
 // ---------------------------------------------------------------------------
 
-/// Compute end-effector position with wrist forced to elbow-shoulder (level constraint).
-/// `joints` is a 3-element vector [q0, q1, q2]; q3 = q2 - q1 is implicit.
+/// Compute end-effector position with wrist forced to elbow-shoulder+offset (level constraint).
+/// `joints` is a 3-element vector [q0, q1, q2]; q3 = q2 - q1 + wrist_level_offset is implicit.
 Eigen::Vector3d compute_end_effector_position_level(
   const std::array<Eigen::Vector3d, kJointCount> & joint_origins,
   const std::array<Eigen::Vector3d, kJointCount> & joint_axes,
   const Eigen::Vector3d & tool_offset,
-  const Eigen::Vector3d & joints);
+  const Eigen::Vector3d & joints,
+  double wrist_level_offset);
 
 /// Reduced numerical Jacobian (3×3) for the level-constrained system.
-/// Variables: q0 (base_yaw), q1 (shoulder), q2 (elbow).  q3 = q2 - q1 is implicit.
+/// Variables: q0 (base_yaw), q1 (shoulder), q2 (elbow).  q3 = q2 - q1 + wrist_level_offset is implicit.
 /// `joints` is a 3-element vector [q0, q1, q2].
 Eigen::Matrix<double, 3, 3> numerical_jacobian_level(
   const std::array<Eigen::Vector3d, kJointCount> & joint_origins,
@@ -194,9 +195,10 @@ Eigen::Matrix<double, 3, 3> numerical_jacobian_level(
   const std::array<double, kJointCount> & lower_limits,
   const std::array<double, kJointCount> & upper_limits,
   const Eigen::Vector3d & tool_offset,
-  const Eigen::Vector3d & joints);
+  const Eigen::Vector3d & joints,
+  double wrist_level_offset);
 
-/// Inverse kinematics with hard level constraint (wrist = elbow - shoulder).
+/// Inverse kinematics with hard level constraint (wrist = elbow - shoulder + offset).
 /// Solves 3 variables (base_yaw, shoulder, elbow) for 3 position constraints.
 bool solve_inverse_kinematics_level(
   const std::array<Eigen::Vector3d, kJointCount> & joint_origins,
@@ -210,6 +212,7 @@ bool solve_inverse_kinematics_level(
   int max_iterations,
   double damping,
   double max_step,
+  double wrist_level_offset,
   JointVector & solution,
   double & final_error,
   int & iterations);

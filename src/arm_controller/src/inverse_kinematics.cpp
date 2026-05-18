@@ -651,7 +651,7 @@ bool solve_inverse_kinematics_with_tool_direction(
 // Level-constrained FK / Jacobian / IK
 // =========================================================================
 //
-// These functions enforce the hard constraint:  wrist = elbow - shoulder
+// These functions enforce the hard constraint:  wrist = elbow - shoulder + offset
 // which keeps the end-effector horizontal (tool X-axis in the XY plane).
 // The reduced system has 3 variables (q0:base_yaw, q1:shoulder, q2:elbow)
 // and wrist q3 is derived automatically.
@@ -660,15 +660,16 @@ Eigen::Vector3d compute_end_effector_position_level(
   const std::array<Eigen::Vector3d, kJointCount> & joint_origins,
   const std::array<Eigen::Vector3d, kJointCount> & joint_axes,
   const Eigen::Vector3d & tool_offset,
-  const Eigen::Vector3d & joints)
+  const Eigen::Vector3d & joints,
+  double wrist_level_offset)
 {
   // `joints` is a 3-element vector [q0, q1, q2].
-  // Build the full 4-DOF vector with q3 = q2 - q1.
+  // Build the full 4-DOF vector with q3 = q2 - q1 + offset.
   JointVector full_joints = JointVector::Zero();
   full_joints(0) = joints(0);
   full_joints(1) = joints(1);
   full_joints(2) = joints(2);
-  full_joints(3) = joints(2) - joints(1);
+  full_joints(3) = joints(2) - joints(1) + wrist_level_offset;
   return compute_end_effector_position(joint_origins, joint_axes, full_joints, tool_offset);
 }
 
@@ -678,16 +679,18 @@ Eigen::Matrix<double, 3, 3> numerical_jacobian_level(
   const std::array<double, kJointCount> & lower_limits,
   const std::array<double, kJointCount> & upper_limits,
   const Eigen::Vector3d & tool_offset,
-  const Eigen::Vector3d & joints)
+  const Eigen::Vector3d & joints,
+  double wrist_level_offset)
 {
   // `joints` is a 3-element vector [q0, q1, q2].
   // Build the full 4-DOF vector for computing the 3×4 full Jacobian,
-  // then reduce to 3×3 using the chain rule with q3 = q2 - q1.
+  // then reduce to 3×3 using the chain rule with q3 = q2 - q1 + offset.
+  // The offset is constant, so dq3/dq1 = -1, dq3/dq2 = +1 (unchanged).
   JointVector full_joints = JointVector::Zero();
   full_joints(0) = joints(0);
   full_joints(1) = joints(1);
   full_joints(2) = joints(2);
-  full_joints(3) = joints(2) - joints(1);
+  full_joints(3) = joints(2) - joints(1) + wrist_level_offset;
 
   const Eigen::Matrix<double, 3, 4> jac_full =
     numerical_jacobian(joint_origins, joint_axes, lower_limits, upper_limits, tool_offset, full_joints);
@@ -715,6 +718,7 @@ bool solve_inverse_kinematics_level(
   int max_iterations,
   double damping,
   double max_step,
+  double wrist_level_offset,
   JointVector & solution,
   double & final_error,
   int & iterations)
@@ -729,7 +733,7 @@ bool solve_inverse_kinematics_level(
   // Default output: clamp the seed and enforce level constraint.
   JointVector clamped_seed = clamp_to_limits(seed, lower_limits, upper_limits);
   clamped_seed(3) = std::clamp(
-    clamped_seed(2) - clamped_seed(1), lower_limits[3], upper_limits[3]);
+    clamped_seed(2) - clamped_seed(1) + wrist_level_offset, lower_limits[3], upper_limits[3]);
   solution = clamped_seed;
   final_error = std::numeric_limits<double>::infinity();
   iterations = 0;
@@ -768,7 +772,7 @@ bool solve_inverse_kinematics_level(
       }
 
       const Eigen::Vector3d current_position =
-        compute_end_effector_position_level(joint_origins, joint_axes, tool_offset, joints_3dof);
+        compute_end_effector_position_level(joint_origins, joint_axes, tool_offset, joints_3dof, wrist_level_offset);
       const Eigen::Vector3d error = target_position - current_position;
       const double error_norm = error.norm();
 
@@ -778,7 +782,7 @@ bool solve_inverse_kinematics_level(
       full_joints(1) = joints_3dof(1);
       full_joints(2) = joints_3dof(2);
       full_joints(3) = std::clamp(
-        joints_3dof(2) - joints_3dof(1), lower_limits[3], upper_limits[3]);
+        joints_3dof(2) - joints_3dof(1) + wrist_level_offset, lower_limits[3], upper_limits[3]);
 
       if (error_norm < best_failed_error) {
         best_failed_solution = full_joints;
@@ -800,7 +804,7 @@ bool solve_inverse_kinematics_level(
 
       const Eigen::Matrix<double, 3, 3> jacobian =
         numerical_jacobian_level(
-          joint_origins, joint_axes, lower_limits, upper_limits, tool_offset, joints_3dof);
+          joint_origins, joint_axes, lower_limits, upper_limits, tool_offset, joints_3dof, wrist_level_offset);
 
       // DLS update in 3-DOF space.
       auto damped = (jacobian * jacobian.transpose()).eval();
