@@ -7,15 +7,16 @@ quadruped_gait_controller:
     # 手柄遥控参数 (dog_teleop 集成)
     cmd_vel_topic: /cmd_vel         # 订阅 dog_teleop 发布的速度指令
     cmd_vel_timeout: 0.5            # 超过此时间未收到新指令则归零，单位 s
-    max_linear_vel: 0.5             # 对应满幅步长的线速度上限，单位 m/s
+    max_linear_vel: 0.25            # 对应满幅步长的线速度上限；仿真低速跟随时调小可避免步幅过小走偏
+    max_lateral_vel: 0.5            # 对应满幅横移步长的线速度上限，单位 m/s
     max_angular_vel: 1.0            # 对应满幅转向差速的角速度上限，单位 rad/s
     cmd_vel_deadzone: 0.05          # 速度指令绝对值之和低于此阈值视为"停止"
 
     # 步态基础参数
-    gait_profile: trot              # 步态类型；当前使用对角小跑 trot
-    step_length: 0.055              # 单步名义步长，越大前后摆动越明显
-    step_height: 0.015              # 摆动相基础抬脚高度
-    gait_period: 0.8                # 一个完整步态周期时长，单位 s
+    gait_profile: legacy_walk              # 步态类型；当前使用对角小跑 trot
+    step_length: 0.095              # 单步名义步长，越大前后摆动越明显
+    step_height: 0.020              # 摆动相基础抬脚高度
+    gait_period: 0.5                # 一个完整步态周期时长，单位 s
     stance_depth: 0.39              # 名义站高/支撑深度，越大腿越“长”
     control_rate: 400.0             # 控制循环频率，单位 Hz
     swing_ratio: 0.50               # 摆动相占整个周期的比例；trot 常取 0.5 左右
@@ -40,7 +41,7 @@ quadruped_gait_controller:
     filter_alpha: 0.80              # 一阶低通滤波系数，越大响应越快、越小越平滑
 
     # 启动、站立和步态切换
-    stand_only: false               # true 时只站立不进入行走
+    stand_only: true                 # 仿真默认站住等待；收到导航预览节点发布的非零 /cmd_vel 后再进入行走
     enable_startup_stand: true      # 启动先走站起流程，再切到站稳/行走
     use_direct_joint_stand_targets: true   # 站立相直接用关节角目标，而不是站姿 IK 结果
     use_startup_crouch_pose: false         # 是否先进入一个低趴 crouch 姿态
@@ -63,15 +64,18 @@ quadruped_gait_controller:
     shank_mass_ratio: 0.5           # 等效腿质量分给小腿的比例，剩余部分给大腿
     debug_joint_tracking: false     # 是否周期性打印关节跟踪调试日志
     debug_log_period: 0.5           # 调试日志打印周期，单位 s
-
+    auto_sequence_lateral_haa_amplitude: 0.060    # lateral_left/lateral_right 纯横移 HAA 横摆幅度
+    auto_sequence_lateral_haa_signs: [-1.0, 1.0, -1.0, 1.0] # LF,LH,RF,RH；与真机正左/正右配置保持一致
+    auto_sequence_lateral_haa_scales: [1.0, 1.0, 1.0, 1.0] # LF,LH,RF,RH；横向摆幅逐腿倍率
     # 轨迹数组顺序统一为: LF, LH, RF, RH
     phase_offsets: [0.0, 0.5, 0.5, 0.0]
-    # foot_x_signs: [-1.0, -1.0, -1.0, -1.0]  # 按当前模型实测，-1 才是前进方向
+    foot_x_signs: [-1.0, -1.0, -1.0, -1.0]  # 按当前模型实测，-1 才是前进方向；保持 /cmd_vel.linear.x > 0 为向前
+    leg_step_length_scales: [1.0, 1.0, 1.0, 1.0] # LF,LH,RF,RH；直走偏航时微调左右腿前进步幅
     # foot_x_signs: [1.0, -1.0, -1.0, 1.0]  # 向左转
     #foot_x_signs: [-1.0, 1.0, 1.0, -1.0]  # 向右转
-    foot_x_signs: [1.0, 1.0, 1.0, 1.0]  # 后退
+    # foot_x_signs: [1.0, 1.0, 1.0, 1.0]  # 后退
     # foot_x_signs: [0.0, 0.0, 0.0, 0.0]  # 原地踏步：关闭足端 x 方向摆动，只保留抬腿节奏
-    gait_foot_x_offsets: [0.02, -0.01, 0.02, -0.01]  # 让后腿名义落点别太靠后，减轻后腿起摆时把机身往后顶
+    gait_foot_x_offsets: [0.0, 0.0, 0.0, 0.0]        # 直线调参先保持四腿对称，避免前后腿落点差引入偏航
     stand_foot_x_offsets: [0.0, 0.0, 0.0, 0.0]       # 站姿下四条腿的足端 x 偏移
 
     # 关节名义角、方向和站姿目标

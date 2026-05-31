@@ -26,6 +26,8 @@ setup(
     entry_points={
         'console_scripts': [
             'yolo_detect_node = dog_vision.yolo_detect_node:main',
+            'target_selector_node = dog_vision.target_selector_node:main',
+            'box_nav_preview_node = dog_vision.box_nav_preview_node:main',
         ],
     },
 )

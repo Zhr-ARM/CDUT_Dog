@@ -257,6 +257,7 @@ public:
     shank_mass_ratio_ = declare_parameter<double>("shank_mass_ratio", 0.5);
     debug_joint_tracking_ = declare_parameter<bool>("debug_joint_tracking", false);
     debug_log_period_ = declare_parameter<double>("debug_log_period", 0.5);
+    status_publish_period_ = declare_parameter<double>("status_publish_period", 0.5);
 
     // cmd_vel 遥控参数
     const std::string cmd_vel_topic =
@@ -273,6 +274,8 @@ public:
       declare_parameter<std::vector<double>>("phase_offsets", {0.0, 0.5, 0.5, 0.0});
     foot_x_signs_ =
       declare_parameter<std::vector<double>>("foot_x_signs", {1.0, 1.0, 1.0, 1.0});
+    leg_step_length_scales_ =
+      declare_parameter<std::vector<double>>("leg_step_length_scales", {1.0, 1.0, 1.0, 1.0});
     gait_foot_x_offsets_ =
       declare_parameter<std::vector<double>>("gait_foot_x_offsets", {0.0, 0.0, 0.0, 0.0});
     stand_foot_x_offsets_ =
@@ -350,6 +353,7 @@ public:
     validate_vector_sizes({
       {"phase_offsets", &phase_offsets_},
       {"foot_x_signs", &foot_x_signs_},
+      {"leg_step_length_scales", &leg_step_length_scales_},
       {"gait_foot_x_offsets", &gait_foot_x_offsets_},
       {"stand_foot_x_offsets", &stand_foot_x_offsets_},
       {"nominal_haa_angles", &nominal_haa_angles_},
@@ -434,6 +438,10 @@ public:
       scale = std::clamp(scale, 0.0, 3.0);
     }
     rear_swing_step_length_scale_ = std::clamp(rear_swing_step_length_scale_, 0.1, 2.0);
+    for (double & scale : leg_step_length_scales_)
+    {
+      scale = std::clamp(scale, 0.0, 1.5);
+    }
     rear_swing_step_height_scale_ = std::clamp(rear_swing_step_height_scale_, 0.1, 2.0);
     rear_swing_gain_scale_ = std::clamp(rear_swing_gain_scale_, 0.1, 2.0);
     rear_swing_hfe_motion_scale_ = std::clamp(rear_swing_hfe_motion_scale_, 0.1, 4.0);
@@ -586,6 +594,7 @@ public:
     // - 订阅 /joint_states
     // - 周期发布 /motor_cmd
     cmd_pub_ = create_publisher<std_msgs::msg::Float64MultiArray>(command_topic_, 10);
+    gait_status_pub_ = create_publisher<std_msgs::msg::String>("/gait_status", 10);
     joint_state_sub_ = create_subscription<sensor_msgs::msg::JointState>(
       joint_state_topic_, rclcpp::SystemDefaultsQoS(),
       std::bind(&QuadrupedGaitController::joint_state_callback, this, std::placeholders::_1));
@@ -684,6 +693,7 @@ private:
     // 每条腿的相位、摆动/支撑状态和局部 tau 统一由 gait schedule 生成。
     // 这样后续扩展 crawl/pace/bound 时，主控制循环不需要继续堆相位细节。
     const auto gait_schedule = make_gait_schedule(global_phase_, phase_offsets_, swing_ratio_);
+    maybe_publish_gait_status(now, gait_schedule);
     double direct_step_support_alpha = 0.0;
     if (use_direct_joint_in_place_step_ && motion_state_ == MotionState::kWalk)
     {
@@ -886,7 +896,8 @@ private:
         }
 
         const double leg_step_length =
-          base_step_length * teleop_amp * (rear_leg ? rear_swing_step_length_scale_ : 1.0);
+          base_step_length * teleop_amp * leg_step_length_scales_[leg_index] *
+          (rear_leg ? rear_swing_step_length_scale_ : 1.0);
         const double leg_step_height =
           base_step_height * (rear_leg ? rear_swing_step_height_scale_ : 1.0);
         const double gait_foot_x_offset =
@@ -955,6 +966,55 @@ private:
           leg.kfe_filter.filter(ik.kfe + leg.kfe_offset), kKfeLower, kKfeUpper);
         gait_hfe_velocity = leg.hfe_velocity_filter.filter(joint_velocity.hfe);
         gait_kfe_velocity = leg.kfe_velocity_filter.filter(joint_velocity.kfe);
+
+        if (sequence_motion_active || use_cmd_vel_for_stride)
+        {
+          double lateral_haa_command = 0.0;
+          if (sequence_motion_active)
+          {
+            const double lateral_haa_direction =
+              current_auto_sequence_lateral_direction(leg_index);
+            if (std::abs(lateral_haa_direction) > 1e-6)
+            {
+              lateral_haa_command +=
+                lateral_haa_direction *
+                current_auto_sequence_lateral_haa_amplitude(leg_index) *
+                sequence_motion_alpha;
+            }
+          }
+          if (use_cmd_vel_for_stride && std::abs(cmd_lateral_scale) > 1e-6)
+          {
+            lateral_haa_command +=
+              cmd_lateral_scale *
+              auto_sequence_lateral_haa_amplitude_ *
+              auto_sequence_lateral_haa_scales_[leg_index] *
+              auto_sequence_lateral_haa_signs_[leg_index];
+          }
+          if (std::abs(lateral_haa_command) > 1e-6)
+          {
+            double lateral_profile = 0.0;
+            double lateral_velocity = 0.0;
+            if (leg_in_swing)
+            {
+              lateral_profile = -std::cos(kPi * phase_state.swing_tau);
+              lateral_velocity =
+                swing_period_ > 1e-6 ?
+                kPi * std::sin(kPi * phase_state.swing_tau) / swing_period_ :
+                0.0;
+            }
+            else
+            {
+              lateral_profile = 1.0 - 2.0 * phase_state.stance_tau;
+              lateral_velocity = stance_period_ > 1e-6 ? -2.0 / stance_period_ : 0.0;
+            }
+
+            gait_haa = std::clamp(
+              gait_haa + lateral_haa_command * lateral_profile,
+              kHaaLower,
+              kHaaUpper);
+            gait_haa_velocity = lateral_haa_command * lateral_velocity;
+          }
+        }
       }
 
       // 真机原地踏步可以直接围绕已标定好的站姿关节角做小幅收腿。
@@ -1294,6 +1354,42 @@ private:
   void maybe_log_joint_tracking(const rclcpp::Time & now)
   {
     (void) now;
+  }
+
+  void maybe_publish_gait_status(
+    const rclcpp::Time & now,
+    const std::array<LegPhaseState, kLegCount> & gait_schedule)
+  {
+    if (!gait_status_pub_ || status_publish_period_ <= 0.0)
+    {
+      return;
+    }
+    if (last_status_publish_time_.nanoseconds() != 0 &&
+      (now - last_status_publish_time_).seconds() < status_publish_period_)
+    {
+      return;
+    }
+    last_status_publish_time_ = now;
+
+    const double cmd_speed =
+      std::abs(cmd_vel_linear_x_) + std::abs(cmd_vel_linear_y_) +
+      std::abs(cmd_vel_angular_z_);
+
+    std::ostringstream stream;
+    stream
+      << "motion=" << motion_state_name(motion_state_)
+      << ", gait_profile=" << gait_profile_
+      << ", action=" << current_action_name()
+      << ", command_source=" << current_command_source(cmd_speed)
+      << ", global_phase=" << global_phase_
+      << ", swing_legs=" << swing_leg_names(gait_schedule)
+      << ", cmd_vel=(x=" << cmd_vel_linear_x_
+      << ", y=" << cmd_vel_linear_y_
+      << ", yaw=" << cmd_vel_angular_z_ << ")";
+
+    std_msgs::msg::String status;
+    status.data = stream.str();
+    gait_status_pub_->publish(status);
   }
 
   // 当前只显式支持 legacy_walk 和 trot 两种步态，其中 trot 会启用
@@ -2450,6 +2546,69 @@ private:
     return "unknown";
   }
 
+  const char * current_action_name() const
+  {
+    if (action_command_active_)
+    {
+      return gait_action_stage_name(action_command_stage_);
+    }
+    if (enable_auto_sequence_)
+    {
+      return auto_sequence_stage_name(auto_sequence_stage_);
+    }
+    if (motion_state_ == MotionState::kWalk)
+    {
+      return "cmd_vel_walk";
+    }
+    return "stand";
+  }
+
+  const char * current_command_source(double cmd_speed) const
+  {
+    if (action_command_active_)
+    {
+      return "gait_action";
+    }
+    if (enable_auto_sequence_)
+    {
+      return "auto_sequence";
+    }
+    if (cmd_vel_received_ && cmd_speed > cmd_vel_deadzone_)
+    {
+      return "cmd_vel";
+    }
+    if (cmd_vel_received_)
+    {
+      return "cmd_vel_zero";
+    }
+    return "none";
+  }
+
+  static std::string swing_leg_names(const std::array<LegPhaseState, kLegCount> & gait_schedule)
+  {
+    const std::array<const char *, kLegCount> names = {"LF", "LH", "RF", "RH"};
+    std::ostringstream stream;
+    bool first = true;
+    for (size_t i = 0; i < kLegCount; ++i)
+    {
+      if (!gait_schedule[i].in_swing)
+      {
+        continue;
+      }
+      if (!first)
+      {
+        stream << "+";
+      }
+      stream << names[i];
+      first = false;
+    }
+    if (first)
+    {
+      return "none";
+    }
+    return stream.str();
+  }
+
   // 成员变量按用途分组:
   // - 标量参数
   // - 按腿数组参数
@@ -2532,6 +2691,7 @@ private:
   double shank_mass_ratio_{0.5};
   bool debug_joint_tracking_{false};
   double debug_log_period_{0.5};
+  double status_publish_period_{0.5};
   bool auto_zero_offsets_{true};
   bool use_direct_joint_stand_targets_{true};
   bool use_startup_crouch_pose_{true};
@@ -2551,6 +2711,7 @@ private:
 
   std::vector<double> phase_offsets_;
   std::vector<double> foot_x_signs_;
+  std::vector<double> leg_step_length_scales_;
   std::vector<double> gait_foot_x_offsets_;
   std::vector<double> stand_foot_x_offsets_;
   std::vector<double> nominal_haa_angles_;
@@ -2599,8 +2760,10 @@ private:
 
   rclcpp::Time last_time_{0, 0, RCL_ROS_TIME};
   rclcpp::Time last_debug_log_time_{0, 0, RCL_ROS_TIME};
+  rclcpp::Time last_status_publish_time_{0, 0, RCL_ROS_TIME};
   bool last_time_initialized_{false};
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr cmd_pub_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr gait_status_pub_;
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_sub_;
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr gait_action_sub_;
