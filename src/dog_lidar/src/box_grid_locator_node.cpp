@@ -129,6 +129,12 @@ public:
     template_min_z_span_ = declare_parameter<double>("template_min_z_span", 0.12);
     template_upper_z_min_ = declare_parameter<double>("template_upper_z_min", -0.18);
     template_min_upper_points_ = declare_parameter<int>("template_min_upper_points", 2);
+    template_min_y_span_ = declare_parameter<double>("template_min_y_span", 0.12);
+    template_min_y_bins_ = declare_parameter<int>("template_min_y_bins", 3);
+    template_max_face_depth_ = declare_parameter<double>("template_max_face_depth", 0.28);
+    template_guard_y_margin_ = declare_parameter<double>("template_guard_y_margin", 0.18);
+    template_max_guard_points_ = declare_parameter<int>("template_max_guard_points", 8);
+    template_max_guard_ratio_ = declare_parameter<double>("template_max_guard_ratio", 0.60);
 
     min_face_points_ = declare_parameter<int>("min_face_points", 3);
     min_face_width_y_ = declare_parameter<double>("min_face_width_y", 0.03);
@@ -148,7 +154,18 @@ public:
     row_spacing_tolerance_ = declare_parameter<double>("row_spacing_tolerance", 0.25);
     row_x_tolerance_ = declare_parameter<double>("row_x_tolerance", 0.45);
     min_layout_matches_ = declare_parameter<int>("min_layout_matches", 3);
-    infer_missing_boxes_ = declare_parameter<bool>("infer_missing_boxes", true);
+    infer_missing_boxes_ = declare_parameter<bool>("infer_missing_boxes", false);
+    use_layout_stabilizer_ = declare_parameter<bool>("use_layout_stabilizer", true);
+    layout_switch_confirm_frames_ = declare_parameter<int>("layout_switch_confirm_frames", 3);
+    layout_hold_frames_ = declare_parameter<int>("layout_hold_frames", 5);
+    layout_smoothing_alpha_ = declare_parameter<double>("layout_smoothing_alpha", 0.35);
+    layout_max_x_shift_ = declare_parameter<double>("layout_max_x_shift", 0.25);
+    layout_max_y_shift_ = declare_parameter<double>("layout_max_y_shift", 0.35);
+    use_target_stabilizer_ = declare_parameter<bool>("use_target_stabilizer", true);
+    target_confirm_frames_ = declare_parameter<int>("target_confirm_frames", 3);
+    target_hold_frames_ = declare_parameter<int>("target_hold_frames", 5);
+    target_smoothing_alpha_ = declare_parameter<double>("target_smoothing_alpha", 0.35);
+    target_reset_distance_ = declare_parameter<double>("target_reset_distance", 0.45);
 
     processing_period_ = declare_parameter<double>("processing_period", 0.20);
     marker_lifetime_ = declare_parameter<double>("marker_lifetime", 1.00);
@@ -185,6 +202,12 @@ public:
     template_min_total_points_ = std::max(1, template_min_total_points_);
     template_min_z_span_ = std::max(0.02, template_min_z_span_);
     template_min_upper_points_ = std::max(1, template_min_upper_points_);
+    template_min_y_span_ = std::max(0.0, template_min_y_span_);
+    template_min_y_bins_ = std::max(1, template_min_y_bins_);
+    template_max_face_depth_ = std::max(0.02, template_max_face_depth_);
+    template_guard_y_margin_ = std::max(0.0, template_guard_y_margin_);
+    template_max_guard_points_ = std::max(0, template_max_guard_points_);
+    template_max_guard_ratio_ = std::max(0.0, template_max_guard_ratio_);
     min_face_points_ = std::max(1, min_face_points_);
     max_face_width_y_ = std::max(min_face_width_y_, max_face_width_y_);
     max_face_height_z_ = std::max(min_face_height_z_, max_face_height_z_);
@@ -195,6 +218,15 @@ public:
     row_spacing_tolerance_ = std::max(0.02, row_spacing_tolerance_);
     row_x_tolerance_ = std::max(0.05, row_x_tolerance_);
     min_layout_matches_ = std::clamp(min_layout_matches_, 1, expected_cols_);
+    layout_switch_confirm_frames_ = std::max(1, layout_switch_confirm_frames_);
+    layout_hold_frames_ = std::max(0, layout_hold_frames_);
+    layout_smoothing_alpha_ = clampValue(layout_smoothing_alpha_, 0.0, 1.0);
+    layout_max_x_shift_ = std::max(0.02, layout_max_x_shift_);
+    layout_max_y_shift_ = std::max(0.02, layout_max_y_shift_);
+    target_confirm_frames_ = std::max(1, target_confirm_frames_);
+    target_hold_frames_ = std::max(0, target_hold_frames_);
+    target_smoothing_alpha_ = clampValue(target_smoothing_alpha_, 0.0, 1.0);
+    target_reset_distance_ = std::max(0.02, target_reset_distance_);
     processing_period_ = std::max(0.05, processing_period_);
     center_from_front_offset_ = std::max(0.0, center_from_front_offset_);
 
@@ -270,6 +302,12 @@ private:
     bool inferred = false;
   };
 
+  struct StableTargetPose
+  {
+    bool valid = false;
+    FaceCandidate candidate;
+  };
+
   struct RowLayoutResult
   {
     bool valid = false;
@@ -288,6 +326,16 @@ private:
     int matched_boxes = 0;
     int total_points = 0;
     std::vector<FaceCandidate> faces;
+  };
+
+  struct TargetTrack
+  {
+    bool active = false;
+    int row = 0;
+    int col = -1;
+    int seen_frames = 0;
+    int missing_frames = 0;
+    FaceCandidate candidate;
   };
 
   enum class FaceRejectReason
@@ -323,8 +371,14 @@ private:
       RCLCPP_WARN(get_logger(), "Ignoring target id: expected [row, col].");
       return;
     }
+    const int previous_row = target_row_.load();
+    const int previous_col = target_col_.load();
     target_row_.store(msg->data[0]);
     target_col_.store(msg->data[1]);
+    if (previous_row != msg->data[0] || previous_col != msg->data[1]) {
+      std::lock_guard<std::mutex> lock(target_track_mutex_);
+      target_track_ = TargetTrack{};
+    }
   }
 
   void processLatestCloud()
@@ -379,6 +433,7 @@ private:
       }
     }
 
+    first_row_faces = stabilizeLayout(first_row_faces);
     publishMarkersAndTarget(msg->header, first_row_faces);
     publishStatus(
       sequence, msg->header.frame_id, raw_cloud->points.size(), roi_cloud->points.size(),
@@ -1116,6 +1171,151 @@ private:
     return candidate.score > current_best.score;
   }
 
+  std::vector<FaceCandidate> stabilizeLayout(const std::vector<FaceCandidate> & observed)
+  {
+    if (!use_layout_stabilizer_) {
+      return observed;
+    }
+
+    if (observed.empty()) {
+      if (stable_layout_valid_ && stable_layout_missing_frames_ < layout_hold_frames_) {
+        stable_layout_missing_frames_++;
+        return stable_layout_faces_;
+      }
+      stable_layout_valid_ = false;
+      pending_layout_valid_ = false;
+      return {};
+    }
+
+    if (!stable_layout_valid_) {
+      stable_layout_faces_ = observed;
+      stable_layout_valid_ = true;
+      stable_layout_missing_frames_ = 0;
+      pending_layout_valid_ = false;
+      return stable_layout_faces_;
+    }
+
+    if (layoutCompatible(observed, stable_layout_faces_)) {
+      smoothLayout(stable_layout_faces_, observed);
+      stable_layout_missing_frames_ = 0;
+      pending_layout_valid_ = false;
+      return stable_layout_faces_;
+    }
+
+    if (!pending_layout_valid_ || !layoutCompatible(observed, pending_layout_faces_)) {
+      pending_layout_faces_ = observed;
+      pending_layout_valid_ = true;
+      pending_layout_confirm_frames_ = 1;
+    } else {
+      smoothLayout(pending_layout_faces_, observed);
+      pending_layout_confirm_frames_++;
+    }
+
+    if (pending_layout_confirm_frames_ >= layout_switch_confirm_frames_) {
+      stable_layout_faces_ = pending_layout_faces_;
+      stable_layout_valid_ = true;
+      stable_layout_missing_frames_ = 0;
+      pending_layout_valid_ = false;
+      return stable_layout_faces_;
+    }
+
+    if (stable_layout_missing_frames_ < layout_hold_frames_) {
+      stable_layout_missing_frames_++;
+      return stable_layout_faces_;
+    }
+
+    return observed;
+  }
+
+  bool layoutCompatible(
+    const std::vector<FaceCandidate> & candidate,
+    const std::vector<FaceCandidate> & reference) const
+  {
+    if (candidate.empty() || reference.empty()) {
+      return false;
+    }
+
+    int matches = 0;
+    for (const auto & observed : candidate) {
+      const auto * existing = findFaceByGrid(reference, observed.row, observed.col);
+      if (!existing) {
+        continue;
+      }
+      const double dx = std::abs(observed.front_x - existing->front_x);
+      const double dy = std::abs(observed.front_y - existing->front_y);
+      if (dx <= layout_max_x_shift_ && dy <= layout_max_y_shift_) {
+        matches++;
+      }
+    }
+
+    return matches >= std::min<int>(2, std::min(candidate.size(), reference.size()));
+  }
+
+  void smoothLayout(
+    std::vector<FaceCandidate> & stable,
+    const std::vector<FaceCandidate> & observed) const
+  {
+    std::vector<FaceCandidate> updated;
+    updated.reserve(std::max(stable.size(), observed.size()));
+
+    for (auto stable_face : stable) {
+      const auto * observed_face = findFaceByGrid(observed, stable_face.row, stable_face.col);
+      if (!observed_face) {
+        updated.push_back(stable_face);
+        continue;
+      }
+      smoothFace(stable_face, *observed_face, layout_smoothing_alpha_);
+      updated.push_back(stable_face);
+    }
+
+    for (const auto & observed_face : observed) {
+      if (findFaceByGrid(updated, observed_face.row, observed_face.col) == nullptr) {
+        updated.push_back(observed_face);
+      }
+    }
+
+    std::sort(updated.begin(), updated.end(), [](const auto & a, const auto & b) {
+      return a.col < b.col;
+    });
+    stable = updated;
+  }
+
+  static const FaceCandidate * findFaceByGrid(
+    const std::vector<FaceCandidate> & faces,
+    int row,
+    int col)
+  {
+    for (const auto & face : faces) {
+      if (face.row == row && face.col == col) {
+        return &face;
+      }
+    }
+    return nullptr;
+  }
+
+  static void smoothFace(
+    FaceCandidate & stable,
+    const FaceCandidate & observed,
+    double alpha)
+  {
+    stable.center_x = blend(stable.center_x, observed.center_x, alpha);
+    stable.center_y = blend(stable.center_y, observed.center_y, alpha);
+    stable.center_z = blend(stable.center_z, observed.center_z, alpha);
+    stable.front_x = blend(stable.front_x, observed.front_x, alpha);
+    stable.front_y = blend(stable.front_y, observed.front_y, alpha);
+    stable.front_z = blend(stable.front_z, observed.front_z, alpha);
+    stable.size_x = blend(stable.size_x, observed.size_x, alpha);
+    stable.size_y = blend(stable.size_y, observed.size_y, alpha);
+    stable.size_z = blend(stable.size_z, observed.size_z, alpha);
+    stable.point_count = observed.point_count;
+    stable.inferred = observed.inferred;
+  }
+
+  static double blend(double previous, double current, double alpha)
+  {
+    return previous * (1.0 - alpha) + current * alpha;
+  }
+
   TemplateMatch fitTemplateRow(const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud) const
   {
     std::vector<double> front_x_samples;
@@ -1172,10 +1372,10 @@ private:
     result.first_col_y = first_col_y;
 
     std::vector<std::vector<int>> box_indices(static_cast<size_t>(expected_cols_));
+    std::vector<std::vector<int>> guard_indices(static_cast<size_t>(expected_cols_));
+    std::vector<std::vector<int>> front_box_indices(static_cast<size_t>(expected_cols_));
     std::vector<double> nearest_x(static_cast<size_t>(expected_cols_), std::numeric_limits<double>::infinity());
-    std::vector<double> min_z(static_cast<size_t>(expected_cols_), std::numeric_limits<double>::infinity());
-    std::vector<double> max_z(static_cast<size_t>(expected_cols_), -std::numeric_limits<double>::infinity());
-    std::vector<int> upper_points(static_cast<size_t>(expected_cols_), 0);
+    std::vector<bool> box_valid(static_cast<size_t>(expected_cols_), false);
 
     for (size_t i = 0; i < cloud->points.size(); ++i) {
       const auto & point = cloud->points[i];
@@ -1188,18 +1388,16 @@ private:
 
       for (int col = 0; col < expected_cols_; ++col) {
         const double expected_y = expectedColumnY(first_col_y, col);
-        if (std::abs(point.y - expected_y) > template_y_half_width_) {
+        const double y_error = std::abs(point.y - expected_y);
+        if (y_error > template_y_half_width_ + template_guard_y_margin_) {
           continue;
         }
-        box_indices[static_cast<size_t>(col)].push_back(static_cast<int>(i));
-        nearest_x[static_cast<size_t>(col)] =
-          std::min(nearest_x[static_cast<size_t>(col)], static_cast<double>(point.x));
-        min_z[static_cast<size_t>(col)] =
-          std::min(min_z[static_cast<size_t>(col)], static_cast<double>(point.z));
-        max_z[static_cast<size_t>(col)] =
-          std::max(max_z[static_cast<size_t>(col)], static_cast<double>(point.z));
-        if (point.z >= template_upper_z_min_) {
-          upper_points[static_cast<size_t>(col)]++;
+        if (y_error <= template_y_half_width_) {
+          box_indices[static_cast<size_t>(col)].push_back(static_cast<int>(i));
+          nearest_x[static_cast<size_t>(col)] =
+            std::min(nearest_x[static_cast<size_t>(col)], static_cast<double>(point.x));
+        } else {
+          guard_indices[static_cast<size_t>(col)].push_back(static_cast<int>(i));
         }
         break;
       }
@@ -1209,17 +1407,67 @@ private:
     int total_points = 0;
     double x_error_sum = 0.0;
     for (int col = 0; col < expected_cols_; ++col) {
-      const int points = static_cast<int>(box_indices[static_cast<size_t>(col)].size());
-      const double z_span =
-        std::isfinite(min_z[static_cast<size_t>(col)]) ?
-        max_z[static_cast<size_t>(col)] - min_z[static_cast<size_t>(col)] : 0.0;
+      const auto col_index = static_cast<size_t>(col);
+      if (!std::isfinite(nearest_x[col_index])) {
+        continue;
+      }
+
+      double min_x = std::numeric_limits<double>::infinity();
+      double max_x = -std::numeric_limits<double>::infinity();
+      double min_y = std::numeric_limits<double>::infinity();
+      double max_y = -std::numeric_limits<double>::infinity();
+      double min_z = std::numeric_limits<double>::infinity();
+      double max_z = -std::numeric_limits<double>::infinity();
+      int upper_points = 0;
+      int guard_points = 0;
+      std::unordered_set<int> y_bins;
+      const double max_front_x = nearest_x[col_index] + template_max_face_depth_;
+
+      for (const int point_index : box_indices[col_index]) {
+        const auto & point = cloud->points[static_cast<size_t>(point_index)];
+        if (point.x > max_front_x) {
+          continue;
+        }
+        front_box_indices[col_index].push_back(point_index);
+        min_x = std::min(min_x, static_cast<double>(point.x));
+        max_x = std::max(max_x, static_cast<double>(point.x));
+        min_y = std::min(min_y, static_cast<double>(point.y));
+        max_y = std::max(max_y, static_cast<double>(point.y));
+        min_z = std::min(min_z, static_cast<double>(point.z));
+        max_z = std::max(max_z, static_cast<double>(point.z));
+        y_bins.insert(static_cast<int>(std::floor(point.y / profile_y_bin_size_)));
+        if (point.z >= template_upper_z_min_) {
+          upper_points++;
+        }
+      }
+
+      for (const int point_index : guard_indices[col_index]) {
+        const auto & point = cloud->points[static_cast<size_t>(point_index)];
+        if (point.x <= max_front_x) {
+          guard_points++;
+        }
+      }
+
+      const int points = static_cast<int>(front_box_indices[col_index].size());
+      const double x_span = std::isfinite(min_x) ? max_x - min_x : 0.0;
+      const double y_span = std::isfinite(min_y) ? max_y - min_y : 0.0;
+      const double z_span = std::isfinite(min_z) ? max_z - min_z : 0.0;
+      const bool isolated =
+        guard_points <= template_max_guard_points_ ||
+        static_cast<double>(guard_points) <=
+        static_cast<double>(std::max(1, points)) * template_max_guard_ratio_;
       total_points += points;
       if (points >= template_min_box_points_ &&
+          y_span >= template_min_y_span_ &&
+          static_cast<int>(y_bins.size()) >= template_min_y_bins_ &&
+          x_span <= template_max_face_depth_ &&
           z_span >= template_min_z_span_ &&
-          upper_points[static_cast<size_t>(col)] >= template_min_upper_points_ &&
-          std::abs(nearest_x[static_cast<size_t>(col)] - front_x) <= template_x_tolerance_) {
+          upper_points >= template_min_upper_points_ &&
+          isolated &&
+          std::abs(nearest_x[col_index] - front_x) <= template_x_tolerance_) {
+        box_valid[col_index] = true;
         matched_boxes++;
-        x_error_sum += std::abs(nearest_x[static_cast<size_t>(col)] - front_x);
+        x_error_sum += std::abs(nearest_x[col_index] - front_x);
       }
     }
 
@@ -1237,9 +1485,17 @@ private:
       front_x * 2.0;
 
     for (int col = 0; col < expected_cols_; ++col) {
+      const auto col_index = static_cast<size_t>(col);
+      if (!box_valid[col_index] && !infer_missing_boxes_) {
+        continue;
+      }
       FaceCandidate face = makeTemplateFace(
-        cloud, box_indices[static_cast<size_t>(col)], front_x, expectedColumnY(first_col_y, col),
+        cloud, box_valid[col_index] ? front_box_indices[col_index] : box_indices[col_index],
+        front_x, expectedColumnY(first_col_y, col),
         col);
+      if (!box_valid[col_index]) {
+        face.inferred = true;
+      }
       result.faces.push_back(face);
     }
     return result;
@@ -1363,18 +1619,94 @@ private:
       const bool is_target = candidate.row == target_row && candidate.col == target_col;
       markers.markers.push_back(makeFaceMarker(frame_id, stamp, marker_id++, candidate, is_target));
       markers.markers.push_back(makeTextMarker(frame_id, stamp, marker_id++, candidate));
-      if (is_target) {
-        geometry_msgs::msg::PoseStamped pose;
-        pose.header.frame_id = frame_id;
-        pose.header.stamp = stamp;
-        pose.pose.position.x = candidate.center_x;
-        pose.pose.position.y = candidate.center_y;
-        pose.pose.position.z = candidate.center_z;
-        pose.pose.orientation.w = 1.0;
-        target_pose_pub_->publish(pose);
+    }
+    publishStableTargetPose(frame_id, stamp, candidates, target_row, target_col);
+    marker_pub_->publish(markers);
+  }
+
+  void publishStableTargetPose(
+    const std::string & frame_id,
+    const rclcpp::Time & stamp,
+    const std::vector<FaceCandidate> & candidates,
+    int target_row,
+    int target_col)
+  {
+    const auto * target = findFaceByGrid(candidates, target_row, target_col);
+    const auto stable_target = updateTargetTrack(target, target_row, target_col);
+    if (!stable_target.valid) {
+      return;
+    }
+
+    geometry_msgs::msg::PoseStamped pose;
+    pose.header.frame_id = frame_id;
+    pose.header.stamp = stamp;
+    pose.pose.position.x = stable_target.candidate.center_x;
+    pose.pose.position.y = stable_target.candidate.center_y;
+    pose.pose.position.z = stable_target.candidate.center_z;
+    pose.pose.orientation.w = 1.0;
+    target_pose_pub_->publish(pose);
+  }
+
+  StableTargetPose updateTargetTrack(
+    const FaceCandidate * observed,
+    int target_row,
+    int target_col)
+  {
+    std::lock_guard<std::mutex> lock(target_track_mutex_);
+
+    if (!use_target_stabilizer_) {
+      if (!observed) {
+        return {};
+      }
+      StableTargetPose target;
+      target.valid = true;
+      target.candidate = *observed;
+      return target;
+    }
+
+    if (target_track_.active &&
+        (target_track_.row != target_row || target_track_.col != target_col)) {
+      target_track_ = TargetTrack{};
+    }
+
+    if (!observed) {
+      if (target_track_.active && target_track_.missing_frames < target_hold_frames_) {
+        target_track_.missing_frames++;
+        StableTargetPose target;
+        target.valid = target_track_.seen_frames >= target_confirm_frames_;
+        target.candidate = target_track_.candidate;
+        return target;
+      }
+      target_track_ = TargetTrack{};
+      return {};
+    }
+
+    if (!target_track_.active) {
+      target_track_.active = true;
+      target_track_.row = target_row;
+      target_track_.col = target_col;
+      target_track_.seen_frames = 1;
+      target_track_.missing_frames = 0;
+      target_track_.candidate = *observed;
+    } else {
+      const double dx = observed->center_x - target_track_.candidate.center_x;
+      const double dy = observed->center_y - target_track_.candidate.center_y;
+      const double distance = std::hypot(dx, dy);
+      if (distance > target_reset_distance_) {
+        target_track_.seen_frames = 1;
+        target_track_.missing_frames = 0;
+        target_track_.candidate = *observed;
+      } else {
+        target_track_.seen_frames++;
+        target_track_.missing_frames = 0;
+        smoothFace(target_track_.candidate, *observed, target_smoothing_alpha_);
       }
     }
-    marker_pub_->publish(markers);
+
+    StableTargetPose target;
+    target.valid = target_track_.seen_frames >= target_confirm_frames_;
+    target.candidate = target_track_.candidate;
+    return target;
   }
 
   visualization_msgs::msg::Marker makeFaceMarker(
@@ -1558,6 +1890,12 @@ private:
   double template_min_z_span_ = 0.12;
   double template_upper_z_min_ = -0.18;
   int template_min_upper_points_ = 2;
+  double template_min_y_span_ = 0.12;
+  int template_min_y_bins_ = 3;
+  double template_max_face_depth_ = 0.28;
+  double template_guard_y_margin_ = 0.18;
+  int template_max_guard_points_ = 8;
+  double template_max_guard_ratio_ = 0.60;
 
   int min_face_points_ = 3;
   double min_face_width_y_ = 0.03;
@@ -1576,7 +1914,18 @@ private:
   double row_spacing_tolerance_ = 0.25;
   double row_x_tolerance_ = 0.45;
   int min_layout_matches_ = 3;
-  bool infer_missing_boxes_ = true;
+  bool infer_missing_boxes_ = false;
+  bool use_layout_stabilizer_ = true;
+  int layout_switch_confirm_frames_ = 3;
+  int layout_hold_frames_ = 5;
+  double layout_smoothing_alpha_ = 0.35;
+  double layout_max_x_shift_ = 0.25;
+  double layout_max_y_shift_ = 0.35;
+  bool use_target_stabilizer_ = true;
+  int target_confirm_frames_ = 3;
+  int target_hold_frames_ = 5;
+  double target_smoothing_alpha_ = 0.35;
+  double target_reset_distance_ = 0.45;
 
   double processing_period_ = 0.20;
   double marker_lifetime_ = 1.00;
@@ -1599,6 +1948,15 @@ private:
   sensor_msgs::msg::PointCloud2::SharedPtr latest_cloud_msg_;
   uint64_t latest_cloud_sequence_ = 0;
   uint64_t processed_cloud_sequence_ = 0;
+
+  bool stable_layout_valid_ = false;
+  std::vector<FaceCandidate> stable_layout_faces_;
+  int stable_layout_missing_frames_ = 0;
+  bool pending_layout_valid_ = false;
+  std::vector<FaceCandidate> pending_layout_faces_;
+  int pending_layout_confirm_frames_ = 0;
+  std::mutex target_track_mutex_;
+  TargetTrack target_track_;
 };
 
 int main(int argc, char ** argv)

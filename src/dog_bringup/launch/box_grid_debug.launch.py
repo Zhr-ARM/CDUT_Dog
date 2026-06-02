@@ -49,6 +49,12 @@ def generate_launch_description():
             DeclareLaunchArgument("template_min_z_span", default_value="0.12"),
             DeclareLaunchArgument("template_upper_z_min", default_value="-0.18"),
             DeclareLaunchArgument("template_min_upper_points", default_value="2"),
+            DeclareLaunchArgument("template_min_y_span", default_value="0.12"),
+            DeclareLaunchArgument("template_min_y_bins", default_value="3"),
+            DeclareLaunchArgument("template_max_face_depth", default_value="0.28"),
+            DeclareLaunchArgument("template_guard_y_margin", default_value="0.18"),
+            DeclareLaunchArgument("template_max_guard_points", default_value="8"),
+            DeclareLaunchArgument("template_max_guard_ratio", default_value="0.60"),
             DeclareLaunchArgument("min_face_points", default_value="3"),
             DeclareLaunchArgument("min_face_width_y", default_value="0.03"),
             DeclareLaunchArgument("max_face_width_y", default_value="0.45"),
@@ -65,7 +71,18 @@ def generate_launch_description():
             DeclareLaunchArgument("row_spacing_tolerance", default_value="0.25"),
             DeclareLaunchArgument("row_x_tolerance", default_value="0.45"),
             DeclareLaunchArgument("min_layout_matches", default_value="3"),
-            DeclareLaunchArgument("infer_missing_boxes", default_value="true"),
+            DeclareLaunchArgument("infer_missing_boxes", default_value="false"),
+            DeclareLaunchArgument("use_layout_stabilizer", default_value="true"),
+            DeclareLaunchArgument("layout_switch_confirm_frames", default_value="3"),
+            DeclareLaunchArgument("layout_hold_frames", default_value="5"),
+            DeclareLaunchArgument("layout_smoothing_alpha", default_value="0.35"),
+            DeclareLaunchArgument("layout_max_x_shift", default_value="0.25"),
+            DeclareLaunchArgument("layout_max_y_shift", default_value="0.35"),
+            DeclareLaunchArgument("use_target_stabilizer", default_value="true"),
+            DeclareLaunchArgument("target_confirm_frames", default_value="3"),
+            DeclareLaunchArgument("target_hold_frames", default_value="5"),
+            DeclareLaunchArgument("target_smoothing_alpha", default_value="0.35"),
+            DeclareLaunchArgument("target_reset_distance", default_value="0.45"),
             DeclareLaunchArgument("processing_period", default_value="0.20"),
             DeclareLaunchArgument("marker_lifetime", default_value="1.00"),
             DeclareLaunchArgument("status_include_faces", default_value="false"),
@@ -205,6 +222,24 @@ def generate_launch_description():
                         "template_min_upper_points": ParameterValue(
                             LaunchConfiguration("template_min_upper_points"), value_type=int
                         ),
+                        "template_min_y_span": ParameterValue(
+                            LaunchConfiguration("template_min_y_span"), value_type=float
+                        ),
+                        "template_min_y_bins": ParameterValue(
+                            LaunchConfiguration("template_min_y_bins"), value_type=int
+                        ),
+                        "template_max_face_depth": ParameterValue(
+                            LaunchConfiguration("template_max_face_depth"), value_type=float
+                        ),
+                        "template_guard_y_margin": ParameterValue(
+                            LaunchConfiguration("template_guard_y_margin"), value_type=float
+                        ),
+                        "template_max_guard_points": ParameterValue(
+                            LaunchConfiguration("template_max_guard_points"), value_type=int
+                        ),
+                        "template_max_guard_ratio": ParameterValue(
+                            LaunchConfiguration("template_max_guard_ratio"), value_type=float
+                        ),
                         "min_face_points": ParameterValue(
                             LaunchConfiguration("min_face_points"), value_type=int
                         ),
@@ -258,6 +293,39 @@ def generate_launch_description():
                         ),
                         "infer_missing_boxes": ParameterValue(
                             LaunchConfiguration("infer_missing_boxes"), value_type=bool
+                        ),
+                        "use_layout_stabilizer": ParameterValue(
+                            LaunchConfiguration("use_layout_stabilizer"), value_type=bool
+                        ),
+                        "layout_switch_confirm_frames": ParameterValue(
+                            LaunchConfiguration("layout_switch_confirm_frames"), value_type=int
+                        ),
+                        "layout_hold_frames": ParameterValue(
+                            LaunchConfiguration("layout_hold_frames"), value_type=int
+                        ),
+                        "layout_smoothing_alpha": ParameterValue(
+                            LaunchConfiguration("layout_smoothing_alpha"), value_type=float
+                        ),
+                        "layout_max_x_shift": ParameterValue(
+                            LaunchConfiguration("layout_max_x_shift"), value_type=float
+                        ),
+                        "layout_max_y_shift": ParameterValue(
+                            LaunchConfiguration("layout_max_y_shift"), value_type=float
+                        ),
+                        "use_target_stabilizer": ParameterValue(
+                            LaunchConfiguration("use_target_stabilizer"), value_type=bool
+                        ),
+                        "target_confirm_frames": ParameterValue(
+                            LaunchConfiguration("target_confirm_frames"), value_type=int
+                        ),
+                        "target_hold_frames": ParameterValue(
+                            LaunchConfiguration("target_hold_frames"), value_type=int
+                        ),
+                        "target_smoothing_alpha": ParameterValue(
+                            LaunchConfiguration("target_smoothing_alpha"), value_type=float
+                        ),
+                        "target_reset_distance": ParameterValue(
+                            LaunchConfiguration("target_reset_distance"), value_type=float
                         ),
                         "processing_period": ParameterValue(
                             LaunchConfiguration("processing_period"), value_type=float
