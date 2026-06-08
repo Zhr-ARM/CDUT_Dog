@@ -24,6 +24,8 @@
   <exec_depend>mit_controller</exec_depend>
   <exec_depend>dog_position_control</exec_depend>
   <exec_depend>deep_motor_ros</exec_depend>
+  <exec_depend>dog_teleop</exec_depend>
+  <exec_depend>dog_imu</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

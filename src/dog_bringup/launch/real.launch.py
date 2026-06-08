@@ -11,6 +11,8 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     bringup_pkg = get_package_share_directory("dog_bringup")
+    teleop_pkg = get_package_share_directory("dog_teleop")
+    imu_pkg = get_package_share_directory("dog_imu")
     motor_param_file = os.path.join(
         get_package_share_directory("deep_motor_ros"),
         "config",
@@ -21,9 +23,16 @@ def generate_launch_description():
         "config",
         "gait_controller_real_stand.yaml",
     )
+    teleop_param_file = os.path.join(
+        teleop_pkg,
+        "config",
+        "dog_teleop.yaml",
+    )
 
     launch_simulation = LaunchConfiguration("launch_simulation")
     launch_rviz = LaunchConfiguration("launch_rviz")
+    launch_teleop = LaunchConfiguration("launch_teleop")
+    launch_imu = LaunchConfiguration("launch_imu")
     shared_command_topic = LaunchConfiguration("shared_command_topic")
     hardware_joint_state_topic = LaunchConfiguration("hardware_joint_state_topic")
     hardware_feedback_topic = LaunchConfiguration("hardware_feedback_topic")
@@ -39,6 +48,29 @@ def generate_launch_description():
             "gait_use_sim_time": "true",
         }.items(),
         condition=IfCondition(launch_simulation),
+    )
+
+    teleop_stack = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(teleop_pkg, "launch", "dog_teleop.launch.py")
+        ),
+        launch_arguments={
+            "param_file": LaunchConfiguration("teleop_param_file"),
+        }.items(),
+        condition=IfCondition(launch_teleop),
+    )
+
+    imu_stack = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(imu_pkg, "launch", "wit_imu.launch.py")
+        ),
+        launch_arguments={
+            "type": LaunchConfiguration("imu_type"),
+            "port": LaunchConfiguration("imu_port"),
+            "baud": LaunchConfiguration("imu_baud"),
+            "frame_id": LaunchConfiguration("imu_frame_id"),
+        }.items(),
+        condition=IfCondition(launch_imu),
     )
 
     return LaunchDescription(
@@ -64,6 +96,41 @@ def generate_launch_description():
                 description="Launch RViz when the Gazebo stack is enabled.",
             ),
             DeclareLaunchArgument(
+                "launch_teleop",
+                default_value="true",
+                description="Launch joystick teleop with the real robot control stack.",
+            ),
+            DeclareLaunchArgument(
+                "teleop_param_file",
+                default_value=teleop_param_file,
+                description="Dog teleop and joy_node parameter file.",
+            ),
+            DeclareLaunchArgument(
+                "launch_imu",
+                default_value="true",
+                description="Launch the WIT IMU driver with the real robot control stack.",
+            ),
+            DeclareLaunchArgument(
+                "imu_type",
+                default_value="normal",
+                description="IMU protocol: normal | modbus | hmodbus | can | hcan.",
+            ),
+            DeclareLaunchArgument(
+                "imu_port",
+                default_value="/dev/ttyACM0",
+                description="IMU serial port path.",
+            ),
+            DeclareLaunchArgument(
+                "imu_baud",
+                default_value="9600",
+                description="IMU serial baud rate.",
+            ),
+            DeclareLaunchArgument(
+                "imu_frame_id",
+                default_value="base_link",
+                description="IMU message frame_id.",
+            ),
+            DeclareLaunchArgument(
                 "shared_command_topic",
                 default_value="/motor_cmd",
                 description="Shared MIT command topic consumed by both Gazebo and hardware.",
@@ -79,6 +146,8 @@ def generate_launch_description():
                 description="Real robot feedback topic.",
             ),
             sim_stack,
+            teleop_stack,
+            imu_stack,
             Node(
                 package="deep_motor_ros",
                 executable="motor_node",

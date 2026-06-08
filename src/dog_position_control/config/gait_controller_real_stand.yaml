@@ -40,7 +40,7 @@ quadruped_gait_controller:
     direct_step_hfe_signs: [1.0, 1.0, -1.0, -1.0] # 只作用于踏步增量；顺序 LF,LH,RF,RH
     direct_step_kfe_signs: [1.0, 1.0, -1.0, -1.0] # 只作用于踏步增量；顺序 LF,LH,RF,RH
     direct_step_swing_scales: [1.0, 1.0, 1.0, 1.0]   # LF,LH,RF,RH；总摆动倍率，细分倍率由下面 HFE/KFE 参数控制
-    direct_step_hfe_swing_scales: [0.35, 0.28, 0.35, 0.28] # LF,LH,RF,RH；后腿 HFE 明显收小，改善大腿角度过大
+    direct_step_hfe_swing_scales: [0.35, 0.18, 0.35, 0.18] # LF,LH,RF,RH；后腿 HFE 明显收小，改善大腿角度过大
     direct_step_kfe_swing_scales: [1.25, 1.22, 1.25, 1.22] # LF,LH,RF,RH；后腿主要靠 KFE 小幅收腿，补偿 HFE 减小后的离地量
     direct_step_support_scales: [0.00, 0.00, 0.00, 0.00] # LF,LH,RF,RH；支撑腿不额外改角度，减少姿态扰动
     direct_step_hfe_support_scales: [1.0, 1.0, 1.0, 1.0] # LF,LH,RF,RH；支撑相 HFE 细分倍率，当前总支撑倍率为 0
@@ -76,8 +76,8 @@ quadruped_gait_controller:
     startup_rear_knee_start_ratio: 0.45    # 后腿膝关节从站起 45% 后再伸，减少后髋重载卡滞
     stand_hold_duration: 1.5               # 站起完成后先稳定站立，再进入踏步
     walk_ramp_duration: 1.0                # 每段动作都重新 ramp；稍柔和一点，减少动作切换冲击
-    stand_gain_scale: 1.70                 # 站立相整体 PD 增益倍率
-    walk_gain_scale: 1.60                  # 踏步相整体增益倍率；避免进入踏步后支撑腿突然变软后仰
+    stand_gain_scale: 1.60                 # 站立相整体 PD 增益倍率
+    walk_gain_scale: 2.0                  # 行走相整体 PD 增益倍率；回到站立时仍恢复 stand_gain_scale
 
     # 自动动作序列: 站立 -> 原地踏步 -> 前进 -> 后退 -> 右转 -> 左转 -> 站立保持。
     # 原地踏步阶段继续使用上面的 direct joint 踏步参数。
@@ -135,7 +135,7 @@ quadruped_gait_controller:
 
     # 站立目标关节角，数组顺序为 LF, LH, RF, RH。
     stand_haa_targets: [0.4, -0.45, -0.4, 0.45]        # 站姿 HAA 外展/内收目标角
-    stand_hfe_targets: [0.35, 0.39, -0.35, -0.39]      # 站姿 HFE 目标角
+    stand_hfe_targets: [0.35, 0.25, -0.35, -0.25]      # 站姿 HFE 目标角
     stand_kfe_targets: [-1.0, -1.2, 1.0, 1.2]          # 站姿 KFE 目标角
     startup_crouch_haa_targets: [0.0, 0.0, 0.0, 0.0] # X 键下蹲目标: 收回到初始零位，尽量完全贴地
     startup_crouch_hfe_targets: [0.0, 0.0, 0.0, 0.0] # X 键下蹲目标: 收回到初始零位，尽量完全贴地
@@ -153,9 +153,9 @@ quadruped_gait_controller:
     kfe_offsets: [-0.884820, -0.974002, -0.884820, -0.974002] # KFE 手动零位偏置
 
     # 基础关节 PD 增益；实际站立增益还会乘以 stand_gain_scale。
-    haa_kp: 20.0                    # HAA 位置比例增益
-    haa_kd: 2.1                    # HAA 速度阻尼增益
-    hfe_kp: 20.0                    # HFE 位置比例增益
-    hfe_kd: 2.1                     # HFE 速度阻尼增益
+    haa_kp: 16.0                    # HAA 位置比例增益
+    haa_kd: 1.6                    # HAA 速度阻尼增益
+    hfe_kp: 16.0                    # HFE 位置比例增益
+    hfe_kd: 1.6                    # HFE 速度阻尼增益
     kfe_kp: 35.0                    # KFE 位置比例增益
     kfe_kd: 4.0                     # KFE 速度阻尼增益

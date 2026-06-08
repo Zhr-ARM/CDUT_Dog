@@ -150,7 +150,7 @@ ros2 launch dog_position_control gait_controller.launch.py
 
 ### 4. 启动真机控制
 
-真机模式会启动电机驱动节点和四足步态控制节点：
+真机模式会启动电机驱动节点、四足步态控制节点，并默认一起带起手柄遥控和 IMU：
 
 ```bash
 source /opt/ros/<ros_distro>/setup.bash
@@ -170,6 +170,12 @@ ros2 launch dog_bringup hardware_gait.launch.py
 ros2 launch dog_bringup real.launch.py launch_simulation:=false
 ```
 
+如果临时不想启动手柄或 IMU，可以显式关闭：
+
+```bash
+ros2 launch dog_bringup real.launch.py launch_simulation:=false launch_teleop:=false launch_imu:=false
+```
+
 真机启动前建议优先检查：
 
 - `src/deep_motor_ros/config/four_can_real_robot.yaml`
@@ -186,7 +192,7 @@ ros2 launch dog_bringup real.launch.py launch_simulation:=false
 
 ### 5. 手柄遥控
 
-手柄遥控需要在仿真或真机已启动的基础上，**额外**启动 `dog_teleop`。
+手柄遥控现在默认已经被 `dog_bringup real.launch.py` 接入；如果你单独想起遥控节点，仍然可以继续直接启动 `dog_teleop`。
 
 #### 5.1 连接手柄并启动遥控节点
 
@@ -218,6 +224,14 @@ ros2 launch dog_bringup sim.launch.py
 source /opt/ros/<ros_distro>/setup.bash
 source install/setup.bash
 ros2 launch dog_teleop dog_teleop.launch.py
+```
+
+或者直接用真机总入口：
+
+```bash
+source /opt/ros/<ros_distro>/setup.bash
+source install/setup.bash
+ros2 launch dog_bringup real.launch.py launch_simulation:=false
 ```
 
 #### 5.3 手柄操作说明
@@ -278,6 +292,8 @@ source /opt/ros/<ros_distro>/setup.bash
 source install/setup.bash
 ros2 launch dog_imu wit_imu.launch.py type:=normal port:=/dev/ttyUSB0 baud:=9600
 ```
+
+真机总入口也会默认带起 IMU；如果要单独运行或改串口，继续使用上面的 `dog_imu` 入口即可。
 
 `type` 可选 `normal`（默认）、`modbus`、`hmodbus`、`can`、`hcan`，根据 IMU 固件协议选择。
 

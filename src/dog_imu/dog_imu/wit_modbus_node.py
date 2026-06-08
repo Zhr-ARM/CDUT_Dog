@@ -26,7 +26,7 @@ class WitModbusNode(Node):
         super().__init__('wit_imu')
 
         self.declare_parameter('port', '/dev/ttyUSB0')
-        self.declare_parameter('baud', 115200)
+        self.declare_parameter('baud', 9600)
         self.declare_parameter('frame_id', 'base_link')
         self.declare_parameter('slave_id', 80)
         self.declare_parameter('poll_period', 0.01)

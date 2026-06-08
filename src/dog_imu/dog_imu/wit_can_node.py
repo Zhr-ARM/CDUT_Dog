@@ -46,7 +46,7 @@ class WitCanNode(Node):
         super().__init__('wit_imu')
 
         self.declare_parameter('port', '/dev/ttyUSB0')
-        self.declare_parameter('baud', 230400)
+        self.declare_parameter('baud', 9600)
         self.declare_parameter('frame_id', 'base_link')
 
         self.port = self.get_parameter('port').get_parameter_value().string_value
