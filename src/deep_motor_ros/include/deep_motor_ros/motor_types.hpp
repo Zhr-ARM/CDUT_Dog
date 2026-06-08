@@ -53,6 +53,8 @@ struct BusContext
 struct MotorIoResult
 {
   int ret{0};
+  int sys_errno{0};
+  int ignored_frames{0};
   unsigned int reply_motor_id{0};
   unsigned int reply_cmd{0};
   bool temperature_is_motor{false};

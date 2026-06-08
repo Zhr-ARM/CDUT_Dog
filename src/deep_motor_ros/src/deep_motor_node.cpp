@@ -3,10 +3,12 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstring>
 #include <functional>
 #include <iomanip>
 #include <memory>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <unistd.h>
@@ -76,9 +78,11 @@ void DeepMotorNode::declare_parameters()
   declare_parameter<bool>("configure_can", true);
   declare_parameter<int>("can_bitrate", 1000000);
   declare_parameter<int>("can_txqueuelen", 1000);
+  declare_parameter<int>("can_restart_ms", 100);
   declare_parameter<double>("can_interface_wait_sec", 5.0);
   declare_parameter<int>("can_configure_retries", 3);
   declare_parameter<double>("control_rate_hz", 400.0);
+  declare_parameter<int>("control_command_timeout_ms", 5);
   declare_parameter<double>("status_log_period_sec", 5.0);
   declare_parameter<bool>("auto_set_home_on_startup", false);
   declare_parameter<bool>("require_home_on_startup", false);
@@ -99,6 +103,16 @@ void DeepMotorNode::declare_parameters()
   declare_parameter<double>("shutdown_kp", 8.0);
   declare_parameter<double>("shutdown_kd", 1.0);
   declare_parameter<double>("shutdown_torque", 0.0);
+  declare_parameter<double>("command_position_min", -40.0);
+  declare_parameter<double>("command_position_max", 40.0);
+  declare_parameter<double>("command_velocity_min", -40.0);
+  declare_parameter<double>("command_velocity_max", 40.0);
+  declare_parameter<double>("command_torque_min", -40.0);
+  declare_parameter<double>("command_torque_max", 40.0);
+  declare_parameter<double>("command_kp_min", 0.0);
+  declare_parameter<double>("command_kp_max", 1023.0);
+  declare_parameter<double>("command_kd_min", 0.0);
+  declare_parameter<double>("command_kd_max", 51.0);
 }
 
 void DeepMotorNode::load_parameters()
@@ -116,10 +130,13 @@ void DeepMotorNode::load_parameters()
   configure_can_ = get_parameter("configure_can").as_bool();
   can_bitrate_ = get_parameter("can_bitrate").as_int();
   can_txqueuelen_ = get_parameter("can_txqueuelen").as_int();
+  can_restart_ms_ = std::max(0, static_cast<int>(get_parameter("can_restart_ms").as_int()));
   can_interface_wait_sec_ = std::max(0.0, get_parameter("can_interface_wait_sec").as_double());
   can_configure_retries_ =
     std::max(1, static_cast<int>(get_parameter("can_configure_retries").as_int()));
   control_rate_hz_ = std::max(1.0, get_parameter("control_rate_hz").as_double());
+  control_command_timeout_ms_ =
+    std::clamp(static_cast<int>(get_parameter("control_command_timeout_ms").as_int()), 1, 50);
   status_log_period_sec_ = std::max(0.0, get_parameter("status_log_period_sec").as_double());
   auto_set_home_on_startup_ = get_parameter("auto_set_home_on_startup").as_bool();
   require_home_on_startup_ = get_parameter("require_home_on_startup").as_bool();
@@ -146,6 +163,28 @@ void DeepMotorNode::load_parameters()
   shutdown_kp_ = std::max(0.0, get_parameter("shutdown_kp").as_double());
   shutdown_kd_ = std::max(0.0, get_parameter("shutdown_kd").as_double());
   shutdown_torque_ = get_parameter("shutdown_torque").as_double();
+  command_position_min_ = get_parameter("command_position_min").as_double();
+  command_position_max_ = get_parameter("command_position_max").as_double();
+  command_velocity_min_ = get_parameter("command_velocity_min").as_double();
+  command_velocity_max_ = get_parameter("command_velocity_max").as_double();
+  command_torque_min_ = get_parameter("command_torque_min").as_double();
+  command_torque_max_ = get_parameter("command_torque_max").as_double();
+  command_kp_min_ = std::max(0.0, get_parameter("command_kp_min").as_double());
+  command_kp_max_ = std::max(command_kp_min_, get_parameter("command_kp_max").as_double());
+  command_kd_min_ = std::max(0.0, get_parameter("command_kd_min").as_double());
+  command_kd_max_ = std::max(command_kd_min_, get_parameter("command_kd_max").as_double());
+  if (command_position_min_ > command_position_max_)
+  {
+    std::swap(command_position_min_, command_position_max_);
+  }
+  if (command_velocity_min_ > command_velocity_max_)
+  {
+    std::swap(command_velocity_min_, command_velocity_max_);
+  }
+  if (command_torque_min_ > command_torque_max_)
+  {
+    std::swap(command_torque_min_, command_torque_max_);
+  }
 }
 
 void DeepMotorNode::setup_can_interfaces()
@@ -161,6 +200,7 @@ void DeepMotorNode::setup_can_interfaces()
   CanInterfaceConfig config;
   config.bitrate = can_bitrate_;
   config.txqueuelen = can_txqueuelen_;
+  config.restart_ms = can_restart_ms_;
   config.wait_sec = can_interface_wait_sec_;
   config.configure_retries = can_configure_retries_;
 
@@ -250,6 +290,7 @@ void DeepMotorNode::initialize_buses()
   CanInterfaceConfig config;
   config.bitrate = can_bitrate_;
   config.txqueuelen = can_txqueuelen_;
+  config.restart_ms = can_restart_ms_;
   config.wait_sec = can_interface_wait_sec_;
   config.configure_retries = can_configure_retries_;
   const CanInterfaceManager can_manager(get_logger(), config);
@@ -696,6 +737,7 @@ void DeepMotorNode::bring_can_interfaces_down_on_exit()
   CanInterfaceConfig config;
   config.bitrate = can_bitrate_;
   config.txqueuelen = can_txqueuelen_;
+  config.restart_ms = can_restart_ms_;
   config.wait_sec = can_interface_wait_sec_;
   config.configure_retries = can_configure_retries_;
   const CanInterfaceManager can_manager(get_logger(), config);
@@ -714,18 +756,87 @@ void DeepMotorNode::command_callback(const std_msgs::msg::Float64MultiArray::Sha
     return;
   }
 
+  std::vector<ControlCommand> sanitized_commands;
+  if (!sanitize_command(*msg, sanitized_commands))
+  {
+    return;
+  }
+
   for (auto & bus : buses_)
   {
     for (auto & motor : bus.motors)
     {
-      const size_t base = motor.global_index * kValuesPerJoint;
-      motor.current_cmd.p = msg->data[base + 0];
-      motor.current_cmd.v = msg->data[base + 1];
-      motor.current_cmd.t = msg->data[base + 2];
-      motor.current_cmd.kp = msg->data[base + 3];
-      motor.current_cmd.kd = msg->data[base + 4];
+      motor.current_cmd = sanitized_commands[motor.global_index];
     }
   }
+}
+
+bool DeepMotorNode::sanitize_command(
+  const std_msgs::msg::Float64MultiArray & msg,
+  std::vector<ControlCommand> & sanitized_commands)
+{
+  sanitized_commands.clear();
+  sanitized_commands.reserve(total_motor_count_);
+
+  bool clipped = false;
+  auto checked_value = [&](double value, const char * field, size_t motor_index) -> double {
+    if (!std::isfinite(value))
+    {
+      RCLCPP_ERROR_THROTTLE(
+        get_logger(), *get_clock(), 2000,
+        "[CommandGuard] Dropping %s: non-finite %s at motor_index=%zu value=%f",
+        command_topic_.c_str(), field, motor_index, value);
+      throw std::domain_error("non-finite motor command");
+    }
+    return value;
+  };
+
+  auto clipped_value = [&](double value, double min_value, double max_value) -> double {
+    const double clamped = std::clamp(value, min_value, max_value);
+    clipped = clipped || clamped != value;
+    return clamped;
+  };
+
+  try
+  {
+    for (size_t motor_index = 0; motor_index < total_motor_count_; ++motor_index)
+    {
+      const size_t base = motor_index * kValuesPerJoint;
+      ControlCommand cmd;
+      cmd.p = clipped_value(
+        checked_value(msg.data[base + 0], "position", motor_index),
+        command_position_min_, command_position_max_);
+      cmd.v = clipped_value(
+        checked_value(msg.data[base + 1], "velocity", motor_index),
+        command_velocity_min_, command_velocity_max_);
+      cmd.t = clipped_value(
+        checked_value(msg.data[base + 2], "torque", motor_index),
+        command_torque_min_, command_torque_max_);
+      cmd.kp = clipped_value(
+        checked_value(msg.data[base + 3], "kp", motor_index), command_kp_min_, command_kp_max_);
+      cmd.kd = clipped_value(
+        checked_value(msg.data[base + 4], "kd", motor_index), command_kd_min_, command_kd_max_);
+      sanitized_commands.push_back(cmd);
+    }
+  }
+  catch (const std::domain_error &)
+  {
+    sanitized_commands.clear();
+    return false;
+  }
+
+  if (clipped)
+  {
+    RCLCPP_WARN_THROTTLE(
+      get_logger(), *get_clock(), 2000,
+      "[CommandGuard] Clipped %s values to safe ranges: p=[%.2f, %.2f], v=[%.2f, %.2f], "
+      "t=[%.2f, %.2f], kp=[%.2f, %.2f], kd=[%.2f, %.2f]",
+      command_topic_.c_str(), command_position_min_, command_position_max_, command_velocity_min_,
+      command_velocity_max_, command_torque_min_, command_torque_max_, command_kp_min_,
+      command_kp_max_, command_kd_min_, command_kd_max_);
+  }
+
+  return true;
 }
 
 void DeepMotorNode::control_loop()
@@ -744,13 +855,17 @@ void DeepMotorNode::control_loop()
         continue;
       }
 
-      const MotorIoResult result = send_control_motor(bus, motor);
+      const MotorIoResult result =
+        send_control_motor_with_timeout(bus, motor, control_command_timeout_ms_);
       if (!send_recv_ok(result))
       {
         RCLCPP_WARN_THROTTLE(
           get_logger(), *get_clock(), 2000,
-          "[CommWarn] %s joint=%s motor_id=%d SendRecv failed: %d",
-          bus.can_interface.c_str(), motor.joint_name.c_str(), motor.id, result.ret);
+          "[CommWarn] %s joint=%s motor_id=%d SendRecv failed: ret=%d errno=%d(%s) "
+          "ignored_frames=%d timeout_ms=%d",
+          bus.can_interface.c_str(), motor.joint_name.c_str(), motor.id, result.ret,
+          result.sys_errno, result.sys_errno != 0 ? std::strerror(result.sys_errno) : "none",
+          result.ignored_frames, control_command_timeout_ms_);
         continue;
       }
 
@@ -758,9 +873,9 @@ void DeepMotorNode::control_loop()
       {
         RCLCPP_WARN_THROTTLE(
           get_logger(), *get_clock(), 2000,
-          "[CommWarn] %s joint=%s expected motor_id=%d but got %u",
+          "[CommWarn] %s joint=%s expected motor_id=%d but got %u cmd=%u ignored_frames=%d",
           bus.can_interface.c_str(), motor.joint_name.c_str(), motor.id,
-          result.reply_motor_id);
+          result.reply_motor_id, result.reply_cmd, result.ignored_frames);
         continue;
       }
 

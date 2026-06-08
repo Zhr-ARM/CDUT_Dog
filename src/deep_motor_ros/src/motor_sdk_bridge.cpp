@@ -41,10 +41,12 @@ void reset_motor_data(MotorDATA * data)
   data->error_ = kMotorNoError;
 }
 
-MotorIoResult make_result(int ret, const MotorDATA * data)
+MotorIoResult make_result(int ret, const MotorDATA * data, int sys_errno = 0, int ignored_frames = 0)
 {
   MotorIoResult result;
   result.ret = ret;
+  result.sys_errno = sys_errno;
+  result.ignored_frames = ignored_frames;
   if (!data)
   {
     return result;
@@ -72,43 +74,18 @@ bool parsed_reply_matches(const MotorDATA & data, const MotorCMD & cmd)
   return data.motor_id_ == cmd.motor_id_ && data.cmd_ == cmd.cmd_;
 }
 
-void drain_pending_frames(DrMotorCan * can)
-{
-  if (!can)
-  {
-    return;
-  }
-
-  for (int i = 0; i < 64; ++i)
-  {
-    struct can_frame stale_frame;
-    pthread_mutex_lock(&can->rw_mutex);
-    const ssize_t nbytes = read(can->can_socket_, &stale_frame, sizeof(stale_frame));
-    const int read_errno = errno;
-    pthread_mutex_unlock(&can->rw_mutex);
-
-    if (nbytes == static_cast<ssize_t>(sizeof(stale_frame)))
-    {
-      continue;
-    }
-
-    if (nbytes < 0 && (read_errno == EAGAIN || read_errno == EWOULDBLOCK))
-    {
-      return;
-    }
-
-    return;
-  }
-}
-
 int read_expected_reply(
   DrMotorCan * can,
   const MotorCMD & cmd,
   MotorDATA * data,
-  int timeout_ms)
+  int timeout_ms,
+  int & sys_errno,
+  int & ignored_frames)
 {
   using clock = std::chrono::steady_clock;
   const auto deadline = clock::now() + std::chrono::milliseconds(timeout_ms);
+  sys_errno = 0;
+  ignored_frames = 0;
 
   while (clock::now() < deadline)
   {
@@ -128,6 +105,7 @@ int read_expected_reply(
       {
         continue;
       }
+      sys_errno = errno;
       return kRecvEpollError;
     }
 
@@ -150,6 +128,7 @@ int read_expected_reply(
           return kNoSendRecvError;
         }
 
+        ++ignored_frames;
         continue;
       }
 
@@ -158,6 +137,7 @@ int read_expected_reply(
         break;
       }
 
+      sys_errno = read_errno;
       return kRecvLengthError;
     }
   }
@@ -165,34 +145,44 @@ int read_expected_reply(
   return kRecvTimeoutError;
 }
 
-int send_recv_expected(DrMotorCan * can, const MotorCMD * cmd, MotorDATA * data, int timeout_ms)
+int send_recv_expected(
+  DrMotorCan * can,
+  const MotorCMD * cmd,
+  MotorDATA * data,
+  int timeout_ms,
+  int & sys_errno,
+  int & ignored_frames)
 {
+  sys_errno = 0;
+  ignored_frames = 0;
   if (!can || !cmd || !data)
   {
     return kRecvEpollError;
   }
 
   reset_motor_data(data);
-  drain_pending_frames(can);
 
   struct can_frame send_frame{};
   MakeSendFrame(cmd, &send_frame);
 
   pthread_mutex_lock(&can->rw_mutex);
   const ssize_t nbytes = write(can->can_socket_, &send_frame, sizeof(send_frame));
+  const int write_errno = errno;
   pthread_mutex_unlock(&can->rw_mutex);
   if (nbytes != static_cast<ssize_t>(sizeof(send_frame)))
   {
+    sys_errno = write_errno;
     return kSendLengthError;
   }
 
-  return read_expected_reply(can, *cmd, data, std::max(1, timeout_ms));
+  return read_expected_reply(can, *cmd, data, std::max(1, timeout_ms), sys_errno, ignored_frames);
 }
 
-MotorIoResult make_error_result(int ret)
+MotorIoResult make_error_result(int ret, int sys_errno = 0)
 {
   MotorIoResult result;
   result.ret = ret;
+  result.sys_errno = sys_errno;
   return result;
 }
 
@@ -207,8 +197,10 @@ MotorIoResult send_normal_command(BusContext & bus, MotorContext & motor, uint8_
   }
 
   SetNormalCMD(cmd, motor.id, command);
-  const int ret = send_recv_expected(can, cmd, data, 50);
-  return make_result(ret, data);
+  int sys_errno = 0;
+  int ignored_frames = 0;
+  const int ret = send_recv_expected(can, cmd, data, 50, sys_errno, ignored_frames);
+  return make_result(ret, data, sys_errno, ignored_frames);
 }
 
 }  // namespace
@@ -288,8 +280,10 @@ MotorIoResult send_control_motor_with_timeout(
     cmd, motor.id, CONTROL_MOTOR, motor.current_cmd.p, motor.current_cmd.v, motor.current_cmd.t,
     motor.current_cmd.kp, motor.current_cmd.kd);
 
-  const int ret = send_recv_expected(can, cmd, data, timeout_ms);
-  return make_result(ret, data);
+  int sys_errno = 0;
+  int ignored_frames = 0;
+  const int ret = send_recv_expected(can, cmd, data, timeout_ms, sys_errno, ignored_frames);
+  return make_result(ret, data, sys_errno, ignored_frames);
 }
 
 bool send_recv_ok(const MotorIoResult & result)

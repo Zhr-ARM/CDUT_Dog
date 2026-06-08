@@ -46,6 +46,9 @@ private:
   void bring_can_interfaces_down_on_exit();
 
   void command_callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg);
+  bool sanitize_command(
+    const std_msgs::msg::Float64MultiArray & msg,
+    std::vector<ControlCommand> & sanitized_commands);
   void control_loop();
   void publish_feedback();
   void log_status_summary() const;
@@ -62,9 +65,11 @@ private:
   bool configure_can_{false};
   int can_bitrate_{1000000};
   int can_txqueuelen_{1000};
+  int can_restart_ms_{100};
   double can_interface_wait_sec_{5.0};
   int can_configure_retries_{3};
   double control_rate_hz_{400.0};
+  int control_command_timeout_ms_{5};
   double status_log_period_sec_{5.0};
   bool auto_set_home_on_startup_{false};
   bool require_home_on_startup_{false};
@@ -85,6 +90,16 @@ private:
   double shutdown_kp_{8.0};
   double shutdown_kd_{1.0};
   double shutdown_torque_{0.0};
+  double command_position_min_{-40.0};
+  double command_position_max_{40.0};
+  double command_velocity_min_{-40.0};
+  double command_velocity_max_{40.0};
+  double command_torque_min_{-40.0};
+  double command_torque_max_{40.0};
+  double command_kp_min_{0.0};
+  double command_kp_max_{1023.0};
+  double command_kd_min_{0.0};
+  double command_kd_max_{51.0};
 
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr feedback_pub_;
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub_;

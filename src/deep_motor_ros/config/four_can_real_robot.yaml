@@ -26,10 +26,24 @@ deep_motor_node:
     configure_can: true
     can_bitrate: 1000000
     can_txqueuelen: 1000
+    can_restart_ms: 100
     can_interface_wait_sec: 5.0
     can_configure_retries: 3
-    control_rate_hz: 1000.0
+    control_rate_hz: 250.0
+    control_command_timeout_ms: 5
     status_log_period_sec: 5.0
+
+    # Final driver-side guard before encoding commands into CAN frames.
+    command_position_min: -40.0
+    command_position_max: 40.0
+    command_velocity_min: -40.0
+    command_velocity_max: 40.0
+    command_torque_min: -40.0
+    command_torque_max: 40.0
+    command_kp_min: 0.0
+    command_kp_max: 120.0
+    command_kd_min: 0.0
+    command_kd_max: 12.0
     auto_set_home_on_startup: true
     require_home_on_startup: false
     # 启动时先发 disable，再 enable。用于清掉上次异常退出后电机保持的最后控制状态。

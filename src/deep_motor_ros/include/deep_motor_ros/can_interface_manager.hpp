@@ -13,6 +13,7 @@ struct CanInterfaceConfig
 {
   int bitrate{1000000};
   int txqueuelen{1000};
+  int restart_ms{100};
   double wait_sec{5.0};
   int configure_retries{3};
 };

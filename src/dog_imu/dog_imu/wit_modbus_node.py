@@ -7,17 +7,19 @@ import time
 import rclpy
 import serial
 import serial.tools.list_ports
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from sensor_msgs.msg import Imu, MagneticField
-from tf_transformations import quaternion_from_euler
+from dog_imu.imu_math import quaternion_from_euler
 
 import modbus_tk.defines as cst
 from modbus_tk import modbus_rtu
 
 
 def find_ttyUSB():
-    posts = [p.device for p in serial.tools.list_ports.comports() if 'USB' in p.device]
-    print('USB serial devices ({}): {}'.format(len(posts), posts))
+    ports = [p.device for p in serial.tools.list_ports.comports()
+             if p.device.startswith(('/dev/ttyUSB', '/dev/ttyACM'))]
+    print('IMU candidate serial devices ({}): {}'.format(len(ports), ports), flush=True)
 
 
 class WitModbusNode(Node):
@@ -108,11 +110,12 @@ def main(args=None):
     node = WitModbusNode()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':

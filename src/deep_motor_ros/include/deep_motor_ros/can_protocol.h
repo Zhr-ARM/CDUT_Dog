@@ -131,6 +131,7 @@
 #define RECEIVE_DLC_GET_CONFIG 8
 #define RECEIVE_DLC_CALIB_REPORT 8
 
+#include <math.h>
 #include <stdint.h>
 ;
 #pragma pack(push, 1)
@@ -183,7 +184,10 @@ uint32_t FloatToUint(const float x, const float x_min, const float x_max, const 
     /// Converts a float to an unsigned int, given range and number of bits ///
     float span = x_max - x_min;
     float offset = x_min;
-    return (uint32_t)((x-offset)*((float)((1<<bits)-1))/span);
+    const uint32_t max_uint = bits >= 32 ? 0xffffffffu : ((1u << bits) - 1u);
+    float safe_x = isfinite(x) ? x : 0.0f;
+    safe_x = fminf(fmaxf(safe_x, x_min), x_max);
+    return (uint32_t)((safe_x-offset)*((float)max_uint)/span);
 }
 float UintToFloat(const int x_int, const float x_min, const float x_max, const uint8_t bits){
     /// converts unsigned int to float, given range and number of bits ///
@@ -191,4 +195,3 @@ float UintToFloat(const int x_int, const float x_min, const float x_max, const u
     float offset = x_min;
     return ((float)x_int)*span/((float)((1<<bits)-1)) + offset;
 }
-

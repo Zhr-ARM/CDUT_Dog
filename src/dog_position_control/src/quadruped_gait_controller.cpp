@@ -1298,9 +1298,23 @@ private:
   // cmd_vel 回调: 缓存最新的线速度和角速度，并记录时间戳用于超时检测。
   void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg)
   {
-    cmd_vel_linear_x_ = msg->linear.x;
-    cmd_vel_linear_y_ = msg->linear.y;
-    cmd_vel_angular_z_ = msg->angular.z;
+    if (!std::isfinite(msg->linear.x) || !std::isfinite(msg->linear.y) ||
+      !std::isfinite(msg->angular.z))
+    {
+      RCLCPP_WARN_THROTTLE(
+        get_logger(), *get_clock(), 1000,
+        "Ignoring non-finite cmd_vel: x=%f y=%f yaw=%f",
+        msg->linear.x, msg->linear.y, msg->angular.z);
+      return;
+    }
+
+    const double linear_x = std::clamp(msg->linear.x, -max_linear_vel_, max_linear_vel_);
+    const double linear_y = std::clamp(msg->linear.y, -max_lateral_vel_, max_lateral_vel_);
+    const double angular_z = std::clamp(msg->angular.z, -max_angular_vel_, max_angular_vel_);
+
+    cmd_vel_linear_x_ = linear_x;
+    cmd_vel_linear_y_ = linear_y;
+    cmd_vel_angular_z_ = angular_z;
     last_cmd_vel_time_ = this->now();
     cmd_vel_received_ = true;
     const double cmd_speed =
@@ -1309,8 +1323,8 @@ private:
     if (cmd_speed > cmd_vel_deadzone_)
     {
       action_command_active_ = false;
+      enable_auto_sequence_ = false;
     }
-    enable_auto_sequence_ = false;
   }
 
   void gait_action_callback(const std_msgs::msg::String::SharedPtr msg)

@@ -275,6 +275,7 @@ void MakeSendFrame(const MotorCMD *cmd, struct can_frame *frame_ret){
 void ParseRecvFrame(const struct can_frame *frame_ret, MotorDATA *data){
     uint32_t frame_id = frame_ret->can_id;
     uint32_t cmd = (frame_id >> CAN_ID_SHIFT_BITS) & 0x3f;
+    // J60 replies set bit 4 in the low CAN-ID field; the configured motor id is low 4 bits.
     uint32_t motor_id = frame_id & 0x0f;
     data->motor_id_ = motor_id;
     data->cmd_ = cmd;

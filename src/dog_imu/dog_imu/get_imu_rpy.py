@@ -4,9 +4,10 @@
 import math
 
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
-from tf_transformations import euler_from_quaternion
+from dog_imu.imu_math import euler_from_quaternion
 
 
 class GetImuRpy(Node):
@@ -29,11 +30,12 @@ def main(args=None):
     node = GetImuRpy()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':

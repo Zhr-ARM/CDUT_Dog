@@ -96,7 +96,8 @@ void CanInterfaceManager::configure_interfaces(
       const bool ok_type = run_setup_command(
         can_interface,
         "ip link set " + can_interface + " type can bitrate " +
-        std::to_string(config_.bitrate));
+        std::to_string(config_.bitrate) + " restart-ms " +
+        std::to_string(config_.restart_ms));
       const bool ok_queue = run_setup_command(
         can_interface,
         "ip link set " + can_interface + " txqueuelen " +
@@ -148,7 +149,7 @@ void CanInterfaceManager::log_interface_snapshot(
   }
 
   const auto snapshot =
-    read_command_output("ip -br link show dev " + can_interface + " 2>/dev/null");
+    read_command_output("ip -details -statistics link show dev " + can_interface + " 2>/dev/null");
   if (snapshot.empty())
   {
     RCLCPP_INFO(
