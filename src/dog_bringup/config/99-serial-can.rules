@@ -4,7 +4,7 @@
 #udevadm info -a -p $(udevadm info -q path -n /dev/ttyACM0) | grep -iE "idVendor|idProduct|serial" | head -n 3
 
 #查找can端口号（在 shell 中单独执行，不要直接写进 rules 文件）
-#for iface in /sys/class/net/can* /sys/class/net/can_*; do
+#for iface in /sys/class/net/can*; do
 #   [ -e "$iface" ] || continue
 #   name=$(basename "$iface")
 #   printf "Interface: %-8s -> Exact Path: " "$name"
@@ -23,10 +23,10 @@ SUBSYSTEM=="tty", ATTRS{idVendor}=="19f5", ATTRS{idProduct}=="5740", SYMLINK+="t
 # 改成语义名后，每个目标名都唯一且不会与内核默认 can%d 冲突。
 
 # 前左腿总线
-SUBSYSTEM=="net", ACTION=="add", KERNEL=="can*", KERNELS=="3-1.2:1.0", NAME="can_lf"
+SUBSYSTEM=="net", ACTION=="add", KERNEL=="can*", KERNELS=="1-2.3.2:1.0", NAME="can_lf"
 # 前右腿总线
-SUBSYSTEM=="net", ACTION=="add", KERNEL=="can*", KERNELS=="3-1.3:1.0", NAME="can_rf"
+SUBSYSTEM=="net", ACTION=="add", KERNEL=="can*", KERNELS=="1-2.3.3:1.0", NAME="can_rf"
 # 后左腿总线
-SUBSYSTEM=="net", ACTION=="add", KERNEL=="can*", KERNELS=="3-1.1:1.0", NAME="can_lh"
+SUBSYSTEM=="net", ACTION=="add", KERNEL=="can*", KERNELS=="1-2.3.1:1.0", NAME="can_lh"
 # 后右腿总线
-SUBSYSTEM=="net", ACTION=="add", KERNEL=="can*", KERNELS=="3-1.4:1.0", NAME="can_rh"
+SUBSYSTEM=="net", ACTION=="add", KERNEL=="can*", KERNELS=="1-2.3.4:1.0", NAME="can_rh"
