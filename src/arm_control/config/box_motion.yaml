@@ -1,0 +1,92 @@
+box_motion_node:
+  ros__parameters:
+    # MoveIt 末端目标点规划服务；节点会按顺序调用该服务执行箱子动作阶段。
+    plan_service_name: plan_moveit
+
+    # 兼容旧命令；向该话题发送 std_msgs/msg/Empty 后，按 default_box_place_mode
+    # 执行完整流程：vision -> 吸箱子 -> 举箱子 -> 放箱子 -> vision。
+    box_motion_start_topic: /arm_box_motion/start
+    default_box_place_mode: ground
+
+    # 兼容旧命令；明确指定完整流程的最终放置场景。
+    box_motion_ground_start_topic: /arm_box_motion/start_ground
+    box_motion_stack_start_topic: /arm_box_motion/start_stack
+
+    # 独立动作入口：吸箱子、举箱子、放到地上、放到已有箱子上。
+    box_suction_start_topic: /arm_box_motion/suction
+    box_lift_start_topic: /arm_box_motion/lift
+    box_place_ground_start_topic: /arm_box_motion/place_ground
+    box_place_stack_start_topic: /arm_box_motion/place_stack
+
+    # 向该话题发送 std_msgs/msg/Empty 后，关闭吸泵并发布回原位关节轨迹。
+    home_motion_start_topic: /arm_home_motion/start
+
+    # 向该话题发送 std_msgs/msg/Empty 后，仅将腕部抬起 90 度，进入视觉观察姿态。
+    vision_motion_start_topic: /arm_vision_motion/start
+
+    # 吸泵开关话题；true 表示开启吸泵，false 表示关闭吸泵。
+    suction_command_topic: /suction/enable
+
+    # 机械臂视觉模式状态；true 时视觉节点才打开摄像头，false 时释放摄像头。
+    vision_mode_topic: /arm_vision_mode/enabled
+
+    # joint_trajectory_controller 的直接轨迹话题，用于回原位动作。
+    joint_trajectory_topic: /arm_controller/joint_trajectory
+
+    # 回原位目标关节角，顺序为 base_yaw、shoulder_pitch、elbow_pitch、wrist_pitch。
+    home_joint_positions: [0.0, 0.0, 0.0, 0.0]
+    home_duration_s: 4.0
+
+    # 启动后默认进入 vision 姿态：前三个关节保持 0 位，仅腕部抬起 90 度。
+    start_in_vision_mode: true
+    vision_joint_positions: [0.0, 0.0, 0.0, -1.57079632679]
+    vision_duration_s: 3.0
+    vision_start_delay_s: 3.0
+
+    # 箱子顶部中心点参数，坐标系与 plan_moveit 服务一致，当前真实模型中 world 与 base_link 重合。
+    box_center_distance_m: 0.42
+    box_motion_y_m: 0.0
+    box_ground_z_m: 0.0
+    box_height_m: 0.25
+    # 放置点；box_place_x_m 设为 0.0 时，使用“吸附点向机器人回收 box_lift_retract_m”后的位置。
+    box_place_x_m: 0.0
+    box_place_y_m: 0.0
+
+    # 若箱子高度是相对地面测量，而 base_link 高于地面，可在这里填 base_link 高度。
+    platform_height_m: 0.20
+
+    # 轨迹关键点：箱顶上方安全高度、预接触高度、轻压距离、抬起高度、回收距离。
+    # 举箱子阶段会先抬高，再回收 box_lift_retract_m 到运输姿态；放置前吸泵保持开启。
+    box_approach_offset_m: 0.02
+    box_suction_contact_offset_m: 0.01
+    box_touch_push_m: 0.005
+    box_lift_height_m: 0.08
+    box_lift_retract_m: 0.04
+    box_min_approach_x_m: 0.14
+
+    # stack 模式：前方已有一个 25cm 高箱子，搬运时保持高于目标叠放高度。
+    stack_base_box_height_m: 0.25
+    stack_carry_clearance_m: 0.08
+
+    # 设为 0.0 时使用 box_center_distance_m，非 0 时覆盖吸附点 x 坐标。
+    box_suction_target_x_m: 0.0
+
+    # 每段动作之间的稳定等待时间，以及吸泵开启/释放后的稳定时间。
+    box_motion_step_wait_s: 0.8
+    box_suction_settle_s: 0.8
+    box_release_settle_s: 0.8
+    box_motion_position_tolerance_m: 0.04
+
+    # 箱子流程默认使用 4 自由度工具方向约束：末端局部 Z 轴竖直，使吸盘面平行地面。
+    box_use_level_constraint: true
+    # 当前 Z 轴竖直约束不使用该补偿，保留给后续需要绕竖直轴微调的姿态策略。
+    box_wrist_level_offset_rad: 0.0
+
+    # 备用完整姿态约束；仅在 box_use_level_constraint=false 时使用。
+    box_use_target_orientation: true
+    box_target_orientation_xyzw: [0.0, 0.0, 0.0, 1.0]
+    box_target_orientation_tolerance_rad: 0.20
+
+    # 服务等待与单段规划执行超时。
+    service_wait_timeout_s: 5.0
+    plan_response_timeout_s: 60.0

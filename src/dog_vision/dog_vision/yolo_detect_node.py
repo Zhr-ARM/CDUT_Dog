@@ -13,6 +13,7 @@ import yaml
 from ament_index_python.packages import get_package_share_directory
 from dog_bringup.msg import Detection2D, Detection2DArray
 from rclpy.node import Node
+from std_msgs.msg import Bool
 
 
 PACKAGE_SHARE = Path(get_package_share_directory('dog_vision'))
@@ -24,7 +25,7 @@ DEFAULT_CONFIG = {
     'model': str(DEFAULT_MODEL_PATH),
     'mode': 'auto',
     'data': str(DEFAULT_DATA_PATH),
-    'device': '/dev/video2',
+    'device': '/dev/arm_camera',
     'width': 1920,
     'height': 1080,
     'fps': 30.0,
@@ -33,6 +34,8 @@ DEFAULT_CONFIG = {
     'conf': 0.6,
     'iou': 0.45,
     'show_image': False,
+    'enabled_topic': '/arm_vision_mode/enabled',
+    'start_enabled': False,
     'brightness': 0,
     'contrast': 32,
     'saturation': 64,
@@ -339,10 +342,18 @@ class YoloDetectNode(Node):
             self.cfg[key] = self.get_parameter(key).value
 
         self.publisher_ = self.create_publisher(Detection2DArray, '/vision/detections', 10)
+        self.enabled_subscription = self.create_subscription(
+            Bool,
+            str(self.cfg['enabled_topic']),
+            self.enabled_callback,
+            10,
+        )
         self.cap = None
         self.detector = None
         self.mode = ''
+        self.enabled = as_bool(self.cfg['start_enabled'])
         self.last_time = time.perf_counter()
+        self.last_camera_warning_time = 0.0
         self.fps = 0.0
         self.frame_timer = None
 
@@ -350,22 +361,62 @@ class YoloDetectNode(Node):
         self.detector, self.mode = build_detector(model_path, self.cfg)
         self.get_logger().info(f'模型已加载: {model_path}')
         self.get_logger().info(f'推理模式: {self.mode}')
+        self.get_logger().info(
+            f"相机受控启动: topic={self.cfg['enabled_topic']}, "
+            f"start_enabled={self.enabled}"
+        )
+
+        period = 1.0 / max(float(self.cfg['fps']), 1.0)
+        self.frame_timer = self.create_timer(period, self.process_frame)
+        if self.enabled:
+            self.open_camera()
+
+    def enabled_callback(self, msg: Bool) -> None:
+        if msg.data == self.enabled:
+            return
+        self.enabled = bool(msg.data)
+        if self.enabled:
+            self.open_camera()
+        else:
+            self.close_camera()
+
+    def open_camera(self) -> bool:
+        if self.cap is not None and self.cap.isOpened():
+            return True
 
         configure_camera(self.cfg, self.get_logger())
         self.cap = cv2.VideoCapture(video_index_from_device(self.cfg['device']), cv2.CAP_V4L2)
         if not self.cap.isOpened():
-            raise RuntimeError(f"无法打开摄像头: {self.cfg['device']}")
+            self.cap.release()
+            self.cap = None
+            self.enabled = False
+            self.get_logger().error(f"无法打开摄像头: {self.cfg['device']}")
+            return False
 
-        period = 1.0 / max(float(self.cfg['fps']), 1.0)
-        self.frame_timer = self.create_timer(period, self.process_frame)
+        self.last_time = time.perf_counter()
+        self.get_logger().info(f"摄像头已开启: {self.cfg['device']}")
+        return True
+
+    def close_camera(self) -> None:
+        if self.cap is not None:
+            self.cap.release()
+            self.cap = None
+            self.get_logger().info(f"摄像头已关闭: {self.cfg['device']}")
+        if as_bool(self.cfg.get('show_image')):
+            cv2.destroyAllWindows()
 
     def process_frame(self) -> None:
-        if self.cap is None:
+        if not self.enabled:
+            return
+        if self.cap is None and not self.open_camera():
             return
 
         ret, frame = self.cap.read()
         if not ret:
-            self.get_logger().warning('读取画面失败。')
+            now = time.perf_counter()
+            if now - self.last_camera_warning_time > 2.0:
+                self.get_logger().warning('读取画面失败。')
+                self.last_camera_warning_time = now
             return
 
         detections = self.detector.infer(frame)
@@ -409,11 +460,7 @@ class YoloDetectNode(Node):
     def destroy_node(self):
         if self.frame_timer is not None:
             self.frame_timer.cancel()
-        if self.cap is not None:
-            self.cap.release()
-            self.cap = None
-        if as_bool(self.cfg.get('show_image')):
-            cv2.destroyAllWindows()
+        self.close_camera()
         super().destroy_node()
 
 

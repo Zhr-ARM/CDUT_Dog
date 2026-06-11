@@ -31,7 +31,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'device',
-            default_value='/dev/video2',
+            default_value='/dev/arm_camera',
             description='Camera device path.',
         ),
         DeclareLaunchArgument(
@@ -74,6 +74,16 @@ def generate_launch_description():
             default_value='false',
             description='Whether to show the annotated camera image.',
         ),
+        DeclareLaunchArgument(
+            'enabled_topic',
+            default_value='/arm_vision_mode/enabled',
+            description='Bool topic that enables camera capture and inference.',
+        ),
+        DeclareLaunchArgument(
+            'start_enabled',
+            default_value='false',
+            description='Whether to open the camera immediately at node startup.',
+        ),
     ]
 
     node = Node(
@@ -94,6 +104,8 @@ def generate_launch_description():
             'conf': ParameterValue(LaunchConfiguration('conf'), value_type=float),
             'iou': ParameterValue(LaunchConfiguration('iou'), value_type=float),
             'show_image': ParameterValue(LaunchConfiguration('show_image'), value_type=bool),
+            'enabled_topic': LaunchConfiguration('enabled_topic'),
+            'start_enabled': ParameterValue(LaunchConfiguration('start_enabled'), value_type=bool),
         }],
     )
 

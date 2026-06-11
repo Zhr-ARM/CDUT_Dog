@@ -1,0 +1,7 @@
+#ifndef DM_J4340_MOTOR_DRIVER__DM_J4340_MOTOR_DRIVER_HPP_
+#define DM_J4340_MOTOR_DRIVER__DM_J4340_MOTOR_DRIVER_HPP_
+
+#include "dm_j4340_motor_driver/dm_j4340_protocol.hpp"
+#include "dm_j4340_motor_driver/usbcan_serial.hpp"
+
+#endif // DM_J4340_MOTOR_DRIVER__DM_J4340_MOTOR_DRIVER_HPP_ 头文件保护

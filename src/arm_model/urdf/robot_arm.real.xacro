@@ -1,0 +1,110 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="robot_arm">
+
+    <xacro:include filename="robot_arm.urdf" />
+
+    <xacro:arg name="serial_port" default="/dev/arm_motor"/>
+    <xacro:arg name="serial_baudrate" default="921600"/>
+    <xacro:arg name="timeout_ms" default="10"/>
+    <xacro:arg name="retry_count" default="3"/>
+    <xacro:arg name="control_mode" default="position_velocity"/>
+    <xacro:arg name="base_yaw_motor_id" default="1"/>
+    <xacro:arg name="shoulder_pitch_motor_id" default="2"/>
+    <xacro:arg name="elbow_pitch_motor_id" default="3"/>
+    <xacro:arg name="wrist_pitch_motor_id" default="4"/>
+
+    <link name="world"/>
+    <joint name="world_to_base_link" type="fixed">
+        <parent link="world"/>
+        <child link="base_link"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <ros2_control name="RealSystem" type="system">
+        <hardware>
+            <plugin>arm_control/ArmSystemHardware</plugin>
+            <param name="serial_port">$(arg serial_port)</param>
+            <param name="serial_baudrate">$(arg serial_baudrate)</param>
+            <param name="serial_open_retry_count">10</param>
+            <param name="serial_open_retry_delay_ms">300</param>
+            <param name="timeout_ms">$(arg timeout_ms)</param>
+            <param name="retry_count">$(arg retry_count)</param>
+            <param name="control_mode">$(arg control_mode)</param>
+            <param name="usbcan_command">3</param>
+            <param name="set_can_bitrate_on_open">false</param>
+            <param name="enable_on_activate">true</param>
+            <param name="clear_error_on_activate">false</param>
+            <param name="save_zero_on_activate">true</param>
+            <param name="switch_mode_on_activate">true</param>
+            <param name="require_register_ack">true</param>
+            <param name="require_motors_on_configure">true</param>
+            <param name="require_feedback_on_activate">true</param>
+            <param name="home_on_deactivate">true</param>
+            <param name="home_on_shutdown">true</param>
+            <param name="shutdown_home_duration_s">4.0</param>
+            <param name="shutdown_home_command_rate_hz">50.0</param>
+            <param name="disable_on_deactivate">true</param>
+            <param name="disable_on_shutdown">true</param>
+            <param name="disable_command_repeat_count">3</param>
+            <param name="disable_command_repeat_delay_ms">20</param>
+            <param name="read_feedback_in_read">false</param>
+        </hardware>
+
+        <joint name="base_yaw_joint">
+            <param name="motor_id">$(arg base_yaw_motor_id)</param>
+            <param name="direction">1.0</param>
+            <param name="zero_offset">0.0</param>
+            <param name="gear_ratio">1.0</param>
+            <param name="velocity_limit">1.0</param>
+            <command_interface name="position">
+                <param name="min">-3.14</param>
+                <param name="max">3.14</param>
+            </command_interface>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+        </joint>
+
+        <joint name="shoulder_pitch_joint">
+            <param name="motor_id">$(arg shoulder_pitch_motor_id)</param>
+            <param name="direction">1.0</param>
+            <param name="zero_offset">0.0</param>
+            <param name="gear_ratio">1.0</param>
+            <param name="velocity_limit">1.0</param>
+            <command_interface name="position">
+                <param name="min">-0.42</param>
+                <param name="max">3.58</param>
+            </command_interface>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+        </joint>
+
+        <joint name="elbow_pitch_joint">
+            <param name="motor_id">$(arg elbow_pitch_motor_id)</param>
+            <param name="direction">1.0</param>
+            <param name="zero_offset">0.0</param>
+            <param name="gear_ratio">1.0</param>
+            <param name="velocity_limit">1.0</param>
+            <command_interface name="position">
+                <param name="min">0.0</param>
+                <param name="max">3.14</param>
+            </command_interface>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+        </joint>
+
+        <joint name="wrist_pitch_joint">
+            <param name="motor_id">$(arg wrist_pitch_motor_id)</param>
+            <param name="direction">1.0</param>
+            <param name="zero_offset">0.0</param>
+            <param name="gear_ratio">1.0</param>
+            <param name="velocity_limit">1.0</param>
+            <command_interface name="position">
+                <param name="min">-3.14</param>
+                <param name="max">0.3</param>
+            </command_interface>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+        </joint>
+    </ros2_control>
+
+</robot>

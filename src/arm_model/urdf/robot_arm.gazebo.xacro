@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="robot_arm">
+
+    <!-- ===== 导入纯 URDF ===== -->
+    <xacro:include filename="robot_arm.urdf" />
+
+    <!-- ===== 固定基座到 Gazebo 世界坐标系 ===== -->
+    <link name="world"/>
+    <joint name="world_to_base_link" type="fixed">
+        <parent link="world"/>
+        <child link="base_link"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <!-- ===== ros2_control 硬件接口 ===== -->
+    <ros2_control name="GazeboSystem" type="system">
+        <hardware>
+            <plugin>gazebo_ros2_control/GazeboSystem</plugin>
+        </hardware>
+        <joint name="base_yaw_joint">
+            <command_interface name="position"/>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+        </joint>
+        <joint name="shoulder_pitch_joint">
+            <command_interface name="position"/>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+        </joint>
+        <joint name="elbow_pitch_joint">
+            <command_interface name="position"/>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+        </joint>
+        <joint name="wrist_pitch_joint">
+            <command_interface name="position"/>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+        </joint>
+    </ros2_control>
+
+    <!-- ===== Gazebo 插件 ===== -->
+    <gazebo>
+        <plugin name="gazebo_ros2_control" filename="libgazebo_ros2_control.so">
+            <ros2_control>
+                <robot_namespace>/</robot_namespace>
+                <robot_sim_type>gazebo_ros2_control/DefaultRobotHWSim</robot_sim_type>
+            </ros2_control>
+            <parameters>$(find arm_model)/config/ros2_gazebo_control.yaml</parameters>
+        </plugin>
+        <physics type="ode">
+            <real_time_update_rate>100</real_time_update_rate>   <!-- 每秒物理步数 -->
+            <max_step_size>0.01</max_step_size>                   <!-- 每步最大时长 (s) -->
+            <update_rate>100.0</update_rate>                       <!-- 期望更新频率 (Hz) -->
+        </physics>    
+    </gazebo>
+
+</robot>

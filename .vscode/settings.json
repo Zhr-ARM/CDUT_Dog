@@ -1,0 +1,26 @@
+{
+  "python.terminal.activateEnvironment": false,
+  "terminal.integrated.defaultProfile.linux": "CDUT Dog Bash",
+  "terminal.integrated.profiles.linux": {
+    "CDUT Dog Bash": {
+      "path": "/usr/bin/bash",
+      "args": [
+        "--rcfile",
+        "${workspaceFolder}/.vscode/bashrc_no_conda"
+      ]
+    }
+  },
+  "terminal.integrated.env.linux": {
+    "CONDA_DEFAULT_ENV": null,
+    "CONDA_EXE": null,
+    "CONDA_PREFIX": null,
+    "CONDA_PROMPT_MODIFIER": null,
+    "CONDA_PYTHON_EXE": null,
+    "CONDA_SHLVL": null,
+    "_CONDA_EXE": null,
+    "_CONDA_ROOT": null,
+    "CMAKE_IGNORE_PREFIX_PATH": "/home/zhr/miniconda3",
+    "Python3_EXECUTABLE": "/usr/bin/python3",
+    "PYTHON_EXECUTABLE": "/usr/bin/python3"
+  }
+}

@@ -30,3 +30,26 @@ SUBSYSTEM=="net", ACTION=="add", KERNEL=="can*", KERNELS=="1-2.3.3:1.0", NAME="c
 SUBSYSTEM=="net", ACTION=="add", KERNEL=="can*", KERNELS=="1-2.3.1:1.0", NAME="can_lh"
 # 后右腿总线
 SUBSYSTEM=="net", ACTION=="add", KERNEL=="can*", KERNELS=="1-2.3.4:1.0", NAME="can_rh"
+
+# —————— 机械臂 USB hub 拓扑 ——————
+#   3-3.1  外接 USB 2.0 Camera
+#   3-3.2  CH340 继电器 1（吸盘保持）
+#   3-3.3  CH340 继电器 2（放气阀）
+#   3-3.4  HDSC USB-CAN（达妙机械臂电机）
+#
+# 更新配置：
+#   sudo cp src/dog_bringup/config/99-serial-can.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules
+#   sudo udevadm trigger
+
+# CH340 继电器 1：吸盘吸附继电器。
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", KERNELS=="3-3.2", SYMLINK+="arm_relay1"
+
+# CH340 继电器 2：放气阀继电器。
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", KERNELS=="3-3.3", SYMLINK+="arm_relay2"
+
+# 机械臂电机 USB-CAN 串口。
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2e88", ATTRS{idProduct}=="4603", ATTRS{serial}=="00000000050C", SYMLINK+="arm_motor"
+
+# 外接相机，只绑定 video index 0，避免同一个 UVC 设备生成的 metadata 节点抢占名字。
+SUBSYSTEM=="video4linux", ATTR{index}=="0", ATTRS{idVendor}=="0c45", ATTRS{idProduct}=="636d", KERNELS=="3-3.1", SYMLINK+="arm_camera"

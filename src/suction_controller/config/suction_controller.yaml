@@ -1,0 +1,27 @@
+suction_controller_node:
+  ros__parameters:
+    # 吸盘开关命令订阅话题；来自 arm_controller_node 的 Bool 消息。
+    suction_command_topic: /suction/enable
+
+    # —————— 继电器1（吸盘吸附）——————
+    # 串口设备路径
+    relay1_port: /dev/arm_relay1
+    # 波特率
+    relay1_baud: 9600
+    # 继电器闭合命令（吸盘吸气）；A0 01 01 A2 = 通道1 ON
+    relay1_cmd_on: [0xA0, 0x01, 0x01, 0xA2]
+    # 继电器断开命令（吸盘停止）；A0 01 00 A1 = 通道1 OFF
+    relay1_cmd_off: [0xA0, 0x01, 0x00, 0xA1]
+
+    # —————— 继电器2（气阀放气）——————
+    # 串口设备路径
+    relay2_port: /dev/arm_relay2
+    # 波特率
+    relay2_baud: 9600
+    # 继电器闭合命令（气阀放气）；A0 01 01 A2 = 通道1 ON
+    relay2_cmd_on: [0xA0, 0x01, 0x01, 0xA2]
+    # 继电器断开命令（气阀关闭）；A0 01 00 A1 = 通道1 OFF
+    relay2_cmd_off: [0xA0, 0x01, 0x00, 0xA1]
+
+    # 气阀脉冲时长，单位为秒；闭合后等待该时长再断开。
+    relay2_pulse_sec: 3.0

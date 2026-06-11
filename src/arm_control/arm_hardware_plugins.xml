@@ -1,0 +1,10 @@
+<library path="arm_system_hardware">
+  <class
+    name="arm_control/ArmSystemHardware"
+    type="arm_control::ArmSystemHardware"
+    base_class_type="hardware_interface::SystemInterface">
+    <description>
+      Hardware interface skeleton for the robot arm.
+    </description>
+  </class>
+</library>

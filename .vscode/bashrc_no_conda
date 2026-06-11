@@ -1,0 +1,6 @@
+if [ -f "${HOME}/.bashrc" ]; then
+  source "${HOME}/.bashrc"
+fi
+
+source "/home/zhr/Desktop/ros2_project/CDUT_Dog2.0/CDUT_Dog/.vscode/disable_conda.bash"
+cd "/home/zhr/Desktop/ros2_project/CDUT_Dog2.0/CDUT_Dog"

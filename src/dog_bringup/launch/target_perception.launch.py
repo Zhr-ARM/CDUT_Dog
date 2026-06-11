@@ -13,6 +13,9 @@ def generate_launch_description():
             DeclareLaunchArgument("target_col", default_value="1"),
             DeclareLaunchArgument("launch_yolo", default_value="false"),
             DeclareLaunchArgument("launch_target_selector", default_value="false"),
+            DeclareLaunchArgument("camera_device", default_value="/dev/arm_camera"),
+            DeclareLaunchArgument("vision_enabled_topic", default_value="/arm_vision_mode/enabled"),
+            DeclareLaunchArgument("vision_start_enabled", default_value="false"),
             DeclareLaunchArgument("cloud_topic", default_value="/odin1/cloud_render"),
             DeclareLaunchArgument("x_min", default_value="0.30"),
             DeclareLaunchArgument("x_max", default_value="4.50"),
@@ -364,6 +367,15 @@ def generate_launch_description():
                 name="yolo_detect_node",
                 output="screen",
                 condition=IfCondition(LaunchConfiguration("launch_yolo")),
+                parameters=[
+                    {
+                        "device": LaunchConfiguration("camera_device"),
+                        "enabled_topic": LaunchConfiguration("vision_enabled_topic"),
+                        "start_enabled": ParameterValue(
+                            LaunchConfiguration("vision_start_enabled"), value_type=bool
+                        ),
+                    }
+                ],
             ),
         ]
     )

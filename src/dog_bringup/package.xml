@@ -26,6 +26,11 @@
   <exec_depend>deep_motor_ros</exec_depend>
   <exec_depend>dog_teleop</exec_depend>
   <exec_depend>dog_imu</exec_depend>
+  <exec_depend>dog_lidar</exec_depend>
+  <exec_depend>arm_control</exec_depend>
+  <exec_depend>arm_model</exec_depend>
+  <exec_depend>arm_movelt</exec_depend>
+  <exec_depend>suction_controller</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

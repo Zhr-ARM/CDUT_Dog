@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="robot_arm">
+    <xacro:arg name="initial_positions_file" default="initial_positions.yaml" />
+
+    <!-- Import robot_arm urdf file -->
+    <xacro:include filename="$(find arm_model)/urdf/robot_arm.urdf" />
+
+    <!-- Keep MoveIt and Gazebo on the same fixed world frame. -->
+    <link name="world"/>
+    <joint name="world_to_base_link" type="fixed">
+        <parent link="world"/>
+        <child link="base_link"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <!-- Import control_xacro -->
+    <xacro:include filename="robot_arm.ros2_control.xacro" />
+
+
+    <xacro:robot_arm_ros2_control name="FakeSystem" initial_positions_file="$(arg initial_positions_file)"/>
+
+</robot>

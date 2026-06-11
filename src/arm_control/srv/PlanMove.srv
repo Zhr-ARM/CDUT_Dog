@@ -1,0 +1,16 @@
+float64 x
+float64 y
+float64 z
+bool execute
+float64 position_tolerance
+bool use_target_orientation
+float64 orientation_x
+float64 orientation_y
+float64 orientation_z
+float64 orientation_w
+float64 orientation_tolerance
+bool use_level_constraint
+float64 wrist_level_offset
+---
+bool success
+string message

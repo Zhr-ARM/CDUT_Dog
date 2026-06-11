@@ -5,7 +5,10 @@
 /compile_commands.json
 
 # IDE settings
-/.vscode/
+/.vscode/*
+!/.vscode/settings.json
+!/.vscode/bashrc_no_conda
+!/.vscode/disable_conda.bash
 
 # Python cache
 __pycache__/
