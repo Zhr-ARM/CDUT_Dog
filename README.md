@@ -1,398 +1,307 @@
 # CDUT_Dog
 
-这是一个基于 ROS 2 的四足机器人工作空间，包含机器人模型与启动、MIT 风格关节控制器、步态控制节点，以及真机电机驱动接口。
+CDUT_Dog 是一个面向仿生足式机器人任务赛的 ROS 2 工作空间，覆盖四足底盘、电机驱动、步态控制、手柄遥控、IMU、物资箱感知定位、机械臂 MoveIt 控制和吸盘执行器。
 
-当前仓库以 `colcon` 工作空间组织，源码主要位于 `src/` 下。
+当前代码已经具备分模块调试能力，也提供了部分任务赛链路入口；完整的“识别题目 -> 选择物资箱 -> 搬运归位 -> 自动计时/恢复”的任务级状态机仍在开发中。
 
-## 文件架构
+## 文档导航
+
+- [任务赛规则与比赛流程](docs/task_competition_rules.md)：根据仓库根目录 `仿生足式规则V2.0.pdf` 整理，仅保留任务赛相关规则。
+- [任务赛代码完成度与待办](docs/task_implementation_status.md)：按比赛链路梳理当前代码已完成和待完成的功能。
+- [步态动作话题说明](src/dog_position_control/GAIT_ACTION_TOPIC.md)：`/gait_action` 可用动作与调试方式。
+- [DeepRobotics 电机驱动说明](src/deep_motor_ros/Readme.md)：电机驱动包的独立说明。
+
+## 工作空间结构
 
 ```text
 CDUT_Dog/
-├── src/
-│   ├── deep_motor_ros/          # 真机电机驱动，负责 CAN 通信与状态反馈
-│   ├── dog_bringup/             # 机器人模型、消息定义、仿真/真机启动文件
-│   ├── dog_position_control/    # 四足步态控制节点与参数
-│   ├── dog_imu/                 # WitMotion IMU 驱动，发布姿态/角速度/加速度
-│   ├── dog_teleop/              # Xbox/PS4 手柄遥控节点，将摇杆输入转为速度指令
-│   └── mit_controller/          # ros2_control 控制器插件
-├── build/                       # colcon 编译产物
-├── install/                     # colcon 安装产物
-├── log/                         # colcon 日志
-└── README.md
+├── README.md
+├── 仿生足式规则V2.0.pdf
+├── docs/
+│   ├── task_competition_rules.md
+│   └── task_implementation_status.md
+└── src/
+    ├── dog_bringup/             # 总启动入口、机器人模型、仿真场景、udev 规则、自定义消息
+    ├── deep_motor_ros/          # DeepRobotics J60 电机 SocketCAN 驱动
+    ├── dog_position_control/    # 四足站立、步态、/cmd_vel 和 /gait_action 控制
+    ├── mit_controller/          # Gazebo/ros2_control 下的 MIT 风格关节控制器
+    ├── dog_teleop/              # 手柄遥控，/joy -> /cmd_vel 或 /gait_action
+    ├── dog_imu/                 # WitMotion IMU 串口/CAN 驱动
+    ├── dog_lidar/               # 点云物资箱网格定位，发布目标箱位姿
+    ├── dog_vision/              # YOLO 标签检测、目标选择、目标接近预览/控制
+    ├── arm_model/               # 机械臂 URDF/Xacro
+    ├── arm_movelt/              # 机械臂 MoveIt 配置与真机启动
+    ├── arm_control/             # 机械臂硬件接口、MoveIt 规划服务、箱子动作序列
+    └── suction_controller/      # 吸盘和放气阀继电器串口控制
 ```
 
-### 各功能包说明
+## 主要能力
 
-#### `src/dog_bringup`
-
-- `launch/`
-  - `sim.launch.py`：启动 Gazebo、机器人模型、`mit_controller` 和步态控制器
-  - `real.launch.py`：启动真机电机驱动，并可选同时带起仿真
-  - `hardware_gait.launch.py`：对 `real.launch.py` 的简单封装
-- `config/`
-  - `dog.world`：Gazebo 世界
-  - `dog.rviz`：RViz 配置
-  - `robot_controllers.yaml`：`controller_manager` 与 `mit_controller` 参数
-  - `description/`：导出的 URDF 与参考配置
-- `xacro/cdut_dog/`：机器人模型 xacro/urdf
-- `meshes/cdut_dog/`：机器人网格模型
-- `msg/`：自定义消息
-
-#### `src/dog_position_control`
-
-- `src/quadruped_gait_controller.cpp`：四足步态控制主节点
-- `launch/gait_controller.launch.py`：单独启动步态控制器
-- `config/gait_controller_sim_trot.yaml`：小跑步态参数、站立参数、关节增益等核心配置
-
-#### `src/mit_controller`
-
-- `src/mit_controller.cpp`：MIT 风格关节控制器实现
-- `include/mit_controller/`：控制器头文件
-- `mit_controller_plugin.xml`：插件导出描述
-
-#### `src/dog_teleop`
-
-- `src/dog_teleop_node.cpp`：手柄遥控主节点，订阅 `/joy`，发布 `/cmd_vel`
-- `launch/dog_teleop.launch.py`：同时启动 `joy_node`（读取手柄设备）和 `dog_teleop_node`
-- `config/dog_teleop.yaml`：最大线速度、最大角速度、死区阈值、超时时间等参数
-
-摇杆映射关系（仅使用左摇杆）：
-
-| 输入 | 话题/字段 | 说明 |
+| 模块 | 当前能力 | 主要入口 |
 |---|---|---|
-| 左摇杆 Y 轴（axes[1]） | `cmd_vel.linear.x` | 上推前进（+）/ 下拉后退（−） |
-| 左摇杆 X 轴（axes[0]） | `cmd_vel.angular.z` | 左推左转（+）/ 右推右转（−） |
-| A 键（buttons[0]） | — | 立即发布零速（急停） |
+| 四足底盘仿真 | Gazebo 加载狗模型、`mit_controller`、步态控制器和 RViz | `ros2 launch dog_bringup sim.launch.py` |
+| 四足底盘真机 | 4 路 CAN、12 个 J60 关节、真机关节反馈、站立和保守步态 | `ros2 launch dog_bringup real.launch.py` |
+| 手柄遥控 | Xbox/PS 手柄映射为前后、横移、转向、下蹲/站立等指令 | `ros2 launch dog_teleop dog_teleop.launch.py` |
+| IMU | WitMotion normal/modbus/hmodbus/can/hcan 协议，发布 IMU/Mag/GPS | `ros2 launch dog_imu wit_imu.launch.py` |
+| 物资箱点云定位 | 从点云中筛选 2 排 4 列箱体，发布选中箱 `PoseStamped` | `ros2 launch dog_bringup target_perception.launch.py` |
+| 视觉标签检测 | YOLO `.pt` 或 `.onnx` 模型检测标签，发布 2D 检测结果 | `ros2 launch dog_vision dog_vision.launch.py` |
+| 目标接近 | 根据目标箱位姿生成预览路径，可选择发布 `/cmd_vel` | `ros2 launch dog_bringup target_nav_real.launch.py` |
+| 机械臂 | DM-J4340 硬件接口、MoveIt、规划服务、箱子吸取/抬起/放置动作 | `ros2 launch dog_bringup arm.launch.py` |
+| 吸盘 | 继电器 1 控制吸附，继电器 2 脉冲放气释放 | `ros2 launch suction_controller suction_controller.launch.py` |
+| 总启动 | 一次拉起底盘、机械臂、感知模块 | `ros2 launch dog_bringup all.launch.py` |
 
-左摇杆两轴共同决定运动方向与速度：推向左前方 = 边走边左转，幅度越大速度越快。对角方向自动归一化，合速度不会超过最大值。
+## 环境准备
 
-`/cmd_vel` 由 `dog_position_control` 中的步态控制器订阅，控制实际行走速度与转向。
+建议环境：
 
-#### `src/dog_imu`
+- Ubuntu 22.04
+- ROS 2 Humble
+- Gazebo Classic 11
+- MoveIt 2
+- SocketCAN、PCL、OpenCV、pyserial
+- 可选：`ultralytics`、`onnxruntime`，用于 YOLO `.pt` 或 `.onnx` 推理
 
-WitMotion IMU（型号 IWT603）的 ROS 2 驱动包，支持多种通信协议。
-
-- `dog_imu/wit_normal_node.py`：标准串口协议驱动节点
-- `dog_imu/wit_modbus_node.py`：Modbus 协议驱动节点
-- `dog_imu/wit_can_node.py`：CAN 协议驱动节点
-- `dog_imu/get_imu_rpy.py`：订阅 IMU 数据并打印 Roll/Pitch/Yaw 的调试工具
-- `launch/wit_imu.launch.py`：IMU 驱动启动文件，通过 `type` 参数选择协议
-
-发布的话题：
-
-| 话题 | 类型 | 说明 |
-|---|---|---|
-| `/wit/imu` | `sensor_msgs/Imu` | 四元数姿态、角速度、线加速度 |
-| `/wit/mag` | `sensor_msgs/MagneticField` | 磁力计数据 |
-| `/wit/location` | `sensor_msgs/NavSatFix` | GPS 经纬度与海拔 |
-
-> 当前 IMU 驱动已可独立运行，尚未接入步态控制闭环。后续计划用 IMU 的俯仰角反馈替代步态控制器中基于正运动学的间接姿态估算，实现机身俯仰闭环稳定。
-
-#### `src/deep_motor_ros`
-
-- `src/motor_node.cpp`：真机电机驱动节点
-- `config/four_can_real_robot.yaml`：CAN 接口、电机 ID、关节名、话题映射等配置
-- `launch/motor_bringup.launch.py`：电机驱动启动入口
-
-## 使用方法
-
-### 1. 编译工作空间
-
-在工作空间根目录执行：
+编译完成后，每个新终端先执行：
 
 ```bash
-source /opt/ros/<ros_distro>/setup.bash
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+```
+
+仓库里的 `.envrc` 会加载 `.vscode/disable_conda.bash`，用于避免 Conda 环境污染 ROS 运行环境。
+
+## udev 设备名
+
+真机调试前建议安装稳定设备名规则：
+
+```bash
+sudo cp src/dog_bringup/config/99-serial-can.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+```
+
+规则会创建这些语义设备名：
+
+| 设备 | 名称 |
+|---|---|
+| IMU 串口 | `/dev/ttyimu` |
+| 四足 CAN | `can_lf`、`can_lh`、`can_rf`、`can_rh` |
+| 机械臂电机 USB-CAN | `/dev/arm_motor` |
+| 吸盘继电器 | `/dev/arm_relay1` |
+| 放气阀继电器 | `/dev/arm_relay2` |
+| 机械臂相机 | `/dev/arm_camera` |
+
+如果 USB 拓扑或设备 VID/PID 改变，需要同步修改 `src/dog_bringup/config/99-serial-can.rules` 和相关 YAML/launch 参数。
+
+## 编译
+
+```bash
+source /opt/ros/humble/setup.bash
 colcon build --symlink-install
 source install/setup.bash
 ```
 
-如果你使用的是 ROS 2 Humble，可将 `<ros_distro>` 替换为 `humble`。
-
-### 2. 启动 Gazebo 仿真
+只编译某个包示例：
 
 ```bash
-source /opt/ros/<ros_distro>/setup.bash
-source install/setup.bash
+colcon build --symlink-install --packages-select dog_position_control
+```
+
+## 启动与调试
+
+### Gazebo 仿真
+
+```bash
 ros2 launch dog_bringup sim.launch.py
 ```
 
-默认行为：
-
-- 启动 Gazebo
-- 加载机器人模型
-- 启动 `joint_state_broadcaster`
-- 启动 `mit_controller`
-- 启动 `quadruped_gait_controller`
-- 启动 RViz
-
-如果只想关闭 RViz：
+关闭 RViz：
 
 ```bash
 ros2 launch dog_bringup sim.launch.py launch_rviz:=false
 ```
 
-如果想替换步态参数文件：
+只启动仿真但不启动步态控制器：
 
 ```bash
-ros2 launch dog_bringup sim.launch.py \
-  gait_param_file:=/home/zhr/robot_dog/src/dog_position_control/config/gait_controller_sim_trot.yaml
+ros2 launch dog_bringup sim.launch.py launch_gait_controller:=false
 ```
 
-### 3. 单独启动步态控制器
-
-当底层关节状态和命令通道已经准备好时，可以单独启动步态节点：
+### 四足真机
 
 ```bash
-source /opt/ros/<ros_distro>/setup.bash
-source install/setup.bash
-ros2 launch dog_position_control gait_controller.launch.py
-```
-
-### 4. 启动真机控制
-
-真机模式会启动电机驱动节点、四足步态控制节点，并默认一起带起手柄遥控和 IMU：
-
-```bash
-source /opt/ros/<ros_distro>/setup.bash
-source install/setup.bash
 ros2 launch dog_bringup real.launch.py
 ```
 
-或者：
+常用开关：
 
 ```bash
-ros2 launch dog_bringup hardware_gait.launch.py
+ros2 launch dog_bringup real.launch.py \
+  launch_simulation:=false \
+  launch_teleop:=false \
+  launch_imu:=true
 ```
 
-如果只想启动真机链路，不同时启动 Gazebo，可使用：
-
-```bash
-ros2 launch dog_bringup real.launch.py launch_simulation:=false
-```
-
-如果临时不想启动手柄或 IMU，可以显式关闭：
-
-```bash
-ros2 launch dog_bringup real.launch.py launch_simulation:=false launch_teleop:=false launch_imu:=false
-```
-
-真机启动前建议优先检查：
+真机关键配置：
 
 - `src/deep_motor_ros/config/four_can_real_robot.yaml`
-  - `can_interfaces`
-  - `motors_per_can`
-  - `motor_ids`
-  - `joint_names`
-  - `command_topic`
-  - `joint_state_topic`
-- `src/dog_position_control/config/gait_controller_sim_trot.yaml`
-  - `use_sim_time`
-  - `command_topic`
-  - 站立姿态参数与步态参数
+- `src/dog_position_control/config/gait_controller_real_stand.yaml`
+- `src/dog_bringup/config/99-serial-can.rules`
 
-### 5. 手柄遥控
-
-手柄遥控现在默认已经被 `dog_bringup real.launch.py` 接入；如果你单独想起遥控节点，仍然可以继续直接启动 `dog_teleop`。
-
-#### 5.1 连接手柄并启动遥控节点
-
-将 Xbox 或 PS4 手柄通过 USB / 蓝牙连接到主机，然后：
+### 手柄遥控
 
 ```bash
-source /opt/ros/<ros_distro>/setup.bash
-source install/setup.bash
 ros2 launch dog_teleop dog_teleop.launch.py
 ```
 
-该命令会同时启动：
-- `joy_node`：读取 `/dev/input/js0`（或自动检测手柄设备）
-- `dog_teleop_node`：将摇杆值映射为 `/cmd_vel`
-
-#### 5.2 仿真 + 手柄完整启动流程
-
-打开两个终端：
-
-**终端 1（仿真）：**
-```bash
-source /opt/ros/<ros_distro>/setup.bash
-source install/setup.bash
-ros2 launch dog_bringup sim.launch.py
-```
-
-**终端 2（手柄）：**
-```bash
-source /opt/ros/<ros_distro>/setup.bash
-source install/setup.bash
-ros2 launch dog_teleop dog_teleop.launch.py
-```
-
-或者直接用真机总入口：
-
-```bash
-source /opt/ros/<ros_distro>/setup.bash
-source install/setup.bash
-ros2 launch dog_bringup real.launch.py launch_simulation:=false
-```
-
-#### 5.3 手柄操作说明
-
-所有运动控制集中在左摇杆，方向与速度由摇杆二维向量决定：
+默认输出 `/cmd_vel`：
 
 | 操作 | 效果 |
 |---|---|
-| 左摇杆向前推 | 机器狗前进，推幅越大速度越快 |
-| 左摇杆向后拉 | 机器狗后退 |
-| 左摇杆向左推 | 原地左转（CCW） |
-| 左摇杆向右推 | 原地右转（CW） |
-| 左摇杆推向对角 | 同时前进/后退 + 转弯，合速度自动归一化不超速 |
-| 摇杆归中 | 速度归零，机器狗自动切换到站立状态 |
-| A 键 | 立即急停，发布零速指令 |
+| 左摇杆前后 | 前进/后退 |
+| 左摇杆左右 | 左右横移 |
+| 右摇杆左右 | 原地转向 |
+| A 键 | 立即站立/零速 |
+| X/Y 键 | 下蹲/站立，见 `dog_teleop.yaml` |
 
-> **注意：** 右摇杆无功能。步态控制器收到非零 `/cmd_vel` 时自动切入行走状态；摇杆归中或手柄超过 0.5 秒未发送数据时自动切回站立。
-
-#### 5.4 不接手柄时用命令行验证
+命令行验证：
 
 ```bash
-# 前进
-ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist \
-  "{linear: {x: 0.3, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
-
-# 左转
-ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist \
-  "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.5}}"
-
-# 停止
-ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist \
-  "{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
-
-# 持续发布（模拟手柄保持前进，Ctrl+C 停止后机器狗自动站立）
 ros2 topic pub --rate 20 /cmd_vel geometry_msgs/msg/Twist \
-  "{linear: {x: 0.3, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+  "{linear: {x: 0.2, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
 ```
 
-#### 5.5 相关参数调整
-
-`src/dog_position_control/config/gait_controller_sim_trot.yaml` 中与遥控相关的参数：
-
-| 参数 | 默认值 | 说明 |
-|---|---|---|
-| `cmd_vel_topic` | `/cmd_vel` | 订阅的速度指令话题 |
-| `cmd_vel_timeout` | `0.5` s | 超时后自动归零 |
-| `max_linear_vel` | `0.5` m/s | 对应满幅步长的线速度上限 |
-| `max_angular_vel` | `1.0` rad/s | 对应满幅差速的角速度上限 |
-| `cmd_vel_deadzone` | `0.05` | 速度幅值低于此值视为停止 |
-| `foot_x_signs` | `[1,1,1,1]` | 各腿前进方向符号；若前进方向反了改为 `[-1,-1,-1,-1]` |
-
-### 6. 启动 IMU
-
-将 WitMotion IMU 通过 USB 连接后：
+### IMU
 
 ```bash
-source /opt/ros/<ros_distro>/setup.bash
-source install/setup.bash
-ros2 launch dog_imu wit_imu.launch.py type:=normal port:=/dev/ttyUSB0 baud:=9600
+ros2 launch dog_imu wit_imu.launch.py type:=normal port:=/dev/ttyimu baud:=9600
 ```
 
-真机总入口也会默认带起 IMU；如果要单独运行或改串口，继续使用上面的 `dog_imu` 入口即可。
-
-`type` 可选 `normal`（默认）、`modbus`、`hmodbus`、`can`、`hcan`，根据 IMU 固件协议选择。
-
-验证 IMU 数据：
+查看数据：
 
 ```bash
-# 查看原始 IMU 消息
 ros2 topic echo /wit/imu
-
-# 查看 Roll/Pitch/Yaw（角度制）
 ros2 run dog_imu get_imu_rpy
 ```
 
-### 7. 常用调试命令
+### 感知和目标接近
 
-查看关节状态：
+只启动点云箱体定位、可选 YOLO 和目标选择：
+
+```bash
+ros2 launch dog_bringup target_perception.launch.py \
+  cloud_topic:=/odin1/cloud_render \
+  target_row:=0 \
+  target_col:=1 \
+  launch_yolo:=false \
+  launch_target_selector:=false
+```
+
+启动真机目标接近预览。默认不会发布 `/cmd_vel`，适合先看 RViz 路径：
+
+```bash
+ros2 launch dog_bringup target_nav_real.launch.py publish_cmd_vel:=false
+```
+
+确认目标稳定后再允许它发布速度：
+
+```bash
+ros2 launch dog_bringup target_nav_real.launch.py \
+  launch_real_control:=true \
+  publish_cmd_vel:=true \
+  launch_teleop:=false
+```
+
+相关话题：
+
+| 话题 | 类型 | 说明 |
+|---|---|---|
+| `/vision/detections` | `dog_bringup/msg/Detection2DArray` | YOLO 2D 检测结果 |
+| `/vision/target_id` | `std_msgs/msg/Int32MultiArray` | 目标行列 `[row, col]` |
+| `/navigation/target_pose` | `geometry_msgs/msg/PoseStamped` | 点云定位出的目标箱位姿 |
+| `/navigation/preview_path` | `nav_msgs/msg/Path` | 目标接近预览路径 |
+| `/navigation/nav_status` | `std_msgs/msg/String` | 目标接近状态 |
+
+### 机械臂和吸盘
+
+```bash
+ros2 launch dog_bringup arm.launch.py
+```
+
+常用动作触发：
+
+```bash
+# 进入视觉观察姿态
+ros2 topic pub --once /arm_vision_motion/start std_msgs/msg/Empty "{}"
+
+# 完整箱子动作: 视觉姿态 -> 吸取 -> 抬起 -> 放置 -> 视觉姿态
+ros2 topic pub --once /arm_box_motion/start std_msgs/msg/Empty "{}"
+
+# 吸取、抬起、地面放置、叠放可以分段调试
+ros2 topic pub --once /arm_box_motion/suction std_msgs/msg/Empty "{}"
+ros2 topic pub --once /arm_box_motion/lift std_msgs/msg/Empty "{}"
+ros2 topic pub --once /arm_box_motion/place_ground std_msgs/msg/Empty "{}"
+ros2 topic pub --once /arm_box_motion/place_stack std_msgs/msg/Empty "{}"
+
+# 回原位并关闭吸盘
+ros2 topic pub --once /arm_home_motion/start std_msgs/msg/Empty "{}"
+```
+
+直接控制吸盘：
+
+```bash
+ros2 topic pub --once /suction/enable std_msgs/msg/Bool "{data: true}"
+ros2 topic pub --once /suction/enable std_msgs/msg/Bool "{data: false}"
+```
+
+### 总启动
+
+```bash
+ros2 launch dog_bringup all.launch.py
+```
+
+默认会启动底盘、机械臂和感知模块。比赛调试时建议先按模块验证，再使用总启动入口。
+
+## 常用检查命令
 
 ```bash
 ros2 topic echo /joint_states
-```
-
-查看真机反馈：
-
-```bash
-ros2 topic echo /motor_feedback
-```
-
-查看控制命令：
-
-```bash
+ros2 topic echo /real/joint_states
 ros2 topic echo /motor_cmd
-```
-
-查看手柄原始输入：
-
-```bash
-ros2 topic echo /joy
-```
-
-查看遥控速度指令：
-
-```bash
+ros2 topic echo /real/motor_feedback
 ros2 topic echo /cmd_vel
-```
-
-确认步态控制器已订阅速度指令：
-
-```bash
-ros2 topic info /cmd_vel
-```
-
-查看 IMU 姿态数据：
-
-```bash
+ros2 topic echo /gait_status
+ros2 topic echo /boxes/status
+ros2 topic echo /navigation/nav_status
 ros2 topic echo /wit/imu
 ```
 
-查看 IMU Roll/Pitch/Yaw：
+## 关键配置
 
-```bash
-ros2 run dog_imu get_imu_rpy
-```
+| 文件 | 作用 |
+|---|---|
+| `src/deep_motor_ros/config/four_can_real_robot.yaml` | CAN 口、电机 ID、关节名、话题、限幅、退出回零 |
+| `src/dog_position_control/config/gait_controller_real_stand.yaml` | 真机站立、步态、`/cmd_vel`、`/gait_action` 参数 |
+| `src/dog_position_control/config/gait_controller_sim_trot.yaml` | 仿真步态参数 |
+| `src/dog_teleop/config/dog_teleop.yaml` | 手柄轴/按键映射和速度上限 |
+| `src/arm_control/config/box_motion.yaml` | 机械臂箱子吸取、抬起、放置动作参数 |
+| `src/suction_controller/config/suction_controller.yaml` | 吸盘/放气阀继电器串口和控制字节 |
+| `src/dog_bringup/config/robot_controllers.yaml` | Gazebo ros2_control 控制器 |
+| `src/dog_bringup/config/99-serial-can.rules` | 真机设备稳定命名 |
 
-## 关键配置说明
+## 当前开发重点
 
-### `src/dog_position_control/config/gait_controller_sim_trot.yaml`
+任务赛完整闭环还缺这些关键模块：
 
-这是当前步态控制的核心参数文件，主要负责：
+- 智力题视觉识别、四则运算求解、答案对 4 取模、高分区发布。
+- 根据箱体标签识别结果自动选择食品、工具、仪器/建材、药品的搬运顺序。
+- 归位区坐标建图、从物资箱到归位区的自主导航。
+- 底盘到位、机械臂抓取、带箱移动、释放、下一箱循环的任务级状态机。
+- 摔倒/故障后的合规恢复流程、计时和任务日志。
+- IMU 姿态闭环、抓取成功检测、箱体放置成功检测。
 
-- 步态类型与节拍
-- 抬腿高度、步长、周期
-- 启动站立与站起流程
-- 关节零位偏置
-- HAA / HFE / KFE 的 PD 增益
-- 前后腿摆动补偿与姿态平衡补偿
+更详细的状态请看 [任务赛代码完成度与待办](docs/task_implementation_status.md)。
 
-修改这个文件后，通常重新启动 `sim.launch.py` 或 `gait_controller.launch.py` 即可生效。
+## 提交说明
 
-### `src/deep_motor_ros/config/four_can_real_robot.yaml`
-
-这个文件决定真机通信拓扑，包括：
-
-- 使用哪些 CAN 口
-- 每条 CAN 上挂载多少电机
-- 电机 ID 与关节名映射
-- 指令与反馈话题名称
-- 控制频率与日志周期
-
-### `src/dog_bringup/config/robot_controllers.yaml`
-
-这个文件用于配置 `controller_manager` 下的控制器，主要包括：
-
-- `mit_controller` 插件类型
-- 12 个关节名称
-- 控制模式
-- 指令话题与反馈话题
-- 力矩限幅
-
-## 说明
-
-- 仓库中的 `build/`、`install/`、`log/` 为本地生成目录，默认不提交。
-- 如果后续要补充更详细的安装依赖、硬件接线、参数调参说明，可以继续在此 README 基础上扩展。
+`build/`、`install/`、`log/` 是本地生成目录，默认不提交。规则 PDF 是当前文档依据，后续如果官方发布新版本，需要重新更新 `docs/task_competition_rules.md`。
