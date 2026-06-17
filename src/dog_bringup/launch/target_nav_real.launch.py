@@ -141,12 +141,20 @@ def generate_launch_description():
             {
                 "use_sim_time": False,
                 "target_pose_topic": "/navigation/target_pose",
-                "odom_topic": "/ground_truth",
+                "odom_topic": LaunchConfiguration("odom_topic"),
                 "path_topic": "/navigation/preview_path",
                 "marker_topic": "/navigation/preview_markers",
                 "cmd_vel_topic": "/cmd_vel",
                 "gait_action_topic": "/gait_action",
+                "gait_status_topic": "/gait_status",
                 "status_topic": "/navigation/nav_status",
+                "debug_status_topic": "/navigation/nav_debug_zh",
+                "nav_debug_log": ParameterValue(
+                    LaunchConfiguration("nav_debug_log"), value_type=bool
+                ),
+                "nav_debug_log_period": ParameterValue(
+                    LaunchConfiguration("nav_debug_log_period"), value_type=float
+                ),
                 "publish_cmd_vel": ParameterValue(
                     LaunchConfiguration("publish_cmd_vel"), value_type=bool
                 ),
@@ -178,6 +186,12 @@ def generate_launch_description():
                 ),
                 "yaw_tolerance": ParameterValue(
                     LaunchConfiguration("yaw_tolerance"), value_type=float
+                ),
+                "orthogonal_lateral_tolerance": ParameterValue(
+                    LaunchConfiguration("orthogonal_lateral_tolerance"), value_type=float
+                ),
+                "orthogonal_yaw_tolerance": ParameterValue(
+                    LaunchConfiguration("orthogonal_yaw_tolerance"), value_type=float
                 ),
                 "linear_gain": ParameterValue(
                     LaunchConfiguration("linear_gain"), value_type=float
@@ -249,6 +263,7 @@ def generate_launch_description():
             DeclareLaunchArgument("vision_enabled_topic", default_value="/arm_vision_mode/enabled"),
             DeclareLaunchArgument("vision_start_enabled", default_value="false"),
             DeclareLaunchArgument("cloud_topic", default_value="/odin1/cloud_render"),
+            DeclareLaunchArgument("odom_topic", default_value="/odin1/odometry"),
             DeclareLaunchArgument("x_min", default_value="0.30"),
             DeclareLaunchArgument("x_max", default_value="4.50"),
             DeclareLaunchArgument("y_min", default_value="-3.00"),
@@ -318,18 +333,18 @@ def generate_launch_description():
             DeclareLaunchArgument("layout_max_y_shift", default_value="0.35"),
             DeclareLaunchArgument("use_target_stabilizer", default_value="true"),
             DeclareLaunchArgument("target_confirm_frames", default_value="3"),
-            DeclareLaunchArgument("target_hold_frames", default_value="5"),
-            DeclareLaunchArgument("target_smoothing_alpha", default_value="0.35"),
+            DeclareLaunchArgument("target_hold_frames", default_value="8"),
+            DeclareLaunchArgument("target_smoothing_alpha", default_value="0.25"),
             DeclareLaunchArgument("target_reset_distance", default_value="0.45"),
             DeclareLaunchArgument("processing_period", default_value="0.20"),
             DeclareLaunchArgument("marker_lifetime", default_value="1.00"),
             DeclareLaunchArgument("status_include_faces", default_value="false"),
             DeclareLaunchArgument(
                 "publish_cmd_vel",
-                default_value="false",
+                default_value="true",
                 description="Publish /cmd_vel. Keep false for dry-runs.",
             ),
-            DeclareLaunchArgument("crouch_on_arrival", default_value="true"),
+            DeclareLaunchArgument("crouch_on_arrival", default_value="false"),
             DeclareLaunchArgument("arrival_action", default_value="crouch"),
             DeclareLaunchArgument(
                 "target_frame_mode",
@@ -338,21 +353,25 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "control_mode",
-                default_value="relative",
-                description="relative uses target poses directly without odom.",
+                default_value="odom",
+                description="odom converts local target poses into the odometry frame for short target dropouts.",
             ),
-            DeclareLaunchArgument("drive_mode", default_value="holonomic"),
-            DeclareLaunchArgument("enable_yaw_control", default_value="false"),
-            DeclareLaunchArgument("lock_target", default_value="false"),
+            DeclareLaunchArgument("drive_mode", default_value="orthogonal"),
+            DeclareLaunchArgument("enable_yaw_control", default_value="true"),
+            DeclareLaunchArgument("lock_target", default_value="true"),
             DeclareLaunchArgument(
                 "sensor_forward_offset",
                 default_value="0.22",
                 description="Forward offset from base to the point-cloud sensor, in meters.",
             ),
-            DeclareLaunchArgument("target_timeout", default_value="1.2"),
+            DeclareLaunchArgument("target_timeout", default_value="2.0"),
             DeclareLaunchArgument("standoff_distance", default_value="0.60"),
             DeclareLaunchArgument("linear_tolerance", default_value="0.08"),
             DeclareLaunchArgument("yaw_tolerance", default_value="0.08"),
+            DeclareLaunchArgument("orthogonal_lateral_tolerance", default_value="0.15"),
+            DeclareLaunchArgument("orthogonal_yaw_tolerance", default_value="0.20"),
+            DeclareLaunchArgument("nav_debug_log", default_value="true"),
+            DeclareLaunchArgument("nav_debug_log_period", default_value="0.5"),
             DeclareLaunchArgument("linear_gain", default_value="0.35"),
             DeclareLaunchArgument("lateral_gain", default_value="0.35"),
             DeclareLaunchArgument("angular_gain", default_value="0.55"),
