@@ -93,8 +93,8 @@ quadruped_gait_controller:
     auto_sequence_forward_use_direct_step: true
     auto_sequence_forward_step_length: 0.030      # 真机演示映射后：正数为前进，负数会反成后退
     auto_sequence_backward_step_length: -0.030    # 真机演示映射后：负数为后退，正数会反成前进
-    auto_sequence_turn_step_length: 0.030         # 真机演示映射后：正数为右转，负数会反成左转
-    auto_sequence_turn_left_step_length: -0.030   # 真机演示映射后：负数为左转，正数会反成右转
+    auto_sequence_turn_step_length: -0.030        # turn_right 方向符号；左右转反时只需和下一项互换正负
+    auto_sequence_turn_left_step_length: 0.030    # turn_left 方向符号；当前按实测左右反向修正
     auto_sequence_forward_step_height: 0.010      # direct 移动模式不用；保留给关闭 direct 前进时的 IK fallback
     auto_sequence_forward_hfe_amplitude: 0.095    # 前进阶段 HFE 前后摆基础幅度，单位 rad
     auto_sequence_backward_hfe_amplitude: 0.095   # 后退阶段 HFE 前后摆基础幅度，单位 rad
@@ -106,7 +106,7 @@ quadruped_gait_controller:
     auto_sequence_turn_hfe_scales: [1.60, 1.20, 1.60, 1.20] # LF,LH,RF,RH；转向差速明显但不过猛
     auto_sequence_diagonal_haa_signs: [1.0, 1.0, 1.0, 1.0] # LF,LH,RF,RH；正号表示 left 分量对应 HAA 正向，需要实测校准
     auto_sequence_diagonal_haa_scales: [1.0, 1.0, 1.0, 1.0] # LF,LH,RF,RH；斜向平移横向摆幅逐腿倍率
-    auto_sequence_lateral_haa_signs: [-1.0, 1.0, -1.0, 1.0] # LF,LH,RF,RH；纯横移单独标定，已按真机 lateral_left/lateral_right 方向取反
+    auto_sequence_lateral_haa_signs: [1.0, -1.0, 1.0, -1.0] # LF,LH,RF,RH；纯横移单独标定，当前按实测左右反向修正
     auto_sequence_lateral_haa_scales: [1.0, 1.0, 1.0, 1.0] # LF,LH,RF,RH；纯横移横向摆幅逐腿倍率
 
     stand_haa_slew_rate: 0.45              # HAA 站立目标最大变化速度，单位 rad/s
@@ -121,7 +121,7 @@ quadruped_gait_controller:
 
     # 数组顺序统一为: LF, LH, RF, RH。
     phase_offsets: [0.0, 0.5, 0.5, 0.0]      # 对角线原地踏步相位，LF+RH 一组，LH+RF 一组
-    foot_x_signs: [1.0, 1.0, 1.0, 1.0]       # 足端 x 方向符号，用于统一腿部坐标方向
+    foot_x_signs: [-1.0, -1.0, -1.0, -1.0]   # direct 模式前后摆方向；已折算原自动 FK 探测结果，保持当前前进/后退方向
     gait_foot_x_offsets: [0.0, 0.0, 0.0, 0.0] # 行走轨迹中每条腿的足端 x 静态偏移
     stand_foot_x_offsets: [0.0, 0.0, 0.0, 0.0] # IK 站姿模式下每条腿的足端 x 偏移
 

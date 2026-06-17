@@ -1049,10 +1049,7 @@ private:
           if (use_cmd_vel_for_stride)
           {
             const bool left_leg = (leg_index == 0 || leg_index == 1);
-            const double direct_hfe_direction =
-              direct_step_forward_direction(
-                leg_index, leg, stand_targets.hfe, stand_targets.kfe) *
-              foot_x_signs_[leg_index];
+            const double direct_hfe_direction = foot_x_signs_[leg_index];
             const double forward_hfe_amplitude =
               auto_sequence_forward_hfe_amplitude_ *
               auto_sequence_forward_hfe_scales_[leg_index];
@@ -1078,10 +1075,7 @@ private:
           else
           {
             const double foot_x_direction =
-              direct_step_forward_direction(
-                leg_index, leg, stand_targets.hfe, stand_targets.kfe) *
-              foot_x_signs_[leg_index] *
-              current_auto_sequence_stride_direction(leg_index);
+              foot_x_signs_[leg_index] * current_auto_sequence_stride_direction(leg_index);
 
             const double forward_hfe_amplitude =
               current_auto_sequence_hfe_amplitude(leg_index) *
@@ -1121,12 +1115,8 @@ private:
             swing_period_ > 1e-6 ?
             (kPi * std::cos(kPi * phase_state.swing_tau) / swing_period_) :
             0.0;
-          const double hfe_direction = direct_step_lift_direction(
-            leg_index, leg, stand_targets.hfe, stand_targets.kfe, kHfeJointIndex) *
-            direct_step_hfe_signs_[leg_index];
-          const double kfe_direction = direct_step_lift_direction(
-            leg_index, leg, stand_targets.hfe, stand_targets.kfe, kKfeJointIndex) *
-            direct_step_kfe_signs_[leg_index];
+          const double hfe_direction = direct_step_hfe_signs_[leg_index];
+          const double kfe_direction = direct_step_kfe_signs_[leg_index];
 
           gait_hfe = std::clamp(
             direct_base_hfe +
@@ -1152,12 +1142,8 @@ private:
             base_support_scale * direct_step_hfe_support_scales_[leg_index];
           const double kfe_support_scale =
             base_support_scale * direct_step_kfe_support_scales_[leg_index];
-          const double hfe_direction = -direct_step_lift_direction(
-            leg_index, leg, stand_targets.hfe, stand_targets.kfe, kHfeJointIndex) *
-            direct_step_hfe_signs_[leg_index];
-          const double kfe_direction = -direct_step_lift_direction(
-            leg_index, leg, stand_targets.hfe, stand_targets.kfe, kKfeJointIndex) *
-            direct_step_kfe_signs_[leg_index];
+          const double hfe_direction = -direct_step_hfe_signs_[leg_index];
+          const double kfe_direction = -direct_step_kfe_signs_[leg_index];
 
           gait_hfe = std::clamp(
             direct_base_hfe +
@@ -2105,54 +2091,6 @@ private:
     }
 
     return smoothstep((phase - start) / (end - start));
-  }
-
-  double direct_step_lift_direction(
-    size_t leg_index,
-    const LegState & leg,
-    double hfe_command,
-    double kfe_command,
-    size_t joint_index) const
-  {
-    constexpr double kProbeDelta = 0.02;
-    const auto foot_y_with_delta =
-      [&](double hfe_delta, double kfe_delta) {
-        const LegPose2D pose = forward_kinematics(
-          geometries_[leg_index],
-          hfe_command + hfe_delta - leg.hfe_offset,
-          kfe_command + kfe_delta - leg.kfe_offset);
-        return pose.y;
-      };
-
-    const double plus_y = joint_index == kHfeJointIndex ?
-      foot_y_with_delta(kProbeDelta, 0.0) :
-      foot_y_with_delta(0.0, kProbeDelta);
-    const double minus_y = joint_index == kHfeJointIndex ?
-      foot_y_with_delta(-kProbeDelta, 0.0) :
-      foot_y_with_delta(0.0, -kProbeDelta);
-
-    return plus_y < minus_y ? 1.0 : -1.0;
-  }
-
-  double direct_step_forward_direction(
-    size_t leg_index,
-    const LegState & leg,
-    double hfe_command,
-    double kfe_command) const
-  {
-    constexpr double kProbeDelta = 0.02;
-    const auto foot_x_with_delta =
-      [&](double hfe_delta) {
-        const LegPose2D pose = forward_kinematics(
-          geometries_[leg_index],
-          hfe_command + hfe_delta - leg.hfe_offset,
-          kfe_command - leg.kfe_offset);
-        return pose.x;
-      };
-
-    const double plus_x = foot_x_with_delta(kProbeDelta);
-    const double minus_x = foot_x_with_delta(-kProbeDelta);
-    return plus_x > minus_x ? 1.0 : -1.0;
   }
 
   // 一旦收到完整 joint_states，就把该时刻的真实关节角记为站立插值起点。

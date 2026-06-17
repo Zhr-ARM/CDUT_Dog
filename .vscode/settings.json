@@ -22,5 +22,6 @@
     "CMAKE_IGNORE_PREFIX_PATH": "/home/zhr/miniconda3",
     "Python3_EXECUTABLE": "/usr/bin/python3",
     "PYTHON_EXECUTABLE": "/usr/bin/python3"
-  }
+  },
+  "cmake.ignoreCMakeListsMissing": true
 }
