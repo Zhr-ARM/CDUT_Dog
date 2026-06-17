@@ -267,6 +267,10 @@ public:
     max_lateral_vel_ = declare_parameter<double>("max_lateral_vel", max_linear_vel_);
     max_angular_vel_ = declare_parameter<double>("max_angular_vel", 1.0);
     cmd_vel_deadzone_ = declare_parameter<double>("cmd_vel_deadzone", 0.05);
+    cmd_lateral_forward_trim_scale_ =
+      declare_parameter<double>("cmd_lateral_forward_trim_scale", 0.0);
+    cmd_lateral_yaw_trim_scale_ =
+      declare_parameter<double>("cmd_lateral_yaw_trim_scale", 0.0);
 
     // 第二组参数是“按腿配置”的数组，约定顺序统一为 LF/LH/RF/RH。
     // 这类参数允许对前后腿或左右腿做不对称补偿。
@@ -465,6 +469,8 @@ public:
     walk_ramp_duration_ = std::max(walk_ramp_duration_, 0.0);
     stand_gain_scale_ = std::max(stand_gain_scale_, 0.0);
     walk_gain_scale_ = std::clamp(walk_gain_scale_, 0.1, 2.5);
+    cmd_lateral_forward_trim_scale_ = std::clamp(cmd_lateral_forward_trim_scale_, -0.5, 0.5);
+    cmd_lateral_yaw_trim_scale_ = std::clamp(cmd_lateral_yaw_trim_scale_, -0.5, 0.5);
     auto_sequence_initial_stand_duration_ =
       std::max(auto_sequence_initial_stand_duration_, 0.0);
       auto_sequence_in_place_step_duration_ =
@@ -484,7 +490,7 @@ public:
       auto_sequence_forward_step_height_ =
         std::clamp(auto_sequence_forward_step_height_, 0.0, 0.05);
       auto_sequence_forward_hfe_amplitude_ =
-        std::clamp(auto_sequence_forward_hfe_amplitude_, 0.0, 0.12);
+        std::clamp(auto_sequence_forward_hfe_amplitude_, 0.0, 0.20);
       auto_sequence_backward_hfe_amplitude_ =
         std::clamp(auto_sequence_backward_hfe_amplitude_, 0.0, 0.12);
       auto_sequence_turn_hfe_amplitude_ =
@@ -492,7 +498,7 @@ public:
       auto_sequence_diagonal_haa_amplitude_ =
         std::clamp(auto_sequence_diagonal_haa_amplitude_, 0.0, 0.12);
       auto_sequence_lateral_haa_amplitude_ =
-        std::clamp(auto_sequence_lateral_haa_amplitude_, 0.0, 0.12);
+        std::clamp(auto_sequence_lateral_haa_amplitude_, 0.0, 0.18);
       for (double & scale : auto_sequence_forward_hfe_scales_)
       {
         scale = std::clamp(scale, 0.0, 2.0);
@@ -1056,10 +1062,17 @@ private:
             const double turn_hfe_amplitude =
               auto_sequence_turn_hfe_amplitude_ *
               auto_sequence_turn_hfe_scales_[leg_index];
-            const double split_forward_scale = left_leg ? -cmd_linear_scale : cmd_linear_scale;
+            const double effective_linear_scale =
+              cmd_linear_scale -
+              std::abs(cmd_lateral_scale) * cmd_lateral_forward_trim_scale_;
+            const double effective_turn_scale =
+              cmd_turn_scale -
+              cmd_lateral_scale * cmd_lateral_yaw_trim_scale_;
+            const double split_forward_scale =
+              left_leg ? -effective_linear_scale : effective_linear_scale;
             const double hfe_command =
               split_forward_scale * forward_hfe_amplitude +
-              cmd_turn_scale * turn_hfe_amplitude;
+              effective_turn_scale * turn_hfe_amplitude;
 
             direct_base_hfe += direct_hfe_direction * hfe_command * stride_profile;
             direct_base_hfe_velocity += direct_hfe_direction * hfe_command * stride_velocity;
@@ -2730,6 +2743,8 @@ private:
   double max_lateral_vel_{0.5};
   double max_angular_vel_{1.0};
   double cmd_vel_deadzone_{0.05};
+  double cmd_lateral_forward_trim_scale_{0.0};
+  double cmd_lateral_yaw_trim_scale_{0.0};
   bool cmd_vel_received_{false};
   bool teleop_walk_requested_{false};
   bool startup_complete_{false};

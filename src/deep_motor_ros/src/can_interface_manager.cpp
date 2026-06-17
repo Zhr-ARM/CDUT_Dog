@@ -18,7 +18,7 @@ namespace deep_motor_ros
 namespace
 {
 
-constexpr const char * kEmbeddedSudoPassword = "1";
+constexpr const char * kEmbeddedSudoPassword = "zhrnb";
 
 }  // namespace
 
