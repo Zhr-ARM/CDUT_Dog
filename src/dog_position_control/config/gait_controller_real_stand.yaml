@@ -17,6 +17,18 @@ quadruped_gait_controller:
     cmd_vel_deadzone: 0.05
     cmd_lateral_forward_trim_scale: 0.42 # 纯横跨时若机身前窜，注入少量后退等效 HFE；前窜仍明显就增大，变后退就减小或改负
     cmd_lateral_yaw_trim_scale: 0.10 # 纯横跨时若左横跨左转/右横跨右转，注入少量反向 yaw；仍同向转就增大
+    cmd_vel_turn_sign: 1.0 # 转向符号补偿；目标是让 /cmd_vel 符合 ROS 语义: z>0 左转、z<0 右转
+    cmd_vel_axis_lock: true # true 表示底层只执行一个主动作: 前后/横移/转向，避免多个动作通道互相污染
+    cmd_turn_forward_trim_scale: 0.45 # 纯转向若仍向前窜就增大；若转向时开始后退就减小。按 abs(yaw) 注入后退等效 HFE
+    cmd_turn_lateral_trim_scale: 0.00 # 纯转向若固定向左/右漂，再微调这一项；先保持 0
+    # /cmd_vel 归一化速度到内部步态权重的 3x3 混合矩阵，按行展开:
+    # 第1行 internal_forward = a*x + b*y + c*yaw，补偿前后窜动
+    # 第2行 internal_lateral = d*x + e*y + f*yaw，补偿横向漂移
+    # 第3行 internal_turn = g*x + h*y + i*yaw，补偿头部偏航
+    # 当前先用单位矩阵；后续用真机实测的纯前进/纯横移/纯旋转结果来调非对角项。
+    cmd_vel_mix: [1.0, 0.0, 0.0,
+                  0.0, 1.0, 0.0,
+                  0.0, 0.0, 1.0]
 
     # 步态基础参数；这里使用保守的对角线原地踏步。
     gait_profile: legacy_walk       # 使用 legacy_walk 避免 trot 对 swing_ratio 的限制；实际相位仍按对角线配置
@@ -105,7 +117,7 @@ quadruped_gait_controller:
     auto_sequence_lateral_haa_amplitude: 0.180    # 纯横移时单独使用的 HAA 横向摆幅，单位 rad；0.18 是当前测试横跨幅度上限
     auto_sequence_forward_hfe_scales: [1.55, 1.15, 1.55, 1.15] # LF,LH,RF,RH；保留现象但比大幅演示版更稳
     auto_sequence_backward_hfe_scales: [1.55, 1.15, 1.55, 1.15] # LF,LH,RF,RH；后退幅度与前进接近
-    auto_sequence_turn_hfe_scales: [1.60, 1.20, 1.60, 1.20] # LF,LH,RF,RH；转向差速明显但不过猛
+    auto_sequence_turn_hfe_scales: [1.20, 1.20, 1.20, 1.20] # LF,LH,RF,RH；转向四腿前后对称，减少原地转时前窜
     auto_sequence_diagonal_haa_signs: [1.0, 1.0, 1.0, 1.0] # LF,LH,RF,RH；正号表示 left 分量对应 HAA 正向，需要实测校准
     auto_sequence_diagonal_haa_scales: [1.0, 1.0, 1.0, 1.0] # LF,LH,RF,RH；斜向平移横向摆幅逐腿倍率
     auto_sequence_lateral_haa_signs: [-1.0, 1.0, -1.0, 1.0] # LF,LH,RF,RH；纯横移 HAA 方向，保持 /cmd_vel.linear.y > 0 为向左

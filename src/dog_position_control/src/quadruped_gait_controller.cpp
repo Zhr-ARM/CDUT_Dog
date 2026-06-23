@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cctype>
 #include <cmath>
+#include <cstddef>
 #include <initializer_list>
 #include <memory>
 #include <sstream>
@@ -12,6 +13,7 @@
 #include <vector>
 
 #include "geometry_msgs/msg/twist.hpp"
+#include "rcl_interfaces/msg/set_parameters_result.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
@@ -57,6 +59,18 @@ void validate_vector_size(const std::string & name, const std::vector<double> & 
   if (values.size() != kLegCount)
   {
     throw std::runtime_error(name + " must contain exactly 4 values.");
+  }
+}
+
+void validate_matrix_size(
+  const std::string & name,
+  const std::vector<double> & values,
+  size_t expected_size)
+{
+  if (values.size() != expected_size)
+  {
+    throw std::runtime_error(
+      name + " must contain exactly " + std::to_string(expected_size) + " values.");
   }
 }
 
@@ -123,6 +137,15 @@ public:
     kBackwardRight,
     kCrouch,
     kFinalStand,
+  };
+
+  enum class CmdVelMotionMode
+  {
+    kIdle,
+    kMixed,
+    kLinear,
+    kLateral,
+    kTurn,
   };
 
   QuadrupedGaitController()
@@ -271,6 +294,22 @@ public:
       declare_parameter<double>("cmd_lateral_forward_trim_scale", 0.0);
     cmd_lateral_yaw_trim_scale_ =
       declare_parameter<double>("cmd_lateral_yaw_trim_scale", 0.0);
+    cmd_vel_turn_sign_ =
+      declare_parameter<double>("cmd_vel_turn_sign", 1.0);
+    cmd_vel_axis_lock_ =
+      declare_parameter<bool>("cmd_vel_axis_lock", true);
+    cmd_turn_forward_trim_scale_ =
+      declare_parameter<double>("cmd_turn_forward_trim_scale", 0.0);
+    cmd_turn_lateral_trim_scale_ =
+      declare_parameter<double>("cmd_turn_lateral_trim_scale", 0.0);
+    cmd_vel_mix_ =
+      declare_parameter<std::vector<double>>(
+        "cmd_vel_mix",
+        {
+          1.0, 0.0, 0.0,
+          0.0, 1.0, 0.0,
+          0.0, 0.0, 1.0,
+        });
 
     // 第二组参数是“按腿配置”的数组，约定顺序统一为 LF/LH/RF/RH。
     // 这类参数允许对前后腿或左右腿做不对称补偿。
@@ -393,6 +432,7 @@ public:
       {"hfe_offsets", &manual_hfe_offsets_},
       {"kfe_offsets", &manual_kfe_offsets_},
     });
+    validate_matrix_size("cmd_vel_mix", cmd_vel_mix_, 9);
 
     // 对容易引发数值问题或物理不合理的参数做基础裁剪。
     // 这一步的目标不是“自动修正错误配置”，而是把参数限制在控制器
@@ -471,6 +511,13 @@ public:
     walk_gain_scale_ = std::clamp(walk_gain_scale_, 0.1, 2.5);
     cmd_lateral_forward_trim_scale_ = std::clamp(cmd_lateral_forward_trim_scale_, -0.5, 0.5);
     cmd_lateral_yaw_trim_scale_ = std::clamp(cmd_lateral_yaw_trim_scale_, -0.5, 0.5);
+    cmd_vel_turn_sign_ = cmd_vel_turn_sign_ >= 0.0 ? 1.0 : -1.0;
+    cmd_turn_forward_trim_scale_ = std::clamp(cmd_turn_forward_trim_scale_, -3.0, 3.0);
+    cmd_turn_lateral_trim_scale_ = std::clamp(cmd_turn_lateral_trim_scale_, -3.0, 3.0);
+    for (double & mix_value : cmd_vel_mix_)
+    {
+      mix_value = std::clamp(mix_value, -3.0, 3.0);
+    }
     auto_sequence_initial_stand_duration_ =
       std::max(auto_sequence_initial_stand_duration_, 0.0);
       auto_sequence_in_place_step_duration_ =
@@ -610,6 +657,8 @@ public:
     gait_action_sub_ = create_subscription<std_msgs::msg::String>(
       gait_action_topic_, rclcpp::SystemDefaultsQoS(),
       std::bind(&QuadrupedGaitController::gait_action_callback, this, std::placeholders::_1));
+    parameter_callback_handle_ = add_on_set_parameters_callback(
+      std::bind(&QuadrupedGaitController::parameters_callback, this, std::placeholders::_1));
 
     const double dt = 1.0 / control_rate_;
     timer_ = create_wall_timer(
@@ -620,6 +669,16 @@ public:
     RCLCPP_INFO(get_logger(), "Initial motion state: %s", motion_state_name(motion_state_));
     RCLCPP_INFO(get_logger(), "Gait profile: %s", gait_profile_.c_str());
     RCLCPP_INFO(get_logger(), "Gait action topic: %s", gait_action_topic_.c_str());
+    RCLCPP_INFO(
+      get_logger(),
+      "cmd_vel isolation: axis_lock=%s turn_sign=%.1f turn_forward_trim=%.3f "
+      "turn_lateral_trim=%.3f lateral_forward_trim=%.3f lateral_yaw_trim=%.3f",
+      cmd_vel_axis_lock_ ? "true" : "false",
+      cmd_vel_turn_sign_,
+      cmd_turn_forward_trim_scale_,
+      cmd_turn_lateral_trim_scale_,
+      cmd_lateral_forward_trim_scale_,
+      cmd_lateral_yaw_trim_scale_);
     RCLCPP_INFO(
       get_logger(), "allow_partial_joint_state_startup: %s",
       allow_partial_joint_state_startup_ ? "true" : "false");
@@ -639,6 +698,98 @@ public:
   }
 
 private:
+  CmdVelMotionMode select_cmd_vel_motion_mode(
+    double linear_scale,
+    double lateral_scale,
+    double turn_scale) const
+  {
+    const double abs_linear = std::abs(linear_scale);
+    const double abs_lateral = std::abs(lateral_scale);
+    const double abs_turn = std::abs(turn_scale);
+    const double max_scale = std::max({abs_linear, abs_lateral, abs_turn});
+    if (max_scale < 1e-6)
+    {
+      return CmdVelMotionMode::kIdle;
+    }
+    if (!cmd_vel_axis_lock_)
+    {
+      return CmdVelMotionMode::kMixed;
+    }
+    if (abs_turn >= abs_linear && abs_turn >= abs_lateral)
+    {
+      return CmdVelMotionMode::kTurn;
+    }
+    if (abs_lateral >= abs_linear)
+    {
+      return CmdVelMotionMode::kLateral;
+    }
+    return CmdVelMotionMode::kLinear;
+  }
+
+  static const char * cmd_vel_motion_mode_name(CmdVelMotionMode mode)
+  {
+    switch (mode)
+    {
+      case CmdVelMotionMode::kIdle:
+        return "idle";
+      case CmdVelMotionMode::kMixed:
+        return "mixed";
+      case CmdVelMotionMode::kLinear:
+        return "linear";
+      case CmdVelMotionMode::kLateral:
+        return "lateral";
+      case CmdVelMotionMode::kTurn:
+        return "turn";
+    }
+    return "unknown";
+  }
+
+  std::array<double, 3> isolate_cmd_vel_scales(
+    CmdVelMotionMode mode,
+    double linear_scale,
+    double lateral_scale,
+    double turn_scale) const
+  {
+    switch (mode)
+    {
+      case CmdVelMotionMode::kIdle:
+        return {0.0, 0.0, 0.0};
+      case CmdVelMotionMode::kMixed:
+        return {linear_scale, lateral_scale, turn_scale};
+      case CmdVelMotionMode::kLinear:
+        return {linear_scale, 0.0, 0.0};
+      case CmdVelMotionMode::kLateral:
+        return {0.0, lateral_scale, 0.0};
+      case CmdVelMotionMode::kTurn:
+        return {0.0, 0.0, turn_scale};
+    }
+    return {0.0, 0.0, 0.0};
+  }
+
+  std::array<double, 3> apply_cmd_vel_mix(
+    double linear_scale,
+    double lateral_scale,
+    double turn_scale) const
+  {
+    return {
+      std::clamp(
+        cmd_vel_mix_[0] * linear_scale +
+        cmd_vel_mix_[1] * lateral_scale +
+        cmd_vel_mix_[2] * turn_scale,
+        -1.0, 1.0),
+      std::clamp(
+        cmd_vel_mix_[3] * linear_scale +
+        cmd_vel_mix_[4] * lateral_scale +
+        cmd_vel_mix_[5] * turn_scale,
+        -1.0, 1.0),
+      std::clamp(
+        cmd_vel_mix_[6] * linear_scale +
+        cmd_vel_mix_[7] * lateral_scale +
+        cmd_vel_mix_[8] * turn_scale,
+        -1.0, 1.0),
+    };
+  }
+
   // 主控制循环。
   //
   // 每一轮循环都做以下事情:
@@ -805,15 +956,31 @@ private:
 
     const bool use_cmd_vel_for_stride =
       cmd_vel_received_ && !enable_auto_sequence_ && !action_command_active_;
-    const double cmd_linear_scale =
+    const double raw_cmd_linear_scale =
       use_cmd_vel_for_stride ?
       std::clamp(cmd_vel_linear_x_ / std::max(max_linear_vel_, 1e-6), -1.0, 1.0) : 1.0;
-    const double cmd_lateral_scale =
+    const double raw_cmd_lateral_scale =
       use_cmd_vel_for_stride ?
       std::clamp(cmd_vel_linear_y_ / std::max(max_lateral_vel_, 1e-6), -1.0, 1.0) : 0.0;
-    const double cmd_turn_scale =
+    const double raw_cmd_turn_scale =
       use_cmd_vel_for_stride ?
       std::clamp(cmd_vel_angular_z_ / std::max(max_angular_vel_, 1e-6), -1.0, 1.0) : 0.0;
+    const CmdVelMotionMode cmd_vel_motion_mode =
+      use_cmd_vel_for_stride ?
+      select_cmd_vel_motion_mode(
+        raw_cmd_linear_scale, raw_cmd_lateral_scale, raw_cmd_turn_scale) :
+      CmdVelMotionMode::kIdle;
+    const auto isolated_cmd_scales =
+      isolate_cmd_vel_scales(
+        cmd_vel_motion_mode, raw_cmd_linear_scale, raw_cmd_lateral_scale, raw_cmd_turn_scale);
+    const auto mixed_cmd_scales =
+      use_cmd_vel_for_stride ?
+      apply_cmd_vel_mix(
+        isolated_cmd_scales[0], isolated_cmd_scales[1], isolated_cmd_scales[2]) :
+      std::array<double, 3>{raw_cmd_linear_scale, raw_cmd_lateral_scale, raw_cmd_turn_scale};
+    const double cmd_linear_scale = mixed_cmd_scales[0];
+    const double cmd_lateral_scale = mixed_cmd_scales[1];
+    const double cmd_turn_scale = mixed_cmd_scales[2];
 
     std_msgs::msg::Float64MultiArray msg;
     msg.data.resize(kAggregateCommandSize, 0.0);
@@ -1055,6 +1222,7 @@ private:
           if (use_cmd_vel_for_stride)
           {
             const bool left_leg = (leg_index == 0 || leg_index == 1);
+            const bool turn_mode = cmd_vel_motion_mode == CmdVelMotionMode::kTurn;
             const double direct_hfe_direction = foot_x_signs_[leg_index];
             const double forward_hfe_amplitude =
               auto_sequence_forward_hfe_amplitude_ *
@@ -1062,11 +1230,14 @@ private:
             const double turn_hfe_amplitude =
               auto_sequence_turn_hfe_amplitude_ *
               auto_sequence_turn_hfe_scales_[leg_index];
+            const double turn_forward_trim =
+              turn_mode ? std::abs(cmd_turn_scale) * cmd_turn_forward_trim_scale_ : 0.0;
             const double effective_linear_scale =
               cmd_linear_scale -
-              std::abs(cmd_lateral_scale) * cmd_lateral_forward_trim_scale_;
+              std::abs(cmd_lateral_scale) * cmd_lateral_forward_trim_scale_ -
+              turn_forward_trim;
             const double effective_turn_scale =
-              cmd_turn_scale -
+              cmd_vel_turn_sign_ * cmd_turn_scale -
               cmd_lateral_scale * cmd_lateral_yaw_trim_scale_;
             const double split_forward_scale =
               left_leg ? -effective_linear_scale : effective_linear_scale;
@@ -1077,8 +1248,10 @@ private:
             direct_base_hfe += direct_hfe_direction * hfe_command * stride_profile;
             direct_base_hfe_velocity += direct_hfe_direction * hfe_command * stride_velocity;
 
+            const double turn_lateral_trim =
+              turn_mode ? cmd_turn_scale * cmd_turn_lateral_trim_scale_ : 0.0;
             const double lateral_haa_command =
-              cmd_lateral_scale *
+              (cmd_lateral_scale - turn_lateral_trim) *
               auto_sequence_lateral_haa_amplitude_ *
               auto_sequence_lateral_haa_scales_[leg_index] *
               auto_sequence_lateral_haa_signs_[leg_index];
@@ -1087,14 +1260,34 @@ private:
           }
           else
           {
+            const AutoSequenceStage active_stage = active_gait_stage();
+            const bool sequence_turn_mode =
+              active_stage == AutoSequenceStage::kTurnRight ||
+              active_stage == AutoSequenceStage::kTurnLeft;
+            const bool left_leg = (leg_index == 0 || leg_index == 1);
             const double foot_x_direction =
               foot_x_signs_[leg_index] * current_auto_sequence_stride_direction(leg_index);
 
-            const double forward_hfe_amplitude =
+            const double stage_hfe_amplitude =
               current_auto_sequence_hfe_amplitude(leg_index) *
               sequence_motion_alpha;
-            direct_base_hfe += foot_x_direction * forward_hfe_amplitude * stride_profile;
-            direct_base_hfe_velocity += foot_x_direction * forward_hfe_amplitude * stride_velocity;
+            direct_base_hfe += foot_x_direction * stage_hfe_amplitude * stride_profile;
+            direct_base_hfe_velocity += foot_x_direction * stage_hfe_amplitude * stride_velocity;
+
+            if (sequence_turn_mode && std::abs(cmd_turn_forward_trim_scale_) > 1e-6)
+            {
+              const double forward_hfe_amplitude =
+                auto_sequence_forward_hfe_amplitude_ *
+                auto_sequence_forward_hfe_scales_[leg_index] *
+                sequence_motion_alpha;
+              const double forward_trim_scale = -cmd_turn_forward_trim_scale_;
+              const double split_forward_scale =
+                left_leg ? -forward_trim_scale : forward_trim_scale;
+              const double forward_trim_command =
+                foot_x_signs_[leg_index] * split_forward_scale * forward_hfe_amplitude;
+              direct_base_hfe += forward_trim_command * stride_profile;
+              direct_base_hfe_velocity += forward_trim_command * stride_velocity;
+            }
 
             const double lateral_haa_direction = current_auto_sequence_lateral_direction(leg_index);
             if (std::abs(lateral_haa_direction) > 1e-6)
@@ -1326,6 +1519,78 @@ private:
     }
   }
 
+  rcl_interfaces::msg::SetParametersResult parameters_callback(
+    const std::vector<rclcpp::Parameter> & parameters)
+  {
+    rcl_interfaces::msg::SetParametersResult result;
+    result.successful = true;
+
+    try
+    {
+      for (const auto & parameter : parameters)
+      {
+        const std::string & name = parameter.get_name();
+        if (name == "cmd_vel_axis_lock")
+        {
+          cmd_vel_axis_lock_ = parameter.as_bool();
+        }
+        else if (name == "cmd_vel_turn_sign")
+        {
+          cmd_vel_turn_sign_ = parameter.as_double() >= 0.0 ? 1.0 : -1.0;
+        }
+        else if (name == "cmd_turn_forward_trim_scale")
+        {
+          cmd_turn_forward_trim_scale_ = std::clamp(parameter.as_double(), -3.0, 3.0);
+        }
+        else if (name == "cmd_turn_lateral_trim_scale")
+        {
+          cmd_turn_lateral_trim_scale_ = std::clamp(parameter.as_double(), -3.0, 3.0);
+        }
+        else if (name == "cmd_lateral_forward_trim_scale")
+        {
+          cmd_lateral_forward_trim_scale_ = std::clamp(parameter.as_double(), -0.5, 0.5);
+        }
+        else if (name == "cmd_lateral_yaw_trim_scale")
+        {
+          cmd_lateral_yaw_trim_scale_ = std::clamp(parameter.as_double(), -0.5, 0.5);
+        }
+        else if (name == "cmd_vel_mix")
+        {
+          std::vector<double> values = parameter.as_double_array();
+          if (values.size() != 9)
+          {
+            result.successful = false;
+            result.reason = "cmd_vel_mix must contain exactly 9 values";
+            return result;
+          }
+          for (double & value : values)
+          {
+            value = std::clamp(value, -3.0, 3.0);
+          }
+          cmd_vel_mix_ = values;
+        }
+      }
+    }
+    catch (const std::exception & error)
+    {
+      result.successful = false;
+      result.reason = error.what();
+      return result;
+    }
+
+    RCLCPP_INFO(
+      get_logger(),
+      "cmd_vel params updated: axis_lock=%s turn_sign=%.1f turn_forward_trim=%.3f "
+      "turn_lateral_trim=%.3f lateral_forward_trim=%.3f lateral_yaw_trim=%.3f",
+      cmd_vel_axis_lock_ ? "true" : "false",
+      cmd_vel_turn_sign_,
+      cmd_turn_forward_trim_scale_,
+      cmd_turn_lateral_trim_scale_,
+      cmd_lateral_forward_trim_scale_,
+      cmd_lateral_yaw_trim_scale_);
+    return result;
+  }
+
   void gait_action_callback(const std_msgs::msg::String::SharedPtr msg)
   {
     const std::string action = normalize_action_name(msg->data);
@@ -1387,6 +1652,24 @@ private:
     const double cmd_speed =
       std::abs(cmd_vel_linear_x_) + std::abs(cmd_vel_linear_y_) +
       std::abs(cmd_vel_angular_z_);
+    const double raw_linear_scale =
+      std::clamp(cmd_vel_linear_x_ / std::max(max_linear_vel_, 1e-6), -1.0, 1.0);
+    const double raw_lateral_scale =
+      std::clamp(cmd_vel_linear_y_ / std::max(max_lateral_vel_, 1e-6), -1.0, 1.0);
+    const double raw_turn_scale =
+      std::clamp(cmd_vel_angular_z_ / std::max(max_angular_vel_, 1e-6), -1.0, 1.0);
+    const CmdVelMotionMode cmd_vel_motion_mode =
+      select_cmd_vel_motion_mode(raw_linear_scale, raw_lateral_scale, raw_turn_scale);
+    const auto isolated_cmd_scales =
+      isolate_cmd_vel_scales(
+        cmd_vel_motion_mode, raw_linear_scale, raw_lateral_scale, raw_turn_scale);
+    const auto mixed_cmd_scales =
+      apply_cmd_vel_mix(
+        isolated_cmd_scales[0], isolated_cmd_scales[1], isolated_cmd_scales[2]);
+    const double turn_forward_trim_effective =
+      cmd_vel_motion_mode == CmdVelMotionMode::kTurn ?
+      std::abs(mixed_cmd_scales[2]) * cmd_turn_forward_trim_scale_ :
+      0.0;
 
     std::ostringstream stream;
     stream
@@ -1394,11 +1677,24 @@ private:
       << ", gait_profile=" << gait_profile_
       << ", action=" << current_action_name()
       << ", command_source=" << current_command_source(cmd_speed)
+      << ", cmd_mode=" << cmd_vel_motion_mode_name(cmd_vel_motion_mode)
       << ", global_phase=" << global_phase_
       << ", swing_legs=" << swing_leg_names(gait_schedule)
       << ", cmd_vel=(x=" << cmd_vel_linear_x_
       << ", y=" << cmd_vel_linear_y_
-      << ", yaw=" << cmd_vel_angular_z_ << ")";
+      << ", yaw=" << cmd_vel_angular_z_ << ")"
+      << ", raw_scale=(x=" << raw_linear_scale
+      << ", y=" << raw_lateral_scale
+      << ", yaw=" << raw_turn_scale << ")"
+      << ", isolated_scale=(x=" << isolated_cmd_scales[0]
+      << ", y=" << isolated_cmd_scales[1]
+      << ", yaw=" << isolated_cmd_scales[2] << ")"
+      << ", mixed_scale=(x=" << mixed_cmd_scales[0]
+      << ", y=" << mixed_cmd_scales[1]
+      << ", yaw=" << mixed_cmd_scales[2] << ")"
+      << ", trims=(turn_forward=" << cmd_turn_forward_trim_scale_
+      << ", turn_forward_effective=" << turn_forward_trim_effective
+      << ", turn_lateral=" << cmd_turn_lateral_trim_scale_ << ")";
 
     std_msgs::msg::String status;
     status.data = stream.str();
@@ -2732,6 +3028,7 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_sub_;
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr gait_action_sub_;
+  rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr parameter_callback_handle_;
   rclcpp::TimerBase::SharedPtr timer_;
 
   // cmd_vel 遥控状态
@@ -2745,6 +3042,11 @@ private:
   double cmd_vel_deadzone_{0.05};
   double cmd_lateral_forward_trim_scale_{0.0};
   double cmd_lateral_yaw_trim_scale_{0.0};
+  double cmd_vel_turn_sign_{1.0};
+  bool cmd_vel_axis_lock_{true};
+  double cmd_turn_forward_trim_scale_{0.0};
+  double cmd_turn_lateral_trim_scale_{0.0};
+  std::vector<double> cmd_vel_mix_;
   bool cmd_vel_received_{false};
   bool teleop_walk_requested_{false};
   bool startup_complete_{false};

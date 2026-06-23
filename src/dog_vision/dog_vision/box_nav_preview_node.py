@@ -22,8 +22,7 @@ def normalize_angle(angle: float) -> float:
     return math.atan2(math.sin(angle), math.cos(angle))
 
 
-def yaw_from_odometry(msg: Odometry) -> float:
-    orientation = msg.pose.pose.orientation
+def yaw_from_orientation(orientation) -> float:
     siny_cosp = 2.0 * (
         orientation.w * orientation.z + orientation.x * orientation.y
     )
@@ -31,6 +30,14 @@ def yaw_from_odometry(msg: Odometry) -> float:
         orientation.y * orientation.y + orientation.z * orientation.z
     )
     return math.atan2(siny_cosp, cosy_cosp)
+
+
+def yaw_from_odometry(msg: Odometry) -> float:
+    return yaw_from_orientation(msg.pose.pose.orientation)
+
+
+def yaw_from_pose(msg: PoseStamped) -> float:
+    return yaw_from_orientation(msg.pose.orientation)
 
 
 @dataclass(frozen=True)
@@ -70,6 +77,7 @@ class BoxNavPreviewNode(Node):
         self.declare_parameter('debug_status_topic', '/navigation/nav_debug_zh')
         self.declare_parameter('nav_debug_log', True)
         self.declare_parameter('nav_debug_log_period', 0.5)
+        self.declare_parameter('visual_z_offset', 0.0)
         self.declare_parameter('publish_cmd_vel', False)
         self.declare_parameter('crouch_on_arrival', False)
         self.declare_parameter('arrival_action', 'crouch')
@@ -79,6 +87,7 @@ class BoxNavPreviewNode(Node):
         self.declare_parameter('use_robot_pose', True)
         self.declare_parameter('fixed_frame', 'odom')
         self.declare_parameter('target_frame_mode', 'auto')
+        self.declare_parameter('target_pose_role', 'box_center')
         self.declare_parameter('lock_target', False)
         self.declare_parameter('sensor_forward_offset', 0.0)
         self.declare_parameter('standoff_distance', 0.70)
@@ -112,6 +121,7 @@ class BoxNavPreviewNode(Node):
         self.nav_debug_log_period = float(
             self.get_parameter('nav_debug_log_period').value
         )
+        self.visual_z_offset = float(self.get_parameter('visual_z_offset').value)
         self.publish_cmd_vel = bool(self.get_parameter('publish_cmd_vel').value)
         self.crouch_on_arrival = bool(
             self.get_parameter('crouch_on_arrival').value
@@ -144,6 +154,15 @@ class BoxNavPreviewNode(Node):
                 % self.target_frame_mode
             )
             self.target_frame_mode = 'auto'
+        self.target_pose_role = str(
+            self.get_parameter('target_pose_role').value
+        ).lower()
+        if self.target_pose_role not in ('box_center', 'stop_pose'):
+            self.get_logger().warn(
+                "Unknown target_pose_role '%s', using box_center."
+                % self.target_pose_role
+            )
+            self.target_pose_role = 'box_center'
         self.lock_target = bool(self.get_parameter('lock_target').value)
         self.sensor_forward_offset = float(
             self.get_parameter('sensor_forward_offset').value
@@ -214,12 +233,14 @@ class BoxNavPreviewNode(Node):
 
         mode = 'will publish /cmd_vel' if self.publish_cmd_vel else 'visual preview only'
         self.get_logger().info(
-            '箱子导航启动: target=%s, odom=%s, path=%s, target_frame_mode=%s, control_mode=%s, drive_mode=%s, lock_target=%s, crouch_on_arrival=%s, %s'
+            '箱子导航启动: target=%s, odom=%s, path=%s, target_frame_mode=%s, target_pose_role=%s, visual_z_offset=%.3f, control_mode=%s, drive_mode=%s, lock_target=%s, crouch_on_arrival=%s, %s'
             % (
                 self.target_pose_topic,
                 self.odom_topic,
                 self.path_topic,
                 self.target_frame_mode,
+                self.target_pose_role,
+                self.visual_z_offset,
                 self.control_mode,
                 self.drive_mode,
                 'true' if self.lock_target else 'false',
@@ -245,7 +266,11 @@ class BoxNavPreviewNode(Node):
 
     def target_callback(self, msg: PoseStamped) -> None:
         if self.arrived:
-            return
+            if self.last_target is None or not self.should_replan(msg):
+                return
+            self.arrived = False
+            self.arrival_action_sent = False
+            self.plan = None
         self.last_target_time = self.get_clock().now()
         if self.needs_odom_projection(msg) and self.pose is None:
             self.last_target = msg
@@ -303,11 +328,16 @@ class BoxNavPreviewNode(Node):
         elif self.target_frame_mode == 'fixed':
             frame_id = self.fixed_frame
 
-        dx = target_x - start_x
-        dy = target_y - start_y
-        heading = math.atan2(dy, dx) if math.hypot(dx, dy) > 1e-6 else 0.0
-        goal_x = target_x - math.cos(heading) * self.standoff_distance
-        goal_y = target_y - math.sin(heading) * self.standoff_distance
+        if self.target_pose_role == 'stop_pose':
+            heading = yaw_from_pose(target)
+            goal_x = target_x
+            goal_y = target_y
+        else:
+            dx = target_x - start_x
+            dy = target_y - start_y
+            heading = math.atan2(dy, dx) if math.hypot(dx, dy) > 1e-6 else 0.0
+            goal_x = target_x - math.cos(heading) * self.standoff_distance
+            goal_y = target_y - math.sin(heading) * self.standoff_distance
 
         return NavPlan(
             frame_id=frame_id,
@@ -369,7 +399,7 @@ class BoxNavPreviewNode(Node):
         pose.header.frame_id = frame_id
         pose.pose.position.x = x
         pose.pose.position.y = y
-        pose.pose.position.z = 0.02
+        pose.pose.position.z = self.visual_z(0.02)
         pose.pose.orientation.z = math.sin(yaw * 0.5)
         pose.pose.orientation.w = math.cos(yaw * 0.5)
         return pose
@@ -391,7 +421,7 @@ class BoxNavPreviewNode(Node):
         marker.action = Marker.ADD
         marker.pose.position.x = x
         marker.pose.position.y = y
-        marker.pose.position.z = 0.18
+        marker.pose.position.z = self.visual_z(0.18)
         marker.pose.orientation.w = 1.0
         marker.scale.x = 0.16
         marker.scale.y = 0.16
@@ -420,7 +450,7 @@ class BoxNavPreviewNode(Node):
         marker.action = Marker.ADD
         marker.pose.position.x = x
         marker.pose.position.y = y
-        marker.pose.position.z = 0.08
+        marker.pose.position.z = self.visual_z(0.08)
         marker.pose.orientation.z = math.sin(yaw * 0.5)
         marker.pose.orientation.w = math.cos(yaw * 0.5)
         marker.scale.x = 0.34
@@ -453,11 +483,14 @@ class BoxNavPreviewNode(Node):
         marker.color.b = 0.35
         marker.color.a = 0.95
         marker.points = [
-            self.point(plan.start_x, plan.start_y, 0.04),
-            self.point(plan.goal_x, plan.goal_y, 0.04),
-            self.point(plan.target_x, plan.target_y, 0.04),
+            self.point(plan.start_x, plan.start_y, self.visual_z(0.04)),
+            self.point(plan.goal_x, plan.goal_y, self.visual_z(0.04)),
+            self.point(plan.target_x, plan.target_y, self.visual_z(0.04)),
         ]
         return marker
+
+    def visual_z(self, height_above_ground: float) -> float:
+        return self.visual_z_offset + float(height_above_ground)
 
     def point(self, x: float, y: float, z: float) -> Point:
         point = Point()
@@ -598,6 +631,30 @@ class BoxNavPreviewNode(Node):
         body_x, body_y = self.fixed_error_to_body(dx, dy)
         final_yaw_error = normalize_angle(plan.goal_yaw - self.pose.yaw)
 
+        if (
+            self.enable_yaw_control
+            and abs(final_yaw_error) > self.orthogonal_yaw_tolerance
+        ):
+            cmd.angular.z = self.angular_command(final_yaw_error)
+            self.publish_status(
+                'orthogonal_yaw_align',
+                plan,
+                cmd,
+                distance=distance,
+                yaw_error=final_yaw_error,
+                body_x=body_x,
+                body_y=body_y,
+                action=self.movement_name(cmd),
+                reason=(
+                    'yaw误差 %.1fdeg 超过转向启动阈值 %.1fdeg，先修正朝向再平移'
+                    % (
+                        math.degrees(final_yaw_error),
+                        math.degrees(self.orthogonal_yaw_tolerance),
+                    )
+                ),
+            )
+            return cmd
+
         if abs(body_y) > self.orthogonal_lateral_tolerance:
             cmd.linear.y = self.axis_command(
                 body_y,
@@ -615,29 +672,10 @@ class BoxNavPreviewNode(Node):
                 body_y=body_y,
                 action=self.movement_name(cmd),
                 reason=(
-                    'body_y %.2fm 超过横向启动阈值 %.2fm'
-                    % (body_y, self.orthogonal_lateral_tolerance)
-                ),
-            )
-            return cmd
-
-        if (
-            self.enable_yaw_control
-            and abs(final_yaw_error) > self.orthogonal_yaw_tolerance
-        ):
-            cmd.angular.z = self.angular_command(final_yaw_error)
-            self.publish_status(
-                'orthogonal_yaw_align',
-                plan,
-                cmd,
-                distance=distance,
-                yaw_error=final_yaw_error,
-                body_x=body_x,
-                body_y=body_y,
-                action=self.movement_name(cmd),
-                reason=(
-                    'yaw误差 %.1fdeg 超过转向启动阈值 %.1fdeg'
+                    'body_y %.2fm 超过横向启动阈值 %.2fm，且yaw %.1fdeg 未超过转向阈值 %.1fdeg'
                     % (
+                        body_y,
+                        self.orthogonal_lateral_tolerance,
                         math.degrees(final_yaw_error),
                         math.degrees(self.orthogonal_yaw_tolerance),
                     )
@@ -863,6 +901,27 @@ class BoxNavPreviewNode(Node):
     ) -> Twist:
         cmd = Twist()
 
+        if self.enable_yaw_control and abs(yaw_error) > self.orthogonal_yaw_tolerance:
+            cmd.angular.z = self.angular_command(yaw_error)
+            self.publish_status(
+                'relative_orthogonal_yaw_align',
+                plan,
+                cmd,
+                distance=distance_to_stop,
+                yaw_error=yaw_error,
+                body_x=goal_x,
+                body_y=goal_y,
+                action=self.movement_name(cmd),
+                reason=(
+                    'yaw误差 %.1fdeg 超过转向启动阈值 %.1fdeg，先修正朝向再平移'
+                    % (
+                        math.degrees(yaw_error),
+                        math.degrees(self.orthogonal_yaw_tolerance),
+                    )
+                ),
+            )
+            return cmd
+
         if abs(goal_y) > self.orthogonal_lateral_tolerance:
             cmd.linear.y = self.axis_command(
                 goal_y,
@@ -880,26 +939,10 @@ class BoxNavPreviewNode(Node):
                 body_y=goal_y,
                 action=self.movement_name(cmd),
                 reason=(
-                    'goal_y %.2fm 超过横向启动阈值 %.2fm'
-                    % (goal_y, self.orthogonal_lateral_tolerance)
-                ),
-            )
-            return cmd
-
-        if self.enable_yaw_control and abs(yaw_error) > self.orthogonal_yaw_tolerance:
-            cmd.angular.z = self.angular_command(yaw_error)
-            self.publish_status(
-                'relative_orthogonal_yaw_align',
-                plan,
-                cmd,
-                distance=distance_to_stop,
-                yaw_error=yaw_error,
-                body_x=goal_x,
-                body_y=goal_y,
-                action=self.movement_name(cmd),
-                reason=(
-                    'yaw误差 %.1fdeg 超过转向启动阈值 %.1fdeg'
+                    'goal_y %.2fm 超过横向启动阈值 %.2fm，且yaw %.1fdeg 未超过转向阈值 %.1fdeg'
                     % (
+                        goal_y,
+                        self.orthogonal_lateral_tolerance,
                         math.degrees(yaw_error),
                         math.degrees(self.orthogonal_yaw_tolerance),
                     )

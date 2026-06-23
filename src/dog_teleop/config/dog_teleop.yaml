@@ -34,7 +34,7 @@ dog_teleop:
     turn_axis: 3
     invert_forward: false
     invert_lateral: false
-    invert_turn: false
+    invert_turn: true
 
     # Deadzone - ignore input below this threshold.
     deadzone_linear: 0.25

@@ -17,6 +17,11 @@ def generate_launch_description():
         "config",
         "gait_controller_real_stand.yaml",
     )
+    default_field_map_file = os.path.join(
+        get_package_share_directory("dog_vision"),
+        "config",
+        "field_map.yaml",
+    )
 
     perception_arg_names = [
         "target_row",
@@ -132,6 +137,45 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration("launch_real_control")),
     )
 
+    field_map_node = Node(
+        package="dog_vision",
+        executable="field_map_node",
+        name="field_map_node",
+        output="screen",
+        condition=IfCondition(LaunchConfiguration("launch_field_map")),
+        parameters=[
+            {
+                "use_sim_time": False,
+                "map_config_file": LaunchConfiguration("field_map_file"),
+                "frame_id_override": LaunchConfiguration("field_frame_id"),
+                "marker_topic": LaunchConfiguration("field_map_marker_topic"),
+                "target_pose_topic": LaunchConfiguration("field_target_pose_topic"),
+                "target_box_pose_topic": LaunchConfiguration("field_target_box_pose_topic"),
+                "target_id_topic": "/vision/target_id",
+                "return_zone_id_topic": "/navigation/return_zone_id",
+                "nav_status_topic": "/navigation/nav_status",
+                "mission_command_topic": "/navigation/field_mission_command",
+                "status_topic": LaunchConfiguration("field_map_status_topic"),
+                "target_row": ParameterValue(
+                    LaunchConfiguration("target_row"), value_type=int
+                ),
+                "target_col": ParameterValue(
+                    LaunchConfiguration("target_col"), value_type=int
+                ),
+                "target_return_zone": ParameterValue(
+                    LaunchConfiguration("target_return_zone"), value_type=int
+                ),
+                "mission_mode": LaunchConfiguration("field_mission_mode"),
+                "publish_target_pose": ParameterValue(
+                    LaunchConfiguration("field_publish_target_pose"), value_type=bool
+                ),
+                "publish_period": ParameterValue(
+                    LaunchConfiguration("field_map_publish_period"), value_type=float
+                ),
+            }
+        ],
+    )
+
     nav_node = Node(
         package="dog_vision",
         executable="box_nav_preview_node",
@@ -140,7 +184,7 @@ def generate_launch_description():
         parameters=[
             {
                 "use_sim_time": False,
-                "target_pose_topic": "/navigation/target_pose",
+                "target_pose_topic": LaunchConfiguration("target_pose_topic"),
                 "odom_topic": LaunchConfiguration("odom_topic"),
                 "path_topic": "/navigation/preview_path",
                 "marker_topic": "/navigation/preview_markers",
@@ -154,6 +198,9 @@ def generate_launch_description():
                 ),
                 "nav_debug_log_period": ParameterValue(
                     LaunchConfiguration("nav_debug_log_period"), value_type=float
+                ),
+                "visual_z_offset": ParameterValue(
+                    LaunchConfiguration("visual_z_offset"), value_type=float
                 ),
                 "publish_cmd_vel": ParameterValue(
                     LaunchConfiguration("publish_cmd_vel"), value_type=bool
@@ -169,6 +216,7 @@ def generate_launch_description():
                 ),
                 "fixed_frame": "odom",
                 "target_frame_mode": LaunchConfiguration("target_frame_mode"),
+                "target_pose_role": LaunchConfiguration("target_pose_role"),
                 "lock_target": ParameterValue(
                     LaunchConfiguration("lock_target"), value_type=bool
                 ),
@@ -233,9 +281,42 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "launch_perception",
-                default_value="true",
+                default_value="false",
                 description="Start point-cloud front-face box perception.",
             ),
+            DeclareLaunchArgument(
+                "launch_field_map",
+                default_value="true",
+                description="Start ideal task-field map and manual row/col target publisher.",
+            ),
+            DeclareLaunchArgument(
+                "field_map_file",
+                default_value=default_field_map_file,
+                description="Task-field map YAML. Edit this file after real field calibration.",
+            ),
+            DeclareLaunchArgument(
+                "field_frame_id",
+                default_value="",
+                description="Override field map frame. Empty uses frame_id in field_map.yaml.",
+            ),
+            DeclareLaunchArgument(
+                "field_map_marker_topic",
+                default_value="/navigation/field_map_markers",
+            ),
+            DeclareLaunchArgument(
+                "field_target_pose_topic",
+                default_value="/navigation/field_target_pose",
+            ),
+            DeclareLaunchArgument(
+                "field_target_box_pose_topic",
+                default_value="/navigation/field_box_pose",
+            ),
+            DeclareLaunchArgument(
+                "field_map_status_topic",
+                default_value="/navigation/field_map_status",
+            ),
+            DeclareLaunchArgument("field_publish_target_pose", default_value="true"),
+            DeclareLaunchArgument("field_map_publish_period", default_value="0.5"),
             DeclareLaunchArgument(
                 "gait_param_file",
                 default_value=default_gait_param_file,
@@ -257,6 +338,12 @@ def generate_launch_description():
             DeclareLaunchArgument("imu_frame_id", default_value="base_link"),
             DeclareLaunchArgument("target_row", default_value="0"),
             DeclareLaunchArgument("target_col", default_value="1"),
+            DeclareLaunchArgument("target_return_zone", default_value="0"),
+            DeclareLaunchArgument(
+                "field_mission_mode",
+                default_value="box_only",
+                description="box_only, box_then_return, or return_only for ideal field-map targets.",
+            ),
             DeclareLaunchArgument("launch_yolo", default_value="false"),
             DeclareLaunchArgument("launch_target_selector", default_value="false"),
             DeclareLaunchArgument("camera_device", default_value="/dev/arm_camera"),
@@ -341,15 +428,25 @@ def generate_launch_description():
             DeclareLaunchArgument("status_include_faces", default_value="false"),
             DeclareLaunchArgument(
                 "publish_cmd_vel",
-                default_value="true",
+                default_value="false",
                 description="Publish /cmd_vel. Keep false for dry-runs.",
             ),
             DeclareLaunchArgument("crouch_on_arrival", default_value="false"),
             DeclareLaunchArgument("arrival_action", default_value="crouch"),
             DeclareLaunchArgument(
                 "target_frame_mode",
-                default_value="local",
+                default_value="fixed",
                 description="local for sensor-relative target poses; fixed for odom/map poses.",
+            ),
+            DeclareLaunchArgument(
+                "target_pose_topic",
+                default_value="/navigation/field_target_pose",
+                description="Navigation target topic. Use /navigation/target_pose for perception targets.",
+            ),
+            DeclareLaunchArgument(
+                "target_pose_role",
+                default_value="stop_pose",
+                description="stop_pose means target pose is the final parking pose; box_center uses standoff_distance.",
             ),
             DeclareLaunchArgument(
                 "control_mode",
@@ -358,31 +455,37 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument("drive_mode", default_value="orthogonal"),
             DeclareLaunchArgument("enable_yaw_control", default_value="true"),
-            DeclareLaunchArgument("lock_target", default_value="true"),
+            DeclareLaunchArgument("lock_target", default_value="false"),
             DeclareLaunchArgument(
                 "sensor_forward_offset",
                 default_value="0.22",
                 description="Forward offset from base to the point-cloud sensor, in meters.",
             ),
             DeclareLaunchArgument("target_timeout", default_value="2.0"),
-            DeclareLaunchArgument("standoff_distance", default_value="0.60"),
+            DeclareLaunchArgument("standoff_distance", default_value="0.30"),
             DeclareLaunchArgument("linear_tolerance", default_value="0.08"),
-            DeclareLaunchArgument("yaw_tolerance", default_value="0.08"),
+            DeclareLaunchArgument("yaw_tolerance", default_value="0.10"),
             DeclareLaunchArgument("orthogonal_lateral_tolerance", default_value="0.15"),
             DeclareLaunchArgument("orthogonal_yaw_tolerance", default_value="0.20"),
             DeclareLaunchArgument("nav_debug_log", default_value="true"),
             DeclareLaunchArgument("nav_debug_log_period", default_value="0.5"),
-            DeclareLaunchArgument("linear_gain", default_value="0.35"),
+            DeclareLaunchArgument(
+                "visual_z_offset",
+                default_value="-0.35",
+                description="RViz-only z offset for navigation preview markers.",
+            ),
+            DeclareLaunchArgument("linear_gain", default_value="0.6"),
             DeclareLaunchArgument("lateral_gain", default_value="0.35"),
-            DeclareLaunchArgument("angular_gain", default_value="0.55"),
-            DeclareLaunchArgument("min_linear_speed", default_value="0.08"),
-            DeclareLaunchArgument("max_linear_speed", default_value="0.12"),
-            DeclareLaunchArgument("min_lateral_speed", default_value="0.08"),
-            DeclareLaunchArgument("max_lateral_speed", default_value="0.12"),
-            DeclareLaunchArgument("min_angular_speed", default_value="0.08"),
-            DeclareLaunchArgument("max_angular_speed", default_value="0.18"),
+            DeclareLaunchArgument("angular_gain", default_value="1.5"),
+            DeclareLaunchArgument("min_linear_speed", default_value="0.5"),
+            DeclareLaunchArgument("max_linear_speed", default_value="0.8"),
+            DeclareLaunchArgument("min_lateral_speed", default_value="0.1"),
+            DeclareLaunchArgument("max_lateral_speed", default_value="0.2"),
+            DeclareLaunchArgument("min_angular_speed", default_value="0.50"),
+            DeclareLaunchArgument("max_angular_speed", default_value="1.00"),
             perception_stack,
             real_control_stack,
+            field_map_node,
             nav_node,
         ]
     )
