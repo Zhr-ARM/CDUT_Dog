@@ -43,10 +43,10 @@ SUBSYSTEM=="net", ACTION=="add", KERNEL=="can*", KERNELS=="1-2.3.4:1.0", NAME="c
 #   sudo udevadm trigger
 
 # CH340 继电器 1：吸盘吸附继电器。
-SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", KERNELS=="3-3.2", SYMLINK+="arm_relay1"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", KERNELS=="1-2.2.2", SYMLINK+="arm_relay1"
 
 # CH340 继电器 2：放气阀继电器。
-SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", KERNELS=="3-3.3", SYMLINK+="arm_relay2"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", KERNELS=="1-2.2.3", SYMLINK+="arm_relay2"
 
 # 机械臂电机 USB-CAN 串口。
 SUBSYSTEM=="tty", ATTRS{idVendor}=="2e88", ATTRS{idProduct}=="4603", ATTRS{serial}=="00000000050C", SYMLINK+="arm_motor"

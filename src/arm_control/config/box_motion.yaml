@@ -45,9 +45,9 @@ box_motion_node:
 
     # 箱子顶部中心点参数，坐标系与 plan_moveit 服务一致，当前真实模型中 world 与 base_link 重合。
     box_center_distance_m: 0.42
-    box_motion_y_m: 0.0
+    box_motion_y_m: -0.02
     box_ground_z_m: 0.0
-    box_height_m: 0.25
+    box_height_m: 0.245
     # 放置点；box_place_x_m 设为 0.0 时，使用“吸附点向机器人回收 box_lift_retract_m”后的位置。
     box_place_x_m: 0.0
     box_place_y_m: 0.0
@@ -59,7 +59,7 @@ box_motion_node:
     # 举箱子阶段会先抬高，再回收 box_lift_retract_m 到运输姿态；放置前吸泵保持开启。
     box_approach_offset_m: 0.02
     box_suction_contact_offset_m: 0.01
-    box_touch_push_m: 0.005
+    box_touch_push_m: 0.1
     box_lift_height_m: 0.08
     box_lift_retract_m: 0.04
     box_min_approach_x_m: 0.14
