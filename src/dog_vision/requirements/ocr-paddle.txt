@@ -1,0 +1,13 @@
+numpy<3
+Pillow>=10.0
+opencv-python>=4.10
+paddleocr>=3.5.0
+
+# Install Paddle itself separately for your platform.
+# Example for CUDA 12.6:
+# python -m pip install \
+#   --index-url https://pypi.org/simple \
+#   --extra-index-url https://www.paddlepaddle.org.cn/packages/stable/cu126/ \
+#   --trusted-host www.paddlepaddle.org.cn \
+#   --trusted-host paddle-whl.bj.bcebos.com \
+#   paddlepaddle-gpu==3.3.1

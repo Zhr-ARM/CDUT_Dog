@@ -1,0 +1,2 @@
+"""Vision processing layer placeholders."""
+

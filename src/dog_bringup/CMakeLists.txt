@@ -7,7 +7,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 set(msg_files "msg/BaseState.msg" "msg/LegState.msg" "msg/SystemMonitor.msg"
               "msg/DogState.msg" "msg/Detection2D.msg"
-              "msg/Detection2DArray.msg")
+              "msg/Detection2DArray.msg" "msg/OcrResult.msg")
 
 rosidl_generate_interfaces(${PROJECT_NAME} ${msg_files} DEPENDENCIES
                            geometry_msgs std_msgs)

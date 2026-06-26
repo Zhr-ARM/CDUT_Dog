@@ -13,6 +13,9 @@
 # Python cache
 __pycache__/
 *.pyc
+.env
+.venv-ocr-*
+.venv-ocr-*/
 
 # OS files
 .DS_Store

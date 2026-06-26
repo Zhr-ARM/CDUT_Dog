@@ -1,0 +1,9 @@
+std_msgs/Header header
+string expression
+bool has_answer
+int32 answer
+int32 answer_mod_4
+bool is_valid
+float32 confidence
+string backend
+string error

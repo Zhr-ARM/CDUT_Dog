@@ -17,7 +17,7 @@ from std_msgs.msg import Bool
 
 
 PACKAGE_SHARE = Path(get_package_share_directory('dog_vision'))
-DEFAULT_MODEL_PATH = PACKAGE_SHARE / 'models' / 'task_2' / 'best.pt'
+DEFAULT_MODEL_PATH = PACKAGE_SHARE / 'models' / 'task_2' / 'best.onnx'
 DEFAULT_DATA_PATH = PACKAGE_SHARE / 'config' / 'task_2_data.yaml'
 
 
@@ -25,7 +25,7 @@ DEFAULT_CONFIG = {
     'model': str(DEFAULT_MODEL_PATH),
     'mode': 'auto',
     'data': str(DEFAULT_DATA_PATH),
-    'device': '/dev/arm_camera',
+    'device': '/dev/video0',
     'width': 1920,
     'height': 1080,
     'fps': 30.0,
@@ -34,7 +34,7 @@ DEFAULT_CONFIG = {
     'conf': 0.6,
     'iou': 0.45,
     'show_image': False,
-    'enabled_topic': '/arm_vision_mode/enabled',
+    'enabled_topic': '/vision/yolo_enabled',
     'start_enabled': False,
     'brightness': 0,
     'contrast': 32,
@@ -63,6 +63,18 @@ def video_index_from_device(device: str):
     if stripped.startswith('/dev/video'):
         return int(stripped.replace('/dev/video', ''))
     return device
+
+
+def resolve_camera_device(device: str, logger) -> str:
+    path = Path(str(device))
+    if path.exists() or not str(device).startswith('/dev/'):
+        return str(device)
+
+    for candidate in sorted(Path('/dev').glob('video*')):
+        if candidate.exists():
+            logger.warning(f"Camera device {device} not found; using {candidate} instead.")
+            return str(candidate)
+    return str(device)
 
 
 def as_bool(value: Any) -> bool:
@@ -147,13 +159,13 @@ def resolve_model_path(model_path: str) -> Path:
 
 def resolve_mode(model_path: Path, mode: str) -> str:
     suffix = model_path.suffix.lower()
-    if mode == 'onnx' and suffix != '.onnx':
-        raise RuntimeError(f'--mode onnx 需要 .onnx 模型文件，当前是: {model_path}')
-    if mode == 'yolo' and suffix == '.onnx':
-        raise RuntimeError(f'--mode yolo 需要 .pt 模型文件，当前是: {model_path}')
+    if suffix != '.onnx':
+        raise RuntimeError(f'当前项目只允许使用 YOLO ONNX 模型，当前是: {model_path}')
+    if mode == 'yolo':
+        raise RuntimeError('当前项目禁用 .pt/ultralytics 推理，请使用 mode:=auto 或 mode:=onnx')
     if mode != 'auto':
         return mode
-    return 'onnx' if suffix == '.onnx' else 'yolo'
+    return 'onnx'
 
 
 def load_class_names(data_yaml: str | None, fallback_names: dict[int, str] | None = None) -> dict[int, str]:
@@ -211,37 +223,6 @@ def draw_detections(
             2,
             cv2.LINE_AA,
         )
-
-
-class YoloPtDetector:
-    def __init__(self, model_path: Path, cfg: dict[str, Any]):
-        from ultralytics import YOLO
-
-        self.model = YOLO(str(model_path))
-        self.cfg = cfg
-        self.names = load_class_names(cfg['data'], getattr(self.model, 'names', None))
-
-    def infer(self, frame) -> list[tuple[int, float, tuple[int, int, int, int]]]:
-        results = self.model.predict(
-            source=frame,
-            imgsz=int(self.cfg['imgsz']),
-            conf=float(self.cfg['conf']),
-            iou=float(self.cfg['iou']),
-            verbose=False,
-        )
-        detections: list[tuple[int, float, tuple[int, int, int, int]]] = []
-        if not results:
-            return detections
-        result = results[0]
-        if result.boxes is None:
-            return detections
-        for box in result.boxes:
-            xyxy = box.xyxy[0].detach().cpu().numpy()
-            class_id = int(box.cls[0].detach().cpu().item())
-            conf = float(box.conf[0].detach().cpu().item())
-            x1, y1, x2, y2 = [int(round(v)) for v in xyxy]
-            detections.append((class_id, conf, (x1, y1, x2, y2)))
-        return detections
 
 
 class OnnxDetector:
@@ -330,7 +311,7 @@ def build_detector(model_path: Path, cfg: dict[str, Any]):
     mode = resolve_mode(model_path, str(cfg['mode']))
     if mode == 'onnx':
         return OnnxDetector(model_path, cfg), mode
-    return YoloPtDetector(model_path, cfg), mode
+    raise RuntimeError(f'unsupported YOLO inference mode: {mode}')
 
 
 class YoloDetectNode(Node):
@@ -351,6 +332,7 @@ class YoloDetectNode(Node):
         self.cap = None
         self.detector = None
         self.mode = ''
+        self.active_device = str(self.cfg['device'])
         self.enabled = as_bool(self.cfg['start_enabled'])
         self.last_time = time.perf_counter()
         self.last_camera_warning_time = 0.0
@@ -384,24 +366,27 @@ class YoloDetectNode(Node):
         if self.cap is not None and self.cap.isOpened():
             return True
 
-        configure_camera(self.cfg, self.get_logger())
-        self.cap = cv2.VideoCapture(video_index_from_device(self.cfg['device']), cv2.CAP_V4L2)
+        self.active_device = resolve_camera_device(str(self.cfg['device']), self.get_logger())
+        camera_cfg = dict(self.cfg)
+        camera_cfg['device'] = self.active_device
+        configure_camera(camera_cfg, self.get_logger())
+        self.cap = cv2.VideoCapture(video_index_from_device(self.active_device), cv2.CAP_V4L2)
         if not self.cap.isOpened():
             self.cap.release()
             self.cap = None
             self.enabled = False
-            self.get_logger().error(f"无法打开摄像头: {self.cfg['device']}")
+            self.get_logger().error(f"无法打开摄像头: {self.active_device}")
             return False
 
         self.last_time = time.perf_counter()
-        self.get_logger().info(f"摄像头已开启: {self.cfg['device']}")
+        self.get_logger().info(f"摄像头已开启: {self.active_device}")
         return True
 
     def close_camera(self) -> None:
         if self.cap is not None:
             self.cap.release()
             self.cap = None
-            self.get_logger().info(f"摄像头已关闭: {self.cfg['device']}")
+            self.get_logger().info(f"摄像头已关闭: {self.active_device}")
         if as_bool(self.cfg.get('show_image')):
             cv2.destroyAllWindows()
 
@@ -422,7 +407,7 @@ class YoloDetectNode(Node):
         detections = self.detector.infer(frame)
         message = Detection2DArray()
         message.header.stamp = self.get_clock().now().to_msg()
-        message.header.frame_id = str(self.cfg['device'])
+        message.header.frame_id = str(self.active_device)
 
         for class_id, conf, (x1, y1, x2, y2) in detections:
             item = Detection2D()
@@ -470,13 +455,16 @@ def main() -> None:
     try:
         node = YoloDetectNode()
         rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
     except (FileNotFoundError, RuntimeError, ImportError) as error:
         logger = rclpy.logging.get_logger('yolo_detect_node')
         logger.error(str(error))
     finally:
         if node is not None:
             node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':

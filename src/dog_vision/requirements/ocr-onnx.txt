@@ -1,0 +1,5 @@
+numpy<3
+Pillow>=10.0
+opencv-python>=4.10
+onnxruntime
+requests

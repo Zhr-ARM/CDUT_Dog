@@ -1,3 +1,6 @@
+import os
+
+from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.conditions import IfCondition
@@ -6,16 +9,44 @@ from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
 
+def workspace_root_from_share(package_share: str) -> str:
+    path = os.path.abspath(package_share)
+    parts = path.split(os.sep)
+    if "install" in parts:
+        install_index = parts.index("install")
+        return os.sep.join(parts[:install_index]) or os.sep
+    return os.getcwd()
+
+
 def generate_launch_description():
+    dog_vision_share = get_package_share_directory("dog_vision")
+    workspace_root = workspace_root_from_share(dog_vision_share)
+    default_ocr_model = os.path.join(
+        dog_vision_share, "models", "ocr", "PP-OCRv5_server_rec.onnx"
+    )
+    default_ocr_dict = os.path.join(dog_vision_share, "models", "ocr", "dict.txt")
     return LaunchDescription(
         [
             DeclareLaunchArgument("target_row", default_value="0"),
             DeclareLaunchArgument("target_col", default_value="1"),
             DeclareLaunchArgument("launch_yolo", default_value="false"),
+            DeclareLaunchArgument("launch_ocr", default_value="false"),
+            DeclareLaunchArgument("launch_camera_mode_mux", default_value="true"),
             DeclareLaunchArgument("launch_target_selector", default_value="false"),
-            DeclareLaunchArgument("camera_device", default_value="/dev/arm_camera"),
+            DeclareLaunchArgument("camera_device", default_value="/dev/video0"),
             DeclareLaunchArgument("vision_enabled_topic", default_value="/arm_vision_mode/enabled"),
+            DeclareLaunchArgument("vision_mode_topic", default_value="/vision/mode"),
+            DeclareLaunchArgument("yolo_enabled_topic", default_value="/vision/yolo_enabled"),
+            DeclareLaunchArgument("ocr_enabled_topic", default_value="/vision/ocr_enabled"),
+            DeclareLaunchArgument("initial_vision_mode", default_value="off"),
             DeclareLaunchArgument("vision_start_enabled", default_value="false"),
+            DeclareLaunchArgument("ocr_backend", default_value="api"),
+            DeclareLaunchArgument("ocr_allow_api_fallback", default_value="false"),
+            DeclareLaunchArgument("onnx_python", default_value=os.path.join(workspace_root, ".venv-ocr-onnx", "bin", "python")),
+            DeclareLaunchArgument("api_python", default_value=os.path.join(workspace_root, ".venv-ocr-onnx", "bin", "python")),
+            DeclareLaunchArgument("ocr_onnx_model_path", default_value=default_ocr_model),
+            DeclareLaunchArgument("ocr_onnx_dict_path", default_value=default_ocr_dict),
+            DeclareLaunchArgument("ocr_env_file", default_value=os.path.join(workspace_root, ".env")),
             DeclareLaunchArgument("cloud_topic", default_value="/odin1/cloud_render"),
             DeclareLaunchArgument("x_min", default_value="0.30"),
             DeclareLaunchArgument("x_max", default_value="4.50"),
@@ -363,6 +394,24 @@ def generate_launch_description():
             ),
             Node(
                 package="dog_vision",
+                executable="camera_mode_mux_node",
+                name="camera_mode_mux_node",
+                output="screen",
+                condition=IfCondition(LaunchConfiguration("launch_camera_mode_mux")),
+                parameters=[
+                    {
+                        "mode_topic": LaunchConfiguration("vision_mode_topic"),
+                        "legacy_enabled_topic": LaunchConfiguration("vision_enabled_topic"),
+                        "yolo_enabled_topic": LaunchConfiguration("yolo_enabled_topic"),
+                        "ocr_enabled_topic": LaunchConfiguration("ocr_enabled_topic"),
+                        "initial_mode": ParameterValue(
+                            LaunchConfiguration("initial_vision_mode"), value_type=str
+                        ),
+                    }
+                ],
+            ),
+            Node(
+                package="dog_vision",
                 executable="yolo_detect_node",
                 name="yolo_detect_node",
                 output="screen",
@@ -370,10 +419,33 @@ def generate_launch_description():
                 parameters=[
                     {
                         "device": LaunchConfiguration("camera_device"),
-                        "enabled_topic": LaunchConfiguration("vision_enabled_topic"),
+                        "enabled_topic": LaunchConfiguration("yolo_enabled_topic"),
                         "start_enabled": ParameterValue(
                             LaunchConfiguration("vision_start_enabled"), value_type=bool
                         ),
+                    }
+                ],
+            ),
+            Node(
+                package="dog_vision",
+                executable="ocr_recognition_node",
+                name="ocr_recognition_node",
+                output="screen",
+                condition=IfCondition(LaunchConfiguration("launch_ocr")),
+                parameters=[
+                    {
+                        "backend": LaunchConfiguration("ocr_backend"),
+                        "allow_api_fallback": ParameterValue(
+                            LaunchConfiguration("ocr_allow_api_fallback"), value_type=bool
+                        ),
+                        "enabled_topic": LaunchConfiguration("ocr_enabled_topic"),
+                        "start_enabled": False,
+                        "device": LaunchConfiguration("camera_device"),
+                        "onnx_python": LaunchConfiguration("onnx_python"),
+                        "api_python": LaunchConfiguration("api_python"),
+                        "onnx_model_path": LaunchConfiguration("ocr_onnx_model_path"),
+                        "onnx_dict_path": LaunchConfiguration("ocr_onnx_dict_path"),
+                        "env_file": LaunchConfiguration("ocr_env_file"),
                     }
                 ],
             ),

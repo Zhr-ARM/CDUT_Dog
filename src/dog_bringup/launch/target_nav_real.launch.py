@@ -10,8 +10,18 @@ from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
 
+def workspace_root_from_share(package_share: str) -> str:
+    path = os.path.abspath(package_share)
+    parts = path.split(os.sep)
+    if "install" in parts:
+        install_index = parts.index("install")
+        return os.sep.join(parts[:install_index]) or os.sep
+    return os.getcwd()
+
+
 def generate_launch_description():
     bringup_pkg = get_package_share_directory("dog_bringup")
+    workspace_root = workspace_root_from_share(bringup_pkg)
     default_gait_param_file = os.path.join(
         get_package_share_directory("dog_position_control"),
         "config",
@@ -27,10 +37,21 @@ def generate_launch_description():
         "target_row",
         "target_col",
         "launch_yolo",
+        "launch_ocr",
+        "launch_camera_mode_mux",
         "launch_target_selector",
         "camera_device",
         "vision_enabled_topic",
+        "vision_mode_topic",
+        "yolo_enabled_topic",
+        "ocr_enabled_topic",
+        "initial_vision_mode",
         "vision_start_enabled",
+        "ocr_backend",
+        "ocr_allow_api_fallback",
+        "onnx_python",
+        "api_python",
+        "ocr_env_file",
         "cloud_topic",
         "x_min",
         "x_max",
@@ -345,10 +366,27 @@ def generate_launch_description():
                 description="box_only, box_then_return, or return_only for ideal field-map targets.",
             ),
             DeclareLaunchArgument("launch_yolo", default_value="false"),
+            DeclareLaunchArgument("launch_ocr", default_value="false"),
+            DeclareLaunchArgument("launch_camera_mode_mux", default_value="true"),
             DeclareLaunchArgument("launch_target_selector", default_value="false"),
-            DeclareLaunchArgument("camera_device", default_value="/dev/arm_camera"),
+            DeclareLaunchArgument("camera_device", default_value="/dev/video0"),
             DeclareLaunchArgument("vision_enabled_topic", default_value="/arm_vision_mode/enabled"),
+            DeclareLaunchArgument("vision_mode_topic", default_value="/vision/mode"),
+            DeclareLaunchArgument("yolo_enabled_topic", default_value="/vision/yolo_enabled"),
+            DeclareLaunchArgument("ocr_enabled_topic", default_value="/vision/ocr_enabled"),
+            DeclareLaunchArgument("initial_vision_mode", default_value="off"),
             DeclareLaunchArgument("vision_start_enabled", default_value="false"),
+            DeclareLaunchArgument("ocr_backend", default_value="api"),
+            DeclareLaunchArgument("ocr_allow_api_fallback", default_value="false"),
+            DeclareLaunchArgument(
+                "onnx_python",
+                default_value=os.path.join(workspace_root, ".venv-ocr-onnx", "bin", "python"),
+            ),
+            DeclareLaunchArgument(
+                "api_python",
+                default_value=os.path.join(workspace_root, ".venv-ocr-onnx", "bin", "python"),
+            ),
+            DeclareLaunchArgument("ocr_env_file", default_value=os.path.join(workspace_root, ".env")),
             DeclareLaunchArgument("cloud_topic", default_value="/odin1/cloud_render"),
             DeclareLaunchArgument("odom_topic", default_value="/odin1/odometry"),
             DeclareLaunchArgument("x_min", default_value="0.30"),
