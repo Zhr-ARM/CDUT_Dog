@@ -281,13 +281,14 @@ ros2 launch dog_vision dog_vision.launch.py \
 
 ## 8. OCR 结果输出
 
-OCR 主要输出三个话题：
+OCR 主要输出这些话题：
 
 ```text
 /vision/ocr_result  dog_bringup/msg/OcrResult
 /vision/ocr_mod4    std_msgs/msg/Int32
 /vision/ocr_status  std_msgs/msg/String
 /vision/ocr_backend std_msgs/msg/String
+/voice_broadcast    std_msgs/msg/String
 ```
 
 查看完整 OCR 结果：
@@ -326,6 +327,10 @@ string error
 ```bash
 ros2 topic echo /vision/ocr_mod4
 ```
+
+同一时刻，OCR 节点也会把 `answer_mod_4` 作为字符串发布到 `/voice_broadcast`，
+由 `voice_broadcast_node` 通过喇叭播报。常用 launch 入口在 `launch_ocr:=true`
+时会自动启动该语音节点，并把 `idle_timeout` 设为 `0`，避免等待 OCR 结果时语音节点空闲退出。
 
 OCR 状态查看：
 

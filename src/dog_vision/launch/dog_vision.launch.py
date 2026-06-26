@@ -257,4 +257,15 @@ def generate_launch_description():
         }],
     )
 
-    return LaunchDescription(arguments + [mux_node, yolo_node, ocr_node])
+    voice_node = Node(
+        package='dog_vision',
+        executable='voice_broadcast_node',
+        name='voice_broadcast_node',
+        output='screen',
+        condition=IfCondition(LaunchConfiguration('launch_ocr')),
+        parameters=[{
+            'idle_timeout': 0.0,
+        }],
+    )
+
+    return LaunchDescription(arguments + [mux_node, yolo_node, ocr_node, voice_node])

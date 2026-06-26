@@ -92,6 +92,8 @@ class OcrRecognitionNode(Node):
         self.declare_parameter("mod4_topic", "/vision/ocr_mod4")
         self.declare_parameter("status_topic", "/vision/ocr_status")
         self.declare_parameter("backend_topic", "/vision/ocr_backend")
+        self.declare_parameter("voice_broadcast_enabled", True)
+        self.declare_parameter("voice_broadcast_topic", "/voice_broadcast")
         self.declare_parameter("device", "/dev/video0")
         self.declare_parameter("device_index", 0)
         self.declare_parameter("width", 1280)
@@ -126,6 +128,11 @@ class OcrRecognitionNode(Node):
             _latched_qos(),
         )
         self.mod4_pub = self.create_publisher(Int32, str(self.get_parameter("mod4_topic").value), 10)
+        self.voice_pub = self.create_publisher(
+            String,
+            str(self.get_parameter("voice_broadcast_topic").value),
+            10,
+        )
         self.status_pub = self.create_publisher(
             String,
             str(self.get_parameter("status_topic").value),
@@ -471,6 +478,19 @@ class OcrRecognitionNode(Node):
                 self.mod4_pub.publish(mod_msg)
             except Exception:
                 return
+            self.publish_voice_broadcast(msg.answer_mod_4)
+
+    def publish_voice_broadcast(self, answer_mod_4: int) -> None:
+        if not rclpy.ok():
+            return
+        if not bool(self.get_parameter("voice_broadcast_enabled").value):
+            return
+        msg = String()
+        msg.data = str(int(answer_mod_4))
+        try:
+            self.voice_pub.publish(msg)
+        except Exception:
+            return
 
     def publish_backend(self, backend: str) -> None:
         if not rclpy.ok():

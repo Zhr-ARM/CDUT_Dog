@@ -449,5 +449,17 @@ def generate_launch_description():
                     }
                 ],
             ),
+            Node(
+                package="dog_vision",
+                executable="voice_broadcast_node",
+                name="voice_broadcast_node",
+                output="screen",
+                condition=IfCondition(LaunchConfiguration("launch_ocr")),
+                parameters=[
+                    {
+                        "idle_timeout": 0.0,
+                    }
+                ],
+            ),
         ]
     )
